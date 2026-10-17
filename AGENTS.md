@@ -44,6 +44,10 @@ below are the ones that get broken, not the ones already obvious.
 - Prefer the purpose-built tool over ad-hoc scripting: `pe_xrefs.py` for strings,
   `pe_disasm.py` for raw truth, `pe_caves.py` for space, `DumpDecompile.java` /
   `FindAsciiReferences.java` for structure.
+- Never convert an RVA to a file offset by linear subtraction. Use `scripts/pe_rva.py`,
+  which is tracked and dependency-free. `pefile.get_offset_from_rva` has the same bug: for an
+  RVA past a section's `SizeOfRawData` it returns an offset inside a *later* section. Two
+  wrong reads in this repo's history came from exactly that, so the rule is not optional.
 - Do not edit anything under `samples/absolllute.hackmega/`. It is evidence. Keep scratch
   work somewhere else and quote what you need into a note.
 - Do not trust the decompiler's types, variable names or structure sizes. Confirm sizes

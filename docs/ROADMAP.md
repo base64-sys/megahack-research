@@ -56,8 +56,10 @@ Exit criteria:
       [provenance.md](../notes/provenance.md#finding-the-geode-package-in-samples-is-not-pristine).
 - [x] Export table recovered: 30 named MSVC-mangled symbols, demangled with
       `undname.exe`, recorded in `notes/hackpro-api.md`. The export table is **not** stripped.
-- [ ] Full import table with preferred-base IAT addresses classified into Geometry Dash,
-      Geode, Windows and CRT.
+- [x] Full import table with preferred-base IAT addresses classified into Geometry Dash,
+      Geode, Windows and CRT — `notes/host-abi.md`. 1,010 imports over 32 DLLs; all 646
+      mangled symbols demangled. Headline: **zero** GD gameplay classes are statically
+      imported; they are reached by runtime name resolution.
 - [ ] Full string inventory split into user-visible labels, setting keys, file paths,
       language keys and format strings, each anchored to a VA.
 - [ ] Mega Hack's own RTTI/vtable set enumerated; the class hierarchy recovered. Partly
@@ -66,17 +68,24 @@ Exit criteria:
 - [ ] Settings registry map: every key, its type, default, and the function that applies it.
 - [ ] Save/load file formats mapped, including the sidecar `best_runs.bin` header and
       record layout.
-- [ ] Entry and lifecycle order documented: TLS callbacks, module init, `early-load`
-      ordering, destructor at shutdown.
+- [x] Entry and lifecycle order, partially: `geodeImplicitEntry` at `0x180072B60` is the
+      root, and the load-time sequence registering Mega Hack's two tabs plus resolving the
+      `Import .dt` action tag is mapped in `notes/tab-registration.md`. TLS callbacks,
+      `early-load` ordering and the shutdown path still outstanding.
 - [ ] Geometry Dash structures Mega Hack touches documented with verified offsets
       (`GJGameLevel+0x148`, `+0x14C`, `+0x158`, `+0x198`, `+0x1B8`, `+0x2C4`, `+0x35C`).
-- [ ] Output: `notes/` map files, one per subsystem, each fact cited by VA.
+- [ ] Output: `notes/` map files, one per subsystem, each fact cited by VA. Four written
+      (`provenance`, `hackpro-api`, `host-abi`, `tab-registration`).
 
 Status: layout, cave, state block, patch-site set, hook map, level-identity scheme and DB
 format are known and now re-derived from `_original.dll` in `notes/provenance.md`. Export
-table and extension API are in `notes/hackpro-api.md`. Still outstanding: the classified
-import table, string inventory, RTTI, settings registry, entry/lifecycle trace, and the
-`GJGameLevel` offsets.
+table and extension API are in `notes/hackpro-api.md`. Host ABI and the GD runtime-resolution
+path in `notes/host-abi.md`. Tab registration in `notes/tab-registration.md`. Still
+outstanding: the string inventory, full RTTI, settings registry, remaining lifecycle, and
+the `GJGameLevel` offsets.
+
+The runtime GD resolution path identified in `notes/host-abi.md` is the highest-value target
+left in M1, and arguably belongs to M2: every feature reaches gameplay through it.
 
 ### M2 — Core infrastructure reconstruction (not started)
 
@@ -156,6 +165,7 @@ These are tracked per milestone rather than as milestones of their own.
 | Automated re-baseline diff on version bump | all | open |
 | Demangler wrapper around `undname.exe`  | all | candidate for `scripts/` |
 | Decide which `samples/.../tools/` are original and may be tracked | M1 | open |
+| Safe RVA→file mapping helper            | M1     | candidate for `scripts/` |
 
 ## Deferred, deliberately
 

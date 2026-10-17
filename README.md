@@ -88,6 +88,28 @@ the genuinely original parts into `scripts/` is tracked as open work in
 
 ## Tooling
 
+### The one tracked tool
+
+Everything under `samples/` is untracked, so this is the only analysis tool that exists on a
+fresh clone. It has no third-party dependencies.
+
+```powershell
+python scripts/pe_rva.py <image.dll> <rva-or-va> ... [--sections]
+python scripts/test_pe_rva.py
+```
+
+| Tool            | Purpose                                                                    |
+| --------------- | -------------------------------------------------------------------------- |
+| `scripts/pe_rva.py` | Resolve an RVA or preferred-base VA to a file offset, or explain why there isn't one |
+| `scripts/test_pe_rva.py` | Regression tests for the above; skips itself when no sample set is present |
+
+`pe_rva.py` exists because converting an RVA to a file offset by linear subtraction is
+wrong for any address past a section's `SizeOfRawData`, and the answer then looks
+plausible while pointing into a different section. It distinguishes four cases — `backed`,
+`zero-fill`, `gap`, `unmapped` — and refuses to read an address with no file backing. Both
+wrong reads this project actually performed are pinned as tests. See
+[notes/provenance.md](notes/provenance.md#failure-modes-recorded).
+
 ### Python
 
 `python` is not on `PATH` on this machine (the WindowsApps entries are Store stubs). Use:
