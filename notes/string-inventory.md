@@ -18,16 +18,17 @@ promoted, since they inherit the split and merge error modes in [sso-decoder.md]
 
 | Category | Rows | Contains |
 | -------- | ---: | -------- |
-| `other` | 1,359 | see "what is still missing" below |
+| `other` | 1,079 | see "what is still missing" below |
 | `mod-identifier` | 974 | Mega Hack's own snake_case names — `icons_0`, `override_cols`, `player_ball`, `no_bar`, `same_dual_col` |
 | `user-label` | 479 | UI text |
-| `format-string` | 283 | printf and `{}` templates |
+| `format-string` | 329 | printf (`%s`, `%*s`) and `{}` / `{:02}` templates |
 | `third-party` | 272 | statically linked OpenSSL/zlib, gated on a known prefix |
 | `host-method` | 214 | `PlayLayer::createCheckpoint`, `cocos2d::CCDirector::popScene` |
+| `library-text` | 212 | lowercase library diagnostics — libc++, BoringSSL, libpng, zlib, nlohmann/json |
 | `flag` | 153 | `HACK_COPY_HACK+` and similar |
 | `setting-key` | 126 | `ICONIC/DISABLE`, `HOME/THEME/{}/COL` |
 | `mangled-symbol` | 96 | MSVC `?f@ns@@` and `??1Class` forms |
-| `file-path` | 86 | asset and data filenames |
+| `file-path` | 108 | asset and data filenames, including `.plist`, `.dll` and `{}` templates |
 | `ui-element` | 77 | Mega Hack's own widget names |
 | `error-text` | 12 | assertion and diagnostic strings |
 | `url` | 6 | including `https://absolllute.com/store/mega_hack` |
@@ -201,21 +202,45 @@ match it rather than silently correct it.
 
 ## What is still missing
 
-`other` is 1,359 rows — **33% of the inventory**, down from 76% at the first pass but still
-the largest single group. Sampling shows it is genuinely heterogeneous rather than one missed
-rule: short fragments (`init`, `object`, `zFI`), remaining OpenSSL and zlib names
-(`PEM_do_header`, `png_set_sPLT`, `group-check`), embedded punctuation, and some decoding
-noise.
+`other` was 1,359 rows — 33% of the inventory. A second pass brought it to **1,079 rows,
+26%**, by fixing three concrete rule bugs rather than adding broad heuristics:
 
-M1's criterion asks for the inventory to be **split**, and a split that leaves a third of it
-in one bucket does not meet it. The criterion therefore stays unchecked. The number is left
+| Change | Rows moved | Why it was a bug, not a judgement call |
+| ------ | ---------: | ------------------------------------- |
+| `library-text` (new) | 212 | lowercase diagnostic prose with a space |
+| `file-path`: added `.dll`/`.so`, allowed `{}`, `:`, `,` | 22 | `libcocos2d.dll` and `player_{:02}.png` failed on characters the pattern forbade |
+| `format-string`: allowed `*` in the flag class | 34 | OpenSSL prompts are `%*sPath Length Constraint:` |
+
+`library-text` was measured before it was added: 305 rows in `other` matched a loose
+"lowercase with a space" shape, and 35 were sampled and read. They are library diagnostics, not
+unknown text — libc++ (`bad array new length`, `iterator out of range`), BoringSSL
+(`m_cost must be greater or equal than 8 times the number of lanes`), libpng
+(`malformed sPLT chunk`), nlohmann/json (`syntax error while parsing`), zlib
+(`internal write transform logic error`), c-ares (`calling fread()`). Mega Hack's own labels are
+capitalised and already matched by `NATURAL_LABEL`, so the rule does not take MH's text; 12
+post-change samples were checked to confirm that.
+
+The 1,079 that remain are now a **characterised** remainder, not an unknown one:
+
+| Population | Example | Why it is left alone |
+| ---------- | ------- | -------------------- |
+| OpenSSL ASN.1 field fragments | `gerprint`, `xcghash`, `ld-type`, `use-bits` | bare lowercase, indistinguishable from short words by shape |
+| Flat uppercase identifiers | `SHORTCUT_FRAME_STEPPER_PAUSE`, `SHORTCUT_STARTPOS_L` | no `/` segment, so `setting-key` misses them; a `^[A-Z][A-Z0-9_]+$` rule would also take every OpenSSL macro |
+| SSO decoder artefacts | `urcolo`, `gBur`, `onopti`, `libcocos2d.dll<?` | 181 rows, and these are the decoder's documented split/merge error modes, not strings |
+
+M1's criterion asks for the inventory to be **split**, and a split that leaves a quarter of it
+in one bucket does not meet it. The criterion therefore stays unchecked, and the number is left
 visible rather than tuned away.
+
+The ASN.1 fragments and the SSO artefacts both have a *known* fix that is not a regex: resolve
+field names against the OpenSSL symbol table, and mark SSO rows whose shape matches a documented
+decoder error instead of classifying them at all.
 
 ## Conclusion
 
-1. 4,145 strings classified into 16 categories, 3,609 VA-anchored and 536 SSO-only.
+1. 4,145 strings classified into 17 categories, 3,609 VA-anchored and 536 SSO-only.
 2. Mega Hack's own widget names are recoverable, which is a direct M3 lead.
-3. `other` is still 33%, so the criterion is not yet met.
+3. `other` is down to 26% from 33%, and what remains in it is characterised rather than unknown.
 4. The largest recovered group after `other` is Mega Hack's own 974 identifiers, not
    third-party code — which corrects the impression that this binary is mostly OpenSSL.
 
@@ -223,7 +248,8 @@ visible rather than tuned away.
 
 - Resolve `mod-identifier` against the OpenSSL symbol table to split Mega Hack's names from
   the library's.
-- Work down `other`, starting with the OpenSSL/zlib remainder.
+- Give the 181 SSO artefacts a shape-based flag tied to the decoder's documented error modes,
+  rather than leaving them in `other` to distort the percentage.
 - Confirm whether every `ui-element` name maps to a live control, and extend that group into
   the M3 feature map.
 - Separately: `/api/mega_hack/...` and the licence strings are **out of scope** — see

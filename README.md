@@ -178,9 +178,16 @@ These live in `scripts/`, so they exist on a fresh clone. Neither needs `samples
 | `init_table.py`              | Recover the CRT `_initterm` tables and the functions they call indirectly   |
 | `test_init_table.py`         | Pin those tables and the zero-caller counts; skips without a sample set       |
 
-`_strings.tsv` splits 4,145 code-referenced strings into 16 categories — 974 of them Mega Hack's
-own snake_case identifiers, 77 its own UI widget names. Largest bucket is still `other` at 33%,
-so M1's criterion is not yet met. See [notes/string-inventory.md](notes/string-inventory.md).
+`_strings.tsv` splits 4,145 code-referenced strings into 17 categories — 974 of them Mega Hack's
+own snake_case identifiers, 77 its own UI widget names. Largest bucket is still `other` at **26%**
+(down from 33%), so M1's criterion is not yet met. See [notes/string-inventory.md](notes/string-inventory.md).
+
+`other` is now a characterised remainder rather than an unknown one: the bulk of it is OpenSSL
+ASN.1 field-name fragments (`gerprint`, `xcghash`, `ld-type`), SSO decoder artifacts, and flat
+uppercase identifiers such as `SHORTCUT_FRAME_STEPPER_PAUSE` that have no `/` segment. Those
+are named as open work rather than being swept into a category by a broad rule — an earlier
+generic snake_case rule put 78% of its bucket in the wrong place, which is worse than a small
+honest bucket.
 
 Those UI names and the 138 numeric settings share **no** decompiled function, so Mega Hack has at least
 two key spaces bridged somewhere not yet found - which is the specific gap M1's settings criterion names.

@@ -34,8 +34,18 @@ INDEX = FUNCTIONS / "_xrefs.tsv"
 SETTING_KEY = re.compile(r"^[A-Z][A-Z0-9_]*(?:/[A-Z0-9_{}]+)+$")
 API_PATH = re.compile(r"^/(?:api|v\d)/")
 LANG_KEY = re.compile(r"^[a-z]{2,3}(?:\.[A-Za-z_]+)+$")
-FILE_PATH = re.compile(r"^[A-Za-z0-9_.\\/-]*\.(?:png|json|dt|bin|dat|txt|xml|zip|plist)$")
-FORMAT_STR = re.compile(r"%[-+ #0-9.]*[a-zA-Z]|\{[A-Za-z0-9_]*\}")
+# `{}`, `:` and `,` are allowed inside the stem because Mega Hack names assets with
+# fmtlib placeholders (`player_{:02}.png`). Without them every such asset fell
+# through to `other`. `.dll`/`.so` are here because host and engine names such as
+# `libcocos2d.dll` are paths by the same reasoning.
+FILE_PATH = re.compile(
+    r"^[A-Za-z0-9_{}:,.\\/-]*\.(?:png|json|dt|bin|dat|txt|xml|zip|plist|dll|so)$"
+)
+# fmtlib braces, e.g. `{:02}`, `{:g}`. The old form only matched `{word}`, so
+# every numeric placeholder was missed. `*` is in the flag class because OpenSSL
+# prompt strings are `%*sPath Length Constraint:` — width-by-asterisk — and were
+# falling through to `other` without it.
+FORMAT_STR = re.compile(r"%[-+ #0-9.*]*[a-zA-Z]|\{[^}]*\}")
 NATURAL_LABEL = re.compile(r"^[A-Z][A-Za-z0-9 ,.'!?()\-]*$")
 
 # Added after sampling the leftovers: three distinct groups were 2,000-odd rows
@@ -64,6 +74,14 @@ OPENSSL_PREFIX = re.compile(
 SNAKE = re.compile(r"^[a-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+)+$")
 FLAG = re.compile(r"^(?:HACK_[A-Z0-9_]+[+]?)$")
 ERROR_TEXT = re.compile(r"^[a-z].*\s.*[.:]$")
+# Lowercase diagnostic prose with a space. 305 of the 1,359 rows in `other` are
+# this shape, and sampling them shows they are library diagnostics, not unknown
+# text: libc++ (`bad array new length`, `iterator out of range`), BoringSSL
+# (`m_cost must be greater or equal than 8 times the number of lanes`), libpng
+# (`malformed sPLT chunk`), nlohmann/json (`syntax error while parsing`).
+# Mega Hack's own labels are capitalised and already matched by NATURAL_LABEL, so
+# this rule takes the library text without taking MH's.
+LIBRARY_TEXT = re.compile(r"^[a-z][a-z0-9_ ,'()\[\]/&.:+-]*\s[a-z0-9_ ,'()\[\]/&.:+-]+$")
 
 CATEGORIES = [
     ("setting-key", SETTING_KEY),
@@ -84,6 +102,7 @@ CATEGORIES = [
     ("flag", FLAG),
     ("format-string", FORMAT_STR),
     ("error-text", ERROR_TEXT),
+    ("library-text", LIBRARY_TEXT),
     ("user-label", NATURAL_LABEL),
 ]
 
@@ -144,9 +163,7 @@ def main(argv: list[str] | None = None) -> int:
         shown = [r for r in rows if r[0] == args.category][: args.limit]
         for _, va, text in shown:
             print(f"  {va:<14} {text!r}")
-    if not args.quiet if hasattr(args, "quiet") else True:
-        print()
-        print(f"index: {args.out}")
+    print(f"index: {args.out}")
     return 0
 
 
