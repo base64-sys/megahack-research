@@ -166,8 +166,7 @@ These live in `scripts/`, so they exist on a fresh clone. Neither needs `samples
 | `rtti_index.py`               | Walk MSVC RTTI: 497 polymorphic classes, each anchored to its vtable VA       |
 | `decode_sso.py`               | Recover MSVC small-string literals the decompiler renders as typed locals    |
 | `fnv_hash_probe.py`           | Hash recovered strings and look for a precomputed FNV-1a-64 table            |
-
-| `test_pe_rva.py` is 8 address cases + 3 invariants; `test_demangle.py` covers termination |
+| `test_demangle.py`            | Pin the RTTI demangler, including that it terminates rather than loops         |
 | `make_progress_svg.py`        | Generate `docs/progress.svg` from live repo state                             |
 | `notify.ps1`                  | Send an indexed ntfy push; all notifications go through it                     |
 | `watchdog.ps1`                | Liveness ping for long runs; refreshes the progress graphic on `-Action Start` |
