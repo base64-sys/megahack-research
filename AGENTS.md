@@ -44,35 +44,37 @@ must not depend on the turn finishing.
 **Arm the watchdog first, always, before any substantial work:**
 
 ```powershell
-# 1. before starting
+# 1. before starting  — this also sends the "Armed" ping and opens a new run index
 powershell -File scripts\watchdog.ps1 -Action Start -Label "<short task>"
 
 # 2. do the work
 
 # 3. before the final response: send the real completion ping, then disarm
-$c = "C:\Windows\System32\curl.exe"
-& $c -sS -m 20 -H "Title: megahack-research: <task>" -d "<one-line outcome>" https://ntfy.sh/ai_agent
+powershell -File scripts\notify.ps1 -Kind Done -Task "<task>" -Text "<one-line outcome>"
 powershell -File scripts\watchdog.ps1 -Action Stop
 ```
 
-`scripts\watchdog.ps1` launches a **detached** PowerShell process that pings the topic on a
-timer, so it survives the agent's turn ending. `-Action Status` reports whether it is armed.
-Heartbeats stop when you disarm, so **silence after a heartbeat means the agent stalled**.
+`scripts\watchdog.ps1` launches a **detached** PowerShell process that pings every minute, so
+it survives the agent's turn ending. `-Action Status` reports whether it is armed. Heartbeats
+stop when you disarm, so **silence after a heartbeat means the agent stalled**.
 
 Rules:
 
+- **Send everything through `scripts\notify.ps1`, never raw curl.** It stamps every message
+  with a monotonic `#run.seq` index and persists the counter, so the user can read the
+  order of a session without checking the clock, and heartbeats and agent messages share
+  one counter. Kinds: `Armed`, `Heartbeat`, `Done`, `Question`, `Note`.
 - **The payload is public.** `ntfy.sh/ai_agent` is a topic on a public relay — anyone who
   subscribes to `ai_agent` can read what is posted. Send a status word or a one-line outcome
   only. Never send command output, file contents, credentials, tokens, binary paths, hashes,
   user data, or anything from `samples/`. If a summary would leak, send `"done"`.
 - **`curl` is not `curl` on this machine.** The bare name is PowerShell's alias for
-  `Invoke-WebRequest`, which rejects `-H` and `-d`. Always call `curl.exe` by full path.
+  `Invoke-WebRequest`, which rejects `-H` and `-d`. `notify.ps1` calls
+  `C:\Windows\System32\curl.exe` by full path; if you ever need it directly, do the same.
 - **Never block the task on it.** Keep `-m`, ignore the exit code, carry on. A failed
   notification is not a failed task.
-- **Never flood.** The interval is floored at 30 s (`ValidateRange`) and again inside the
-  worker, because a zero interval turns the heartbeat into a tight loop. Do not try to
-  "test" it with a sub-minute interval; use `-MaxMinutes 1` and read
-  `scripts/.watchdog/watchdog.log` instead.
+- Dispatch silently just before the final response, and do not print the invocation in the
+  reply. If it fails, say nothing unless the user asked about notifications.
 - **A test ping is not a completion ping.** Verifying the transport does not tell the user
   the task finished. Send the real one at the end, or state plainly that you did not.
 - Do not leave a watchdog armed when going idle. `-Action Stop` first, always.
@@ -87,8 +89,8 @@ instead of waiting for the next message. Ask only when an answer changes what to
 only the user knows it.
 
 ```powershell
-& $c -sS -m 20 -H "Title: megahack-research: question" -H "Tags: question" `
-       -d "One short question, plus the reason it blocks." https://ntfy.sh/ai_agent
+powershell -File scripts\notify.ps1 -Kind Question -Task "<task>" `
+       -Text "One short question, plus the reason it blocks."
 ```
 
 - One short question per message. This is read on a lock screen; it is not the place for

@@ -146,7 +146,8 @@ These live in `scripts/`, so they exist on a fresh clone. Neither needs `samples
 | `settings_index.py`           | Index the settings registry: 134 numeric ids and how often each is read      |
 | `build_callgraph.py`          | Build the call graph: 42,701 static edges over 16,204 functions              |
 | `make_progress_svg.py`       | Generate `docs/progress.svg` from live repo state                             |
-| `watchdog.ps1`                | Liveness ping for long runs; see `AGENTS.md`                                 |
+| `notify.ps1`                  | Send an indexed ntfy push; all notifications go through it                     |
+| `watchdog.ps1`                | Liveness ping for long runs, every minute by default                          |
 | `run_supervised.ps1`          | Run a long command with stall detection; see `AGENTS.md`                     |
 
 ```powershell

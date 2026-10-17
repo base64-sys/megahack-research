@@ -44,7 +44,7 @@ param(
     [string]$Action = 'Start',
 
     [ValidateRange(0.5, 60)]
-    [double]$IntervalMinutes = 3,
+    [double]$IntervalMinutes = 1,
 
     [ValidateRange(1, 600)]
     [int]$MaxMinutes = 90,
@@ -58,21 +58,7 @@ $ErrorActionPreference = 'Continue'
 $StateDir = Join-Path $PSScriptRoot '.watchdog'
 $PidFile = Join-Path $StateDir 'watchdog.pid'
 $LogFile = Join-Path $StateDir 'watchdog.log'
-$Curl = 'C:\Windows\System32\curl.exe'
-
-function Send-Ntfy {
-    param(
-        [string]$Title,
-        [string]$Message,
-        [string[]]$Tags = @()
-    )
-    # curl.exe by full path: bare `curl` is PowerShell's Invoke-WebRequest alias
-    # and silently mishandles -H and -d.
-    $args = @('-sS', '-m', '20', '-H', "Title: $Title")
-    foreach ($tag in $Tags) { $args += @('-H', "Tags: $tag") }
-    $args += @('-d', $Message, "https://ntfy.sh/$Topic")
-    & $Curl @args | Out-Null
-}
+$NotifyScript = Join-Path $PSScriptRoot 'notify.ps1'
 
 function Get-WatchdogPid {
     if (-not (Test-Path -LiteralPath $PidFile)) { return $null }
@@ -121,27 +107,25 @@ switch ($Action) {
         # cleanly, and inlining it here would leave dead code behind.
         $workerPath = Join-Path $StateDir 'worker.ps1'
         $workerText = @'
-param([double]$IntervalMinutes, [int]$MaxMinutes, [string]$Label, [string]$Topic, [string]$LogFile)
+param([double]$IntervalMinutes, [int]$MaxMinutes, [string]$Label, [string]$Topic, [string]$LogFile, [string]$NotifyScript)
 # Hard floor. An interval that rounds to zero would turn this into a tight loop
 # that floods the topic; refuse rather than spam.
 $IntervalMinutes = [Math]::Max($IntervalMinutes, 0.5)
 $IntervalSeconds = [int][Math]::Round($IntervalMinutes * 60)
-$Curl = 'C:\Windows\System32\curl.exe'
+
 function Beat {
-    param($Text, $Tags)
-    $a = @('-sS', '-m', '20', '-H', 'Title: megahack-research: alive')
-    foreach ($t in $Tags) { $a += @('-H', "Tags: $t") }
-    $a += @('-d', $Text, "https://ntfy.sh/$Topic")
-    & $Curl @a | Out-Null
-    Add-Content -LiteralPath $LogFile -Value "$(Get-Date -Format o) $Text"
+    param($Kind, $Text)
+    $out = & $NotifyScript -Kind $Kind -Task $Label -Text $Text -Topic $Topic 2>&1 | Select-Object -Last 1
+    if ($out) { Add-Content -LiteralPath $LogFile -Value "$(Get-Date -Format o) $out" }
 }
+
 $deadline = (Get-Date).AddMinutes($MaxMinutes)
-Beat "Watchdog armed for $Label, every $([int]$IntervalSeconds)s. If heartbeats stop, the agent stalled." @('rotating_light')
+Beat 'Armed' "watchdog armed for $Label, heartbeat every ${IntervalSeconds}s. If heartbeats stop, the agent stalled."
 while ((Get-Date) -lt $deadline) {
     Start-Sleep -Seconds $IntervalSeconds
-    Beat "Still working on $Label." @()
+    Beat 'Heartbeat' "still working on $Label."
 }
-Beat "Watchdog deadline reached for $Label. Agent turn is over." @('warning')
+Beat 'Heartbeat' "watchdog deadline reached for $Label. The agent turn is over."
 '@
         Set-Content -LiteralPath $workerPath -Value $workerText -Encoding UTF8
 
@@ -152,7 +136,8 @@ Beat "Watchdog deadline reached for $Label. Agent turn is over." @('warning')
             '-MaxMinutes', "$MaxMinutes",
             '-Label', $Label,
             '-Topic', $Topic,
-            '-LogFile', $LogFile
+            '-LogFile', $LogFile,
+            '-NotifyScript', $NotifyScript
         )
 
         Set-Content -LiteralPath $PidFile -Value $proc.Id -Encoding ASCII
