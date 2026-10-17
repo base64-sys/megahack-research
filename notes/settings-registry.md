@@ -17,7 +17,27 @@ Settings are read through three numeric accessors, all `(this, id)` shaped:
 | `FUN_18002DE50` | `getFlag` | returns `bool`; ids 761/762 gate `cps` fields |
 | `FUN_180003D80` | `getConfigVar<scalar>` | result lands in `xmm0`; id 501 is a scale factor |
 
-A fourth form is key-based: `FUN_18007CB60(this, out, key)`.
+A fourth call form also exists: `FUN_18007CB60(manager, out, key)`. **CORRECTION: this is
+not a keyed setting lookup.** It was originally described that way here. Decompiling it
+shows the constant `0xCBF29CE484222325`, which is the FNV-1a-64 offset basis, and the
+function reads `param_3[2]` as the string size and `param_3[3]` as the capacity, spilling to
+the heap when the capacity exceeds 15. So:
+
+```
+uint64_t FUN_18007cb60(const char *tag, uint64_t *out, const std::string &key)
+```
+
+— an **FNV-1a-64 hash of a string**, where the first parameter is some owner pointer. The
+four sites `settings_index.py` listed as "key-based lookups" are FNV-1a hashes of SSO-built
+strings, not registry lookups, and the names it reported for them (`local_28`, `local_58`)
+were Ghidra locals rather than setting names for the same reason.
+
+This matters beyond the mislabel: **Mega Hack hashes strings with FNV-1a-64**, which is the
+same primitive the persistence sidecar uses for `FNV1aChecksumOfRecords` in
+`RE_NOTES_PERSISTENT_BEST_RUN.md`. One hashing convention spans the mod core and the patch.
+
+`FUN_18008ABC0` and `FUN_18008DF30` both decode to the literal `CONFIG`, so the
+configuration namespace is a real, named concept in the registry.
 
 ## Evidence — the sweep
 
@@ -87,8 +107,21 @@ Mega Hack builds key strings on the stack from immediates, so the name only exis
 `0x4E4F4349`-style constants that have to be decoded by hand. `FUN_18011FFE0` yielded
 `ICONIC/DISABLE`, `ICONIC/GENERAL` and friends that way.
 
-So `scripts/settings_index.py` deliberately reports the locals rather than guessing. Decoding
-the immediates for those four sites is mechanical and is the obvious next pass.
+So `scripts/settings_index.py` deliberately reports the locals rather than guessing.
+`scripts/decode_sso.py` recovers most of them; see
+[finding-code.md](finding-code.md).
+
+## Correction: FUN_18007CB60 is an FNV-1a hash
+
+Originally described here as the key-based lookup form. That was wrong, and the
+`decode_sso.py` pass is what exposed it — the apparent `'%#"'` format-string fragment was
+actually part of the FNV-1a constant. `FUN_18007CB60` takes `(owner, out, key)`, reads the
+key's size and capacity from the `std::string`, and returns FNV-1a-64. So those four sites
+are hashes of SSO-built strings, not registry lookups, and the setting names they appeared
+to hold are not recoverable from the call shape at all.
+
+UNVERIFIED: what the first parameter is, and whether the hash result is used as a key
+lookup, a comparison, or only for change detection.
 
 ## Conclusion
 

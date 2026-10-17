@@ -145,6 +145,7 @@ These live in `scripts/`, so they exist on a fresh clone. Neither needs `samples
 | `build_xref_index.py`         | Index every code-referenced string to the functions that name it            |
 | `settings_index.py`           | Index the settings registry: 134 numeric ids and how often each is read      |
 | `build_callgraph.py`          | Build the call graph: 42,701 static edges over 16,204 functions              |
+| `decode_sso.py`               | Recover MSVC small-string literals the decompiler renders as typed locals    |
 | `make_progress_svg.py`       | Generate `docs/progress.svg` from live repo state                             |
 | `notify.ps1`                  | Send an indexed ntfy push; all notifications go through it                     |
 | `watchdog.ps1`                | Liveness ping for long runs, every minute by default                          |
