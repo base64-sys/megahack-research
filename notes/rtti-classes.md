@@ -91,8 +91,34 @@ every row, so nothing is lost. Real demangling stays with `undname.exe`, as used
 exports in [hackpro-api.md](hackpro-api.md).
 
 UNVERIFIED: inheritance relationships between the COLs. `pClassHierarchy` is captured but
-not yet decoded — a Base Class Descriptor is a chain of 32-bit RVAs terminated by zero, and
-walking it is the obvious next step toward a true hierarchy rather than a flat list.
+**not decoded**, and `rtti_index.py` deliberately returns no bases rather than a guess.
+Reading the documented `_RTTIBaseClassHierarchyDescriptor` (`pNumBaseClasses(4)`
+`pBaseClassArray(4)`) yields `numBases == 0` for every class, which would mean Mega Hack has
+no inheritance at all — contradicted by the vtable evidence.
+
+Raw bytes at `pClassHierarchy` for `hackpro::ui::Object` (COL RVA `0x5439A0`, hierarchy RVA
+`0x5439B8`, `.rdata`, resolves `backed`):
+
+```
+0x5439b8:  00 00 00 00   00 00 00 00   01 00 00 00
+0x5439c4:  c8 39 54 00   d0 39 54 00   00 00 00 00
+```
+
+The plausible `[numBases=1, array=0x5439c8]` pair sits at **+8**, not +0, and `0x5439d0`
+would then be the single base-class descriptor RVA. Three readings remain open and they were
+not separated within this pass:
+
+1. The descriptor is anchored at `pClassHierarchy + 8` in this compiler variant.
+2. `pClassHierarchy` does not point at the descriptor itself but at a related table.
+3. The COL's field order differs, shifting which dword was taken as the hierarchy pointer.
+
+Separating them needs a known-single-inheritance class to check against — the `hackpro::ui::*`
+chain at vtables `0x180543698`-`0x180543708` is the obvious candidate, since a 16-byte stride
+across `Object`, `Option`, `Checkbox`, `Spinner`, `Shortcut`, `Colour`, `TextBox`, `Picker` is
+what single inheritance of a small UI base looks like.
+
+Shipping an empty `_rtti_hierarchy.tsv` labelled "0 edges" would read as a finding, so
+`decode_hierarchy()` returns `[]` with the reasoning in its docstring until this is settled.
 
 ## Conclusion
 

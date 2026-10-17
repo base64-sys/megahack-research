@@ -171,6 +171,47 @@ def find_vtables(image: Image, col_rvas: set[int]) -> dict[int, int]:
     return found
 
 
+def read_u32(data: bytes, rva: int, image: Image) -> int | None:
+    """Read a 4-byte value at an RVA, going through `resolve`.
+
+    `resolve` is used rather than an arithmetic shortcut because an RVA past a
+    section's `SizeOfRawData` would otherwise index into a different section and
+    return a plausible wrong number - the failure AGENTS.md documents.
+    """
+    res = image.resolve(image.image_base + rva)
+    if not res.ok or res.file_offset is None:
+        return None
+    off = res.file_offset
+    if off + 4 > len(data):
+        return None
+    (value,) = struct.unpack_from("<I", data, off)
+    return value
+
+
+def decode_hierarchy(image: Image, col: dict, types: dict[int, str]) -> list[dict]:
+    """Walk the Base Class Hierarchy Descriptor into real base/derived edges.
+
+    DISABLED - the layout is not yet confirmed, and returning empty would be
+    indistinguishable from "this class has no bases".
+
+    MSVC documents `_RTTIBaseClassHierarchyDescriptor` as
+    `pNumBaseClasses(4) pBaseClassArray(4)` with the array elsewhere, but the
+    bytes at `pClassHierarchy` for `hackpro::ui::Object` (COL `0x1805439A0`,
+    hierarchy `0x5439B8`) read as:
+
+        0x5439b8: 00 00 00 00   00 00 00 00   01 00 00 00
+        0x5439c4: c8 39 54 00   d0 39 54 00   00 00 00 00
+
+    so `numBases` would be 0 at +0 and the plausible `[1, 0x5439c8]` pair sits at
+    +8 instead, which is not the documented layout. Either this compiler variant
+    differs, or the descriptor is anchored elsewhere. Guessing which would
+    manufacture a hierarchy, so this stays off until it is verified.
+
+    See notes/rtti-classes.md for the raw bytes and the candidate readings.
+    """
+    return []
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -200,11 +241,16 @@ def main(argv: list[str] | None = None) -> int:
     needle = args.grep.lower() if args.grep else None
     shown = [r for r in rows if not needle or needle in r["name"].lower()]
 
+    for r in rows:
+        r["bases"] = decode_hierarchy(image, r, types)
+    edges = sum(len(r["bases"]) for r in rows)
+
     if not args.quiet:
         print(f"image            : {args.dll.name}")
         print(f"type descriptors : {len(types)}")
         print(f"complete obj locs: {len(cols)}")
         print(f"vtables resolved : {len(rows)}")
+        print(f"inheritance edges: {edges}")
         print()
 
     if args.quiet:
@@ -221,7 +267,10 @@ def main(argv: list[str] | None = None) -> int:
         print()
     else:
         for r in shown[:80]:
-            print(f"{r['vt_va']:#x}  {r['name']:<52} {r['mangled']}")
+            chain = ""
+            if r["bases"]:
+                chain = "  : " + " <- ".join(b["name"] for b in r["bases"][:4])
+            print(f"{r['vt_va']:#x}  {r['name']:<44}{chain}")
         if len(shown) > 80:
             print(f"... {len(shown) - 80} more (use --grep or --hier)")
         print()
@@ -235,6 +284,23 @@ def main(argv: list[str] | None = None) -> int:
             )
     if not args.quiet:
         print(f"index: {args.out}")
+
+    hier_out = args.out.with_name("_rtti_hierarchy.tsv")
+    if edges:
+        with hier_out.open("w", encoding="utf-8") as fh:
+            fh.write("# derived\tbase\tdirect\tnon_class\tmdisp\tvdisp\tvt_derived\n")
+            for r in rows:
+                for b in r["bases"]:
+                    fh.write(
+                        f"{r['name']}\t{b['name']}\t{int(b['direct'])}\t"
+                        f"{int(b['non_class'])}\t{b['mdisp']}\t{b['vdisp']}\t{r['vt_va']:#x}\n"
+                    )
+        if not args.quiet:
+            print(f"hierarchy: {hier_out} ({edges} edges)")
+    elif not args.quiet:
+        # Deliberately not written: an empty hierarchy table reads as "this binary
+        # has no inheritance", which is a claim nothing here supports.
+        print("hierarchy: not written - decode_hierarchy() is unverified (see its docstring)")
     return 0
 
 
