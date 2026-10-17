@@ -35,6 +35,21 @@ below are the ones that get broken, not the ones already obvious.
 - If a request would cross one of these lines, say so plainly and offer the
   interoperability/preservation work you *can* do instead.
 
+## Long-running commands
+
+- Anything that might run longer than ~60 s goes through `scripts\run_supervised.ps1`, which
+  returns `EXITCODE`, `MONITOR` status, and log tails. Quick commands run directly.
+- If `MONITOR` says `KILLED`: do **not** rerun. Read the log tails, say exactly which step
+  stalled and your diagnosis, then propose a fix.
+- Never pipe long-running output through `Select-Object -Last`/`-First`. It buffers
+  everything until the pipeline ends, which makes a hang indistinguishable from a slow run
+  and hides all progress. The wrapper returns tails itself.
+- Before rerunning something that timed out, check whether the child process is still alive
+  (`Get-Process`) and whether its output files are still growing. A killed wrapper does not
+  always kill the work it started, and a second run can corrupt the first one's output.
+- The wrapper treats "no output for `MaxSilentSeconds`" as a stall. A tool that legitimately
+  works silently for minutes needs `-MaxSilentSeconds` raised, not a rerun.
+
 ## Investigating
 
 - Run tools from the mod root: every script does `sys.path.insert(0, ".analysis_tools")`,

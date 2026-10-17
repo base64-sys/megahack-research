@@ -50,7 +50,9 @@ samples/
 *.otf
 
 # --- Decompiler output and analysis databases ---------------------------------
-# These are caches. Promote a *finding* into notes/, never the raw dump.
+# These are caches, and the decompiled tree is Absolllute's pseudocode. Promote
+# a *finding* into notes/, never the raw dump.
+recovered/
 decompiled/
 ghidra_out/
 reports/
@@ -73,6 +75,9 @@ venv/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+
+# --- Long-run wrapper scratch --------------------------------------------------
+.oc/
 
 # --- Editors, OS, tooling -----------------------------------------------------
 .idea/

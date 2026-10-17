@@ -86,22 +86,46 @@ either.** A fresh clone has no analysis tooling until the sample set is restored
 the genuinely original parts into `scripts/` is tracked as open work in
 [docs/ROADMAP.md](docs/ROADMAP.md#m1--binary-inventory-and-host-abi-surface-in-progress).
 
+## Recovered source
+
+The mod is decompiled to readable pseudocode so it can be read, navigated and modified
+locally.
+
+```powershell
+python scripts/decompile_all.py --keep-project --reuse-project
+```
+
+On the baseline with Ghidra 12.1.2 this yields **18,822 decompiled functions** in
+`recovered/functions/` — one `.c` per function, each headed with its VA, RVA, signature,
+size and caller count — plus `_index.tsv`, `_symbols.tsv` and a manifest. First run costs
+~290 s of analysis; later runs reuse the project and take seconds.
+
+> `recovered/` is **gitignored and must stay that way.** It is Absolllute's code as
+> recovered by a decompiler. It is pseudocode for reading, not compilable source, and it is
+> never committed. What is tracked is the recipe: `scripts/decompile_all.py` and
+> `scripts/ghidra_scripts/ExportAllFunctions.java`.
+
+Any finding gets promoted out of that tree into `notes/` as an address-and-tool-backed
+claim; the raw dump does not get committed.
+
 ## Tooling
 
-### The one tracked tool
+### Tracked tools
 
-Everything under `samples/` is untracked, so this is the only analysis tool that exists on a
-fresh clone. It has no third-party dependencies.
+These live in `scripts/`, so they exist on a fresh clone. Neither needs `samples/`.
+
+| Tool                          | Purpose                                                                    |
+| ----------------------------- | -------------------------------------------------------------------------- |
+| `pe_rva.py`                   | Resolve an RVA or VA to a file offset, or explain why there isn't one        |
+| `test_pe_rva.py`              | Regression tests for the above; skips itself when no sample set is present    |
+| `decompile_all.py`            | Drive Ghidra headless and write the recovered pseudocode tree                |
+| `ghidra_scripts/ExportAllFunctions.java` | Decompiles every function, one `.c` per function                   |
+| `run_supervised.ps1`          | Run a long command with stall detection; see `AGENTS.md`                     |
 
 ```powershell
 python scripts/pe_rva.py <image.dll> <rva-or-va> ... [--sections]
 python scripts/test_pe_rva.py
 ```
-
-| Tool            | Purpose                                                                    |
-| --------------- | -------------------------------------------------------------------------- |
-| `scripts/pe_rva.py` | Resolve an RVA or preferred-base VA to a file offset, or explain why there isn't one |
-| `scripts/test_pe_rva.py` | Regression tests for the above; skips itself when no sample set is present |
 
 `pe_rva.py` exists because converting an RVA to a file offset by linear subtraction is
 wrong for any address past a section's `SizeOfRawData`, and the answer then looks
@@ -110,7 +134,15 @@ plausible while pointing into a different section. It distinguishes four cases �
 wrong reads this project actually performed are pinned as tests. See
 [notes/provenance.md](notes/provenance.md#failure-modes-recorded).
 
-### Python
+For Ghidra scripts, compile with `javac` against the install's jars before running Ghidra:
+Ghidra reports a script compile error as a `ClassNotFoundException`, which sends you looking
+for a classloader problem that does not exist. Details in
+[notes/new-best-label.md](notes/new-best-label.md#ghidra-12-headless-traps).
+
+### Sample tooling
+
+Everything under `samples/` is untracked, so these only exist once the sample set is
+restored.
 
 `python` is not on `PATH` on this machine (the WindowsApps entries are Store stubs). Use:
 
