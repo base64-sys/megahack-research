@@ -1,0 +1,4 @@
+*.dll
+*.exe
+samples/
+decompiled/
