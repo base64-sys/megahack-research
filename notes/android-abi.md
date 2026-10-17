@@ -336,6 +336,49 @@ the opposite of the `ICONIC/PREVIEW/` error, and worth noting that both directio
 So the Windows-only group is real: **keyboard input, window management, desktop paths, legacy
 save migration, and theme toggles**. 17 keys confirmed by direct byte evidence.
 
+## The Android-only re-check: most of it was wrong too
+
+Same treatment for the Android-only list. Only **10 of 32** survive.
+
+**Confirmed Android-only** — present in both `.so` files, absent from the DLL:
+
+| Key | Area |
+| --- | ---- |
+| `REPLAY/NONE`, `REPLAY/OPEN`, `REPLAY/SAVE`, `MESSAGE/REPLAY/SAVE` | replay UI |
+| `MESSAGE/YES`, `MESSAGE/NO` | dialog buttons |
+| `ICONIC/OVERRIDE`, `ICONIC/WAVE` | icon modes |
+| `HOME/RULESETS/0`, `HOME/RULESETS/1` | ruleset slots |
+
+**Reclassified as shared — 22 keys, all of which are in the DLL after all:**
+
+- all twelve `ICONIC/PREVIEW/*`
+- `HOME/WIDTH`, `HOME/HEIGHT`, `HOME/FLOATER/X`, `HOME/FLOATER/Y`, `HOME/ACCENT`,
+  `HOME/BACKGROUND`, `HOME/TAB_TEXT`
+- `ERROR/LEVEL/NO_CBF`, `ERROR/REPLAY/FILE_NOT_FOUND`, `HOME/SEARCH/AUTO_UPDATE`
+
+This kills the "Android-only is touch and customisation" framing from two commits ago. The
+window-geometry keys are on both platforms, so they are not a mobile adaptation — they are
+simply Mega Hack's window settings, and the earlier list simply never found them on Windows.
+
+### What is genuinely a platform difference, after both re-checks
+
+| | Windows-only | Android-only |
+| --- | --- | --- |
+| Keyboard | `KEYBINDS/*` × 7, `HOME/HOTKEY_ICONS` | — |
+| Windowing | `DISPLAY/HACK_BORDERLESS_CLASSIC`, `MESSAGE/DISPLAY/FULLSCREEN_STOPPED` | — |
+| Dialogs | `MESSAGE/CANCEL` | `MESSAGE/YES`, `MESSAGE/NO` |
+| Replay | — | `REPLAY/{NONE,OPEN,SAVE}`, `MESSAGE/REPLAY/SAVE` |
+| Desktop paths | `ERROR/HOME/NO_APPDATA` | — |
+| Legacy saves | `ERROR/HOME/LEGACY_*`, `MESSAGE/HOME/CONFIRM_LOAD_LEGACY` | — |
+| Theming | `HOME/THEME/{}/COL`, `/COL/ALT`, `/TOGGLE` | — |
+
+The **dialog vocabulary** difference is now confirmed from both directions at once: Windows
+has `MESSAGE/CANCEL` and Android has `MESSAGE/YES` and `MESSAGE/NO`, with no overlap in either
+direction. That is a real platform-specific choice, not a rename.
+
+The **replay UI** is genuinely Android-only — five keys, absent from Windows — which is the
+most concrete feature difference the comparison has produced.
+
 ## Conclusion
 
 1. Windows is MSVC with RTTI; Android is clang/Itanium with **no RTTI**. Solid.
@@ -346,13 +389,25 @@ save migration, and theme toggles**. 17 keys confirmed by direct byte evidence.
    but stored as packed SSO immediates, so they need the SSO decoder rather than a byte scan.
    `HOME/SEARCH` was reclassified as shared after the re-check.
 4. **There is no icon-preview asymmetry.** An earlier claim that Android had an
-   `ICONIC/PREVIEW/` layer Windows lacked was wrong; a raw scan finds all twelve keys on both
-   sides.
-5. **The only fully verified parity statement** is `iconic::PreviewLayer`, which appears under
+   `ICONIC/PREVIEW/` layer Windows lacked was wrong; all twelve keys are on both sides, as is
+   every window-geometry key.
+5. **Only 10 of 32 "Android-only" keys survive re-checking** — the replay UI
+   (`REPLAY/{NONE,OPEN,SAVE}`, `MESSAGE/REPLAY/SAVE`), the `MESSAGE/YES|NO` dialog vocabulary,
+   `ICONIC/{OVERRIDE,WAVE}` and `HOME/RULESETS/{0,1}`.
+6. **The dialog vocabulary difference is confirmed from both directions**: Windows has
+   `MESSAGE/CANCEL`, Android has `MESSAGE/YES` and `MESSAGE/NO`, no overlap either way.
+7. **The only fully verified parity statement** is `iconic::PreviewLayer`, which appears under
    both manglings — MSVC `.?AVPreviewLayer@iconic@@` on Windows, Itanium
    `N6iconic12PreviewLayerE` on Android.
-6. Assets are fully shared (8 of 8 `.png` names).
-7. Roughly a dozen regex artefacts remain on each side and are listed rather than hidden.
+8. Assets are fully shared (8 of 8 `.png` names).
+9. Roughly a dozen regex artefacts remain on each side and are listed rather than hidden.
+
+**Method note, since this is the fourth and fifth correction in one note:** every set-difference
+claim in a cross-binary comparison must be re-verified by scanning both raw images for the
+specific string before it is written down. Two of the five statements above were published first
+and reversed later, both times because a set difference was read from a source that
+undercounts one side. The platform split is now smaller, narrower, and considerably more
+trustworthy than it was three commits ago.
 
 ## Open questions
 
