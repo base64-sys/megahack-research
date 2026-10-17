@@ -36,8 +36,10 @@ Exit criteria — all met:
 - [x] `samples/` untracked; `.gitignore` blocks `*.dll`, `*.exe`, `samples/`, `decompiled/`.
 - [x] Repo skeleton and rules written down.
 
-Remaining risk: the sample set is not checksum-pinned in the repo (it cannot be, without
-vendoring binaries). Fix by recording SHA-256 digests in `notes/` — **open**.
+Remaining risk: the sample set cannot be checksum-pinned by tracking the binaries, so the
+digests live in `notes/provenance.md` instead and must be re-checked by hand whenever the
+sample set is refreshed. M1 found a sharper version of this risk — the `.geode` package in
+`samples/` is already modified, so only `_original.dll` is pristine.
 
 ### M1 — Binary inventory and host ABI surface (in progress)
 
@@ -46,13 +48,21 @@ later milestone gets cheap lookups instead of fresh searching.
 
 Exit criteria:
 
-- [ ] SHA-256 of each baseline binary recorded in `notes/` and cross-checked against a
-      second extraction of `absolllute.hackmega.geode`.
+- [x] SHA-256 of each baseline binary recorded in `notes/provenance.md`. The planned second
+      extraction of `absolllute.hackmega.geode` turned out to be **impossible**: the package
+      in `samples/` has already been patched in place and its DLL is the generated build, not
+      the release. `_original.dll` is the only pristine x64 artifact and has no independent
+      second source. Blocked pending a fresh v9.1.3 download — see
+      [provenance.md](../notes/provenance.md#finding-the-geode-package-in-samples-is-not-pristine).
+- [x] Export table recovered: 30 named MSVC-mangled symbols, demangled with
+      `undname.exe`, recorded in `notes/hackpro-api.md`. The export table is **not** stripped.
 - [ ] Full import table with preferred-base IAT addresses classified into Geometry Dash,
       Geode, Windows and CRT.
 - [ ] Full string inventory split into user-visible labels, setting keys, file paths,
       language keys and format strings, each anchored to a VA.
-- [ ] Mega Hack's own RTTI/vtable set enumerated; the class hierarchy recovered.
+- [ ] Mega Hack's own RTTI/vtable set enumerated; the class hierarchy recovered. Partly
+      pre-solved: namespaces `hackpro`, `hackpro::extensions` and `mega::utils::safe_mode`
+      are known from the export table rather than inferred. Full RTTI still outstanding.
 - [ ] Settings registry map: every key, its type, default, and the function that applies it.
 - [ ] Save/load file formats mapped, including the sidecar `best_runs.bin` header and
       record layout.
@@ -62,9 +72,11 @@ Exit criteria:
       (`GJGameLevel+0x148`, `+0x14C`, `+0x158`, `+0x198`, `+0x1B8`, `+0x2C4`, `+0x35C`).
 - [ ] Output: `notes/` map files, one per subsystem, each fact cited by VA.
 
-Status: layout, cave, hook map, level-identity scheme and DB format are known. String
-inventory, RTTI hierarchy, settings registry and the `GJGameLevel` offsets are not yet
-independently re-derived from `_original.dll`.
+Status: layout, cave, state block, patch-site set, hook map, level-identity scheme and DB
+format are known and now re-derived from `_original.dll` in `notes/provenance.md`. Export
+table and extension API are in `notes/hackpro-api.md`. Still outstanding: the classified
+import table, string inventory, RTTI, settings registry, entry/lifecycle trace, and the
+`GJGameLevel` offsets.
 
 ### M2 — Core infrastructure reconstruction (not started)
 
@@ -73,9 +85,14 @@ menu/interface layer, hook dispatch, save lifecycle.
 
 Exit criteria:
 
-- [ ] Module entry and `early-load` path reconstructed as compiling C++.
+- [ ] Module entry and `early-load` path reconstructed as compiling C++. Root is
+      `geodeImplicitEntry` at `0x180072B60`, confirmed by disassembly — see
+      [hackpro-api.md](../notes/hackpro-api.md).
 - [ ] Settings registry reconstructed: typed keys, defaults, load/save, and the boolean
-      setter that Mega Hack uses to intercept settings by tag.
+      setter that Mega Hack uses to intercept settings by tag. The exported shape is a
+      string-keyed, typed config with five value types (`bool`, `double`, `int64`,
+      `std::string`, `std::vector<unsigned int>`), interned `Tag` identity, and per-key typed
+      change listeners — see [hackpro-api.md](../notes/hackpro-api.md#what-the-signatures-imply).
 - [ ] `nxUI` menu reconstructed well enough to explain how rows, tags and languages
       interact — including why a packed interface has no spare row and a definition hook
       substitutes a label per language dictionary load.
@@ -132,11 +149,13 @@ These are tracked per milestone rather than as milestones of their own.
 
 | Item                                   | Where | State   |
 | -------------------------------------- | ------ | ------- |
-| SHA-256 baseline pinning                | M1     | open    |
+| SHA-256 baseline pinning                | M1     | done, cross-check blocked |
 | Address map under version control       | M1     | open    |
-| `notes/` entries from RE_NOTES promoted out of `samples/` | M1 | open |
+| `notes/` entries from RE_NOTES promoted out of `samples/` | M1 | in progress |
 | Script promotion policy (`scripts/` vs scratch) | all | defined in AGENTS.md |
 | Automated re-baseline diff on version bump | all | open |
+| Demangler wrapper around `undname.exe`  | all | candidate for `scripts/` |
+| Decide which `samples/.../tools/` are original and may be tracked | M1 | open |
 
 ## Deferred, deliberately
 
