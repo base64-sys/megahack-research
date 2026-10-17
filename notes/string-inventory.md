@@ -135,7 +135,7 @@ table of `.text` function pointers** at `.rdata` `0x18063F070`–`0x18063F938`:
 | `FUN_180062940` | entry **11** of 281, at `0x18063F0C8` |
 | Last entry | `0x18063F930` = `0x18027EDD0` |
 | Table end (`rdx`) | `0x18063F938` — one past the last entry |
-| Trailing table | `0x18063F940`–`0x18063F948`, **all zero** |
+| Sibling table | `0x18063F940`–`0x18063F948`, **all zero** |
 
 The table has exactly **one** RIP-relative reference in the entire image, at `0x180531213`
 inside `FUN_18053118c`:
@@ -143,21 +143,32 @@ inside `FUN_18053118c`:
 ```asm
 0x180531213  lea  rdx, [rip + 0x10e71e]   ; 0x18063F938  one past last entry
 0x18053121a  lea  rcx, [rip + 0x10de47]   ; 0x18063F068  start (holds 0)
-0x180531221  call 0x180533e10
+0x180531221  call 0x180533e10             ; _initterm
 ```
 
 `rcx`/`rdx` as a begin/last pair is the MSVC x64 range convention, so this iterates the
 table and calls each entry **indirectly**. That is the whole reason Ghidra attributed zero
 callers: the function is invoked through a pointer, never by a direct `call`.
 
-Residual uncertainty, kept explicit: `FUN_18053118c` is gated by a `0`→`1`→`2` dword phase
-marker written at `[rip + 0x2D05F8]` and `[rip + 0x2D061D]`, which is the MSVC `_initterm`
-shape, and the sibling empty table at `0x18063F940` called with `0x180533e20` is the
-matching `__xi`/`__xc` pair. So this is very likely the **CRT static-constructor table**,
-meaning these 281 entries are mostly library initialisers rather than Mega Hack dispatch.
-But the callees `0x180533e10` and `0x180533e20` are **absent from `_index.tsv` entirely** —
-Ghidra never made them functions — so their identity is not established. UNVERIFIED: would be
-confirmed by disassembling `0x180533e10` and showing it dereferences the range.
+**The callee is confirmed, not inferred.** `0x180533e10` is a 6-byte IAT jump thunk
+(`jmp qword ptr [rip + 0x110CEA]`, INT3-padded), and the slot resolves to an import:
+
+| Thunk | IAT slot | Import |
+| ----- | -------- | ------ |
+| `0x180533E10` | `0x180644B00` | `api-ms-win-crt-runtime-l1-1-0.dll!_initterm` |
+| `0x180533E20` | `0x180644B08` | `api-ms-win-crt-runtime-l1-1-0.dll!_initterm_e` |
+| `0x180533E30` | `0x180644B10` | `api-ms-win-crt-runtime-l1-1-0.dll!_register_onexit_function` |
+
+So `FUN_18053118c` is CRT startup code, and the 281-entry table is the **`_initterm` static
+initializer table**. The neighbouring `_initterm_e` range at `0x18063F940`–`0x18063F948` is
+**entirely zero** — an empty C++-destructor range — so all 281 initializers run through the
+C-style table. `FUN_180062940` is therefore a **DLL-load static constructor**, and the 77 UI
+names it carries are registered at load time, not from any call site in Mega Hack's own code.
+That is a feature-mapping fact for M3, and it is why the function must not be treated as
+orphaned.
+
+Ghidra never created functions for these thunks, which is why `0x180533E10` is absent from
+`_index.tsv` — a gap in the index, not an absence of code.
 
 ### The first answer, and why it was wrong
 
