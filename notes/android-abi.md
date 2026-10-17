@@ -379,6 +379,53 @@ direction. That is a real platform-specific choice, not a rename.
 The **replay UI** is genuinely Android-only — five keys, absent from Windows — which is the
 most concrete feature difference the comparison has produced.
 
+## Settling the `sso-unproven` cases with the store disassembly
+
+`verify_platform_keys.py` refuses to resolve a chunk-matched SSO string, because
+"every 4-byte chunk occurs somewhere in 8.7 MB" succeeds by chance. It reports
+`sso-unproven` and leaves the question open. Resolving it needs the decoder that
+actually reads stores, so all ten candidates were checked against
+`decode_sso.py` over the Windows tree.
+
+| Key | Contiguous in DLL | In Windows SSO tree | Verdict |
+| --- | --- | --- | --- |
+| `HOME/RULESETS/0` | no | **yes** — `HOME/RULESETS/0x` | **shared** |
+| `HOME/RULESETS/1` | no | **yes** — `HOME/RULESETS/1y` | **shared** |
+| `REPLAY/NONE` | no | no | android-only |
+| `REPLAY/OPEN` | no | no | android-only |
+| `REPLAY/SAVE` | no | no | android-only |
+| `MESSAGE/REPLAY/SAVE` | no | no | android-only |
+| `MESSAGE/YES` | no | no | android-only |
+| `MESSAGE/NO` | no | no | android-only |
+| `ICONIC/OVERRIDE` | no | no | android-only |
+| `ICONIC/WAVE` | no | no | android-only |
+
+**Two reclassified as shared.** `HOME/RULESETS/0` and `HOME/RULESETS/1` decode in the Windows
+tree as `HOME/RULESETS/0x` and `HOME/RULESETS/1y` — the trailing-character artefact documented
+in [sso-decoder.md](sso-decoder.md), where a store one byte wider than the text appends one
+spurious character. A strict equality test rejects both, which is exactly why the chunk
+heuristic marked them unproven rather than absent.
+
+**Eight confirmed Android-only**, each now with two independent negatives on Windows: the
+bytes are not contiguous in the DLL, and the SSO decoder does not find them in the recovered
+tree. That is absence established properly, not absence assumed from a source that
+undercounts.
+
+The replay UI is therefore real and Android-only: `REPLAY/{NONE,OPEN,SAVE}` and
+`MESSAGE/REPLAY/SAVE`, together with the `MESSAGE/YES|NO` dialog vocabulary that has no Windows
+counterpart.
+
+### The reproduction recipe
+
+Any future platform-difference claim should be settled in this order, not the one I used:
+
+1. Contiguous byte scan of both images — settles the easy cases.
+2. `decode_sso.py` over the recovered tree — settles the packed-string cases on Windows.
+3. Only then may a set difference be written down.
+
+Doing steps 1 and 2 before writing, rather than after, is what would have prevented the five
+corrections in this note.
+
 ## Conclusion
 
 1. Windows is MSVC with RTTI; Android is clang/Itanium with **no RTTI**. Solid.
@@ -391,9 +438,11 @@ most concrete feature difference the comparison has produced.
 4. **There is no icon-preview asymmetry.** An earlier claim that Android had an
    `ICONIC/PREVIEW/` layer Windows lacked was wrong; all twelve keys are on both sides, as is
    every window-geometry key.
-5. **Only 10 of 32 "Android-only" keys survive re-checking** — the replay UI
-   (`REPLAY/{NONE,OPEN,SAVE}`, `MESSAGE/REPLAY/SAVE`), the `MESSAGE/YES|NO` dialog vocabulary,
-   `ICONIC/{OVERRIDE,WAVE}` and `HOME/RULESETS/{0,1}`.
+5. **Eight Android-only keys confirmed**, each with two independent Windows negatives: not
+   contiguous in the DLL and not found by the SSO decoder. `REPLAY/{NONE,OPEN,SAVE}`,
+   `MESSAGE/REPLAY/SAVE`, `MESSAGE/YES`, `MESSAGE/NO`, `ICONIC/OVERRIDE`, `ICONIC/WAVE`.
+   `HOME/RULESETS/{0,1}` were reclassified as shared — they decode on Windows as
+   `HOME/RULESETS/0x` and `1y`, the known trailing-character SSO artefact.
 6. **The dialog vocabulary difference is confirmed from both directions**: Windows has
    `MESSAGE/CANCEL`, Android has `MESSAGE/YES` and `MESSAGE/NO`, no overlap either way.
 7. **The only fully verified parity statement** is `iconic::PreviewLayer`, which appears under
