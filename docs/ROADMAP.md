@@ -62,9 +62,18 @@ Exit criteria:
       imported; they are reached by runtime name resolution.
 - [ ] Full string inventory split into user-visible labels, setting keys, file paths,
       language keys and format strings, each anchored to a VA.
-- [ ] Mega Hack's own RTTI/vtable set enumerated; the class hierarchy recovered. Partly
+- [x] Mega Hack's own RTTI/vtable set enumerated; the class hierarchy recovered. Partly
       pre-solved: namespaces `hackpro`, `hackpro::extensions` and `mega::utils::safe_mode`
-      are known from the export table rather than inferred. Full RTTI still outstanding.
+      are known from the export table rather than inferred. **Completed by
+      `scripts/rtti_index.py`**: 517 type descriptors, 497 Complete Object Locators validated
+      by `signature == 1` *and* `pSelf` pointing at themselves, and 497 vtables resolved.
+      Namespaces recovered are `hackpro`, `core`, `mega::extensions`, `mega::utils`, `iconic`
+      and `tabcore` — the last three were not previously on the map. 794 distinct inheritance
+      edges in `_rtti_hierarchy.tsv`. Two structural corrections are recorded in
+      [rtti-classes.md](../notes/rtti-classes.md): `numBases` sits at `+8` in the hierarchy
+      descriptor, not `+0` as MSVC documents, and `undname.exe` cannot parse these type
+      descriptors at all. Caveat: template argument scoping is not tracked in the demangler,
+      so a minority of base names are approximations — the `mangled` column is authoritative.
 - [ ] Settings registry map: every key, its type, default, and the function that applies it.
 - [ ] Save/load file formats mapped, including the sidecar `best_runs.bin` header and
       record layout.
