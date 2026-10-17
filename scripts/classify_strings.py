@@ -47,23 +47,43 @@ NATURAL_LABEL = re.compile(r"^[A-Z][A-Za-z0-9 ,.'!?()\-]*$")
 #   flag          `HACK_COPY_HACK+`, `glow_1`, `onlyuser` - config toggles and
 #                 asset-state names, snake_case or HACK_ prefixed
 HOST_METHOD = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(?:::[A-Za-z_~][A-Za-z0-9_]*)+")
-THIRD_PARTY = re.compile(
-    r"^(?:[a-z0-9]+_)+(?:[a-z0-9]+)$"   # OpenSSL/libc snake_case with no spaces
-    r"|OPENSSL_[A-Za-z0-9_]+"
-    r"|_?[A-Z][A-Za-z0-9_]*@?OPENSSL"
+MANGLED = re.compile(r"^\??[A-Za-z0-9_]+@|^\?\?[0-9]")  # MSVC ?f@ns@@ and ??1Class
+URL = re.compile(r"^https?://")
+UI_ELEMENT = re.compile(
+    r"^(?:CHECKBOX|COLOUR|BUTTON|LABEL|TOGGLE|SPINNER|SLIDER|TAB|ICON|PROGRESS|MENU|TEXT)"
+    r"_[A-Z0-9_]+$"
 )
-FLAG = re.compile(r"^(?:HACK_[A-Z0-9_]+[+]?|[a-z][a-z0-9]*(?:_[a-z0-9]+)+)$")
+# Statically linked OpenSSL and libc++. Matched by known prefixes plus a general
+# snake_case-with-mixed-case shape, since the library's own names are not
+# consistent about casing (`EVP_DigestFinalXOF`, `i2o_SCT`, `OSSL_PARAM_*`,
+# `includedir`, `prime-field`).
+OPENSSL_PREFIX = re.compile(
+    r"^(?:OSSL_|EVP_|X509_|PKCS|DH_|DSA_|RSA_|ASN1_|EC_|BN_|BIO_|SSL_|i2[od]_|o2[i]_[A-Za-z]"
+    r"|d2i_|i2d_|CRYPTO_|ENGINE_|HMAC_|CMAC_|OCSP_|TS[A-Z]|CMS_|SRP_|CTX_)"
+)
+SNAKE = re.compile(r"^[a-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+)+$")
+FLAG = re.compile(r"^(?:HACK_[A-Z0-9_]+[+]?)$")
 ERROR_TEXT = re.compile(r"^[a-z].*\s.*[.:]$")
 
 CATEGORIES = [
     ("setting-key", SETTING_KEY),
     ("api-path", API_PATH),
+    ("url", URL),
     ("language-key", LANG_KEY),
     ("file-path", FILE_PATH),
+    ("mangled-symbol", MANGLED),
+    ("ui-element", UI_ELEMENT),
     ("host-method", HOST_METHOD),
-    ("third-party", THIRD_PARTY),
+    # Third-party requires a *known* library prefix. A generic snake_case shape
+    # was tried here and removed: it swept in 974 of Mega Hack's own identifiers
+    # (icons_0, override_cols, player_ball, no_bar) and put 78% of the bucket in
+    # the wrong place. A bucket that is mostly wrong is worse than one that is
+    # small and honest, so the generic shape gets its own category instead.
+    ("third-party", OPENSSL_PREFIX),
+    ("mod-identifier", SNAKE),
     ("flag", FLAG),
     ("format-string", FORMAT_STR),
+    ("error-text", ERROR_TEXT),
     ("user-label", NATURAL_LABEL),
 ]
 
