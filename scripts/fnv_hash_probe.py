@@ -54,35 +54,24 @@ PRIME = 0x100000001B3
 MASK = 0xFFFFFFFFFFFFFFFF
 
 
-def fnv1a64_std(data: bytes) -> int:
+def fnv1a64(data: bytes) -> int:
+    """FNV-1a-64, as implemented at `0x18007CB60`.
+
+    Textbook: `h = (h ^ byte) * prime`, once per byte. The compiled loop is
+    unrolled 4x but applies the prime exactly four times per four bytes -
+    verified against the disassembly at `0x18007CBD8`, `0x18007CBE5`,
+    `0x18007CBF2` and `0x18007CBFF`. An earlier version of this file also carried a
+    variant applying the prime a fifth time per block, inferred from the
+    decompiled expression. That was an artefact of reading the decompiler's
+    parenthesisation by eye, and it matched nothing. See notes/fnv-hash-probe.md.
+    """
     h = BASIS
     for byte in data:
         h = ((h ^ byte) * PRIME) & MASK
     return h
 
 
-def fnv1a64_mh(data: bytes) -> int:
-    """FNV-1a-64 with the multiply applied a fifth time per 4-byte block.
-
-    Taken from the shape of the unrolled loop at `0x18007CB60`. Recorded as a
-    candidate, not as a fact: the decompiled parenthesisation is ambiguous and
-    this variant exists to be tested against the image, not trusted.
-    """
-    h = BASIS
-    i = 0
-    n = len(data)
-    while i + 4 <= n:
-        for k in range(4):
-            h = ((h ^ data[i + k]) * PRIME) & MASK
-        h = (h * PRIME) & MASK
-        i += 4
-    while i < n:
-        h = ((h ^ data[i]) * PRIME) & MASK
-        i += 1
-    return h
-
-
-VARIANTS = {"std": fnv1a64_std, "mh": fnv1a64_mh}
+VARIANTS = {"fnv1a64": fnv1a64}
 
 
 def candidates(given: list[str] | None) -> list[tuple[str, str]]:
@@ -145,6 +134,30 @@ def control(image: Image) -> bool:
     return True
 
 
+def selftest() -> int:
+    """Check `fnv1a64` against the published FNV-1a 64-bit vectors.
+
+    Three independent angles now agree on this function: the constants in the
+    disassembly at `0x18007CB60`, the four multiplies per block in that same
+    disassembly, and these externally-published vectors. Pinning the last one
+    means a future edit that breaks the hash fails loudly instead of quietly
+    producing wrong digests.
+    """
+    vectors = {
+        b"": 0xCBF29CE484222325,
+        b"a": 0xAF63DC4C8601EC8C,
+        b"foobar": 0x85944171F73967E8,
+    }
+    bad = 0
+    for data, want in vectors.items():
+        got = fnv1a64(data)
+        ok = got == want
+        bad += not ok
+        print(f"{'ok  ' if ok else 'FAIL'}  {data!r:12} {got:#018x} (want {want:#018x})")
+    print(f"{'all vectors pass' if not bad else f'{bad} vector(s) failed'}")
+    return 1 if bad else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -152,9 +165,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--dll", type=pathlib.Path, default=DEFAULT_DLL)
     parser.add_argument("--list", help="file of candidate strings, one per line")
     parser.add_argument("--text", action="append", default=[], help="hash this exact string")
-    parser.add_argument("--variant", choices=["std", "mh", "both"], default="both")
+    parser.add_argument("--variant", choices=list(VARIANTS), default="fnv1a64")
     parser.add_argument("--dump", help="print the stored bytes at this VA")
+    parser.add_argument("--selftest", action="store_true", help="check the hash against published vectors")
     args = parser.parse_args(argv)
+
+    if args.selftest:
+        return selftest()
 
     if args.dump:
         image = Image.from_path(args.dll)
@@ -185,7 +202,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     image = Image.from_path(args.dll)
-    names = ["std", "mh"] if args.variant == "both" else [args.variant]
+    names = [args.variant]
 
     print(f"dll        : {args.dll.name}")
     print(f"candidates : {len(pool)} ({len({t for _, t in pool})} distinct)")

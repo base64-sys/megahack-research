@@ -4,7 +4,8 @@
   `uint64_t`. If those hashes were precomputed into a table, every setting key could be
   recovered by hashing known strings and looking the value up. Are they?
 - **Answer** — **No.** There is no precomputed hash table in any file-backed part of the
-  image.
+  image. The disassembly explains why: the map is built at run time, and the hash is what
+  indexes it.
 - **Tool** — `scripts/fnv_hash_probe.py`.
 - **Date** — 2026-10-17.
 
@@ -47,11 +48,10 @@ strings, which was correct — but the full sweep under that implementation woul
 finished, so the full sweep was only attempted after rewriting `scan` to slide the window
 across the image once.
 
-## Two variants, neither matching
+## Two variants — the `mh` variant was wrong, and the disassembly says why
 
-The decompiled loop is 4x-unrolled, and its parenthesisation is genuinely hard to read by eye.
-Counting the prime multiplies in the expression suggests **five** per four bytes, which would
-not be textbook FNV-1a:
+The decompiled loop is 4x-unrolled, and counting the prime multiplies in the decompiled
+*expression* suggests five per four bytes, which would not be textbook FNV-1a:
 
 ```
 uVar6 = ((ulonglong)b[i+3] ^
@@ -59,43 +59,69 @@ uVar6 = ((ulonglong)b[i+3] ^
          ((ulonglong)b[i+1] ^ (b[i] ^ uVar6) * P) * P) * P) * P;
 ```
 
-So the script carries both a `std` variant and an `mh` variant implementing the extra
-multiply, and tests both. Neither produces any hit.
+So the first version of this tool carried both a `std` variant and an `mh` variant
+implementing the extra multiply, and tested both. Neither hit.
 
-UNVERIFIED: which variant `FUN_18007CB60` actually implements, and hence the exact hash value
-for any given string. The table search cannot discriminate between them, because neither
-appears in the image. Settling it needs the disassembly at `0x18007CB60`, read instruction
-by instruction, or a runtime observation — and both are weaker evidence than this note should
-be read as.
+`pe_disasm.py` at `0x18007CB60` settles it. The loop body is four `imul r11, rdx`:
 
-The *algorithm family* is solid, though: the basis and prime are explicit in the
-decompilation, the empty-string case returns the bare basis, and the size/capacity reads at
-`param_3[2]`/`param_3[3]` match a `std::string` being hashed by content rather than by
-pointer.
+| Address | Instruction |
+| ------- | ----------- |
+| `0x18007CBD8` | `imul r11, rdx` |
+| `0x18007CBE5` | `imul r9, rdx` |
+| `0x18007CBF2` | `imul r11, rdx` |
+| `0x18007CBFF` | `imul r9, rdx` |
+
+Four multiplies for four bytes. **It is textbook FNV-1a-64**, and the `mh` variant was an
+artefact of reading the decompiler's parenthesisation by eye. The `mh` variant has been
+removed from the tool rather than left in place as an option that never matches anything.
+
+Kept here because it is the same failure as the two wrong descriptions of `FUN_18007CB60` in
+`notes/settings-registry.md`: trusting a shape read off a decompiled expression instead of
+counting the actual instructions. `pe_disasm.py` is the ground truth; the decompiler is a
+reading of it.
+
+## The hash *is* used for lookup
+
+An earlier version of this note concluded that the hash was "computed and compared at run
+time for change detection, not used for lookup." **That was wrong**, and the disassembly
+shows it: immediately after the hash loop,
+
+```
+0x18007cc37  and   r10, qword ptr [rcx + 0x88]   ; hash & mask -> bucket index
+0x18007cc46  shl   r10, 4                        ; 16-byte bucket stride
+0x18007cc8a  call  0x180533b00                   ; memcmp against the stored key
+0x18007cc98  mov   r15, qword ptr [r15 + 8]      ; next -> chain walk
+0x18007ccc9  mov   qword ptr [rsi], rax          ; write the value out
+```
+
+So `FUN_18007CB60` is a keyed lookup in a chained hash map, hashed with FNV-1a-64. The
+manager at `rcx` holds a sentinel at `+0x60`, a bucket array at `+0x70`, and the bucket mask
+at `+0x88`. Full field table in [settings-registry.md](settings-registry.md).
+
+This does not change the negative result — there is still no precomputed table in the image.
+It explains it: **the map is built during initialisation**, so its contents cannot appear as
+stored bytes. The two findings agree, and neither contradicted the other. What was wrong was
+the inference about *why* the hashes were absent.
 
 ## What the absence implies
 
-No precomputed table means the hash is computed and compared at run time — change detection
-or a lookup against a table that is *built* during initialisation rather than stored. That
-rules out a whole class of approach: there is no shortcut where a guessed key can be confirmed
-by finding its hash already sitting in the binary.
-
-The practical consequence for the reconstruction is that key names have to be recovered from
-code, not from data. `scripts/decode_sso.py` and disassembly remain the route, and
-`FUN_18007CB60`'s 40 callers are where the remaining unknown names live.
+No precomputed table means a guessed key cannot be confirmed by finding its hash already
+sitting in the binary. The practical consequence for the reconstruction is that key names have
+to be recovered from code: `scripts/decode_sso.py` at the 40 call sites, or the map's
+insertion sites, which keep the key inline in each node.
 
 ## Conclusion
 
-1. Mega Hack hashes strings with FNV-1a-64 and stores **no** precomputed hash table in
-   file-backed bytes.
-2. Verified by a positive control, so the negative is trustworthy.
-3. The exact inner loop is still unconfirmed, and the two candidate variants are
-   indistinguishable from the image alone.
+1. Mega Hack hashes strings with FNV-1a-64 — confirmed at instruction level, four multiplies
+   per four bytes.
+2. That hash drives a chained hash-map lookup, not merely a comparison.
+3. The map is built at run time; no precomputed table exists in file-backed bytes.
+4. The negative is trustworthy: verified with a positive control.
 
 ## Open questions
 
-- Read `0x18007CB60` in the disassembler to settle the five-multiply question.
-- Determine whether a table is built at runtime, and if so where it lives — the 40 callers of
-  `FUN_18007CB60` are the place to start.
+- Find the map's constructor and insertion sites, which should name every key directly.
+- Determine what `[rcx + 0x88]` is set to — it is the bucket mask, so its population would
+  give the initial bucket count.
 - Search `.data`'s zero-fill tail for the same values; the file-backed scan cannot reach
   bytes that only exist once the image is loaded.

@@ -17,22 +17,63 @@ Settings are read through three numeric accessors, all `(this, id)` shaped:
 | `FUN_18002DE50` | `getFlag` | returns `bool`; ids 761/762 gate `cps` fields |
 | `FUN_180003D80` | `getConfigVar<scalar>` | result lands in `xmm0`; id 501 is a scale factor |
 
-A fourth call form also exists: `FUN_18007CB60(manager, out, key)`. **CORRECTION: this is
-not a keyed setting lookup.** It was originally described that way here. Decompiling it
-shows the constant `0xCBF29CE484222325`, which is the FNV-1a-64 offset basis, and the
-function reads `param_3[2]` as the string size and `param_3[3]` as the capacity, spilling to
-the heap when the capacity exceeds 15. So:
+A fourth call form also exists: `FUN_18007CB60(manager, out, key)`. This is a **keyed lookup in
+an FNV-1a-64 chained hash map**, and it has been mislabelled twice here. Recorded once, settled
+by disassembly.
 
-```
-uint64_t FUN_18007cb60(const char *tag, uint64_t *out, const std::string &key)
-```
+The history matters, because both earlier descriptions were wrong in opposite directions:
 
-— an **FNV-1a-64 hash of a string**, where the first parameter is some owner pointer. The
-four sites `settings_index.py` listed as "key-based lookups" are FNV-1a hashes of SSO-built
-strings, not registry lookups, and the names it reported for them (`local_28`, `local_58`)
-were Ghidra locals rather than setting names for the same reason.
+1. First written as a keyed setting lookup. Right about the behaviour, but it said the key
+   "only appears as a Ghidra local", implying the name was unrecoverable.
+2. Then "corrected" to *not* a lookup at all, on the grounds that the function contains
+   `0xCBF29CE484222325`. That reasoning only looked at the hashing half and missed the lookup
+   that follows it.
+3. Settled: it hashes, **and** it looks up.
 
-This matters beyond the mislabel: **Mega Hack hashes strings with FNV-1a-64**, which is the
+## What the disassembly actually shows
+
+`pe_disasm.py` at `0x18007CB60`, file offset `0x7BF60`:
+
+| Address | Instruction | Meaning |
+| ------- | ----------- | ------- |
+| `0x18007CB8B` | `movabs rdx, 0x100000001b3` | FNV-1a-64 prime |
+| `0x18007CBC0` | `movabs r9, 0xcbf29ce484222325` | FNV-1a-64 basis |
+| `0x18007CBD0`-`0x18007CC03` | 4x `movzx`/`xor`/`imul` | hash loop, **four** multiplies per 4 bytes |
+| `0x18007CC37` | `and r10, qword ptr [rcx + 0x88]` | `hash & mask` — bucket index |
+| `0x18007CC46` | `shl r10, 4` | bucket stride 16 bytes |
+| `0x18007CC4A` | `mov r15, [rax + r10 + 8]` | `bucket[i].head` |
+| `0x18007CC60` | `cmp rbx, [r15 + 0x20]` | node string length compare |
+| `0x18007CC66` | `cmp qword ptr [r15 + 0x28], 0x10` | SSO capacity test |
+| `0x18007CC8A` | `call 0x180533B00` | `memcmp` on the key |
+| `0x18007CC98` | `mov r15, [r15 + 8]` | `next` — chain walk |
+| `0x18007CCC9` | `mov [rsi], rax` | store value to `*param_2` |
+
+So the manager object holds a hash map:
+
+| Offset | Field |
+| ------ | ----- |
+| `+0x60` | sentinel / end-of-chain node |
+| `+0x70` | pointer to the bucket array |
+| `+0x88` | bucket count minus one, used as a mask |
+
+and each node holds a `std::string` key inline (`+0x10` buffer, `+0x20` size, `+0x28`
+capacity) with the value at `+0x30`. Chain order is insertion order, walked from
+`bucket[i].head` at `+0x08`.
+
+This is why `notes/fnv-hash-probe.md` finds no precomputed table: the map is **built during
+initialisation**, not stored in the image. That negative result and this structure agree.
+
+## Consequence for key names
+
+The key names are recoverable, and two routes exist:
+
+- `scripts/decode_sso.py` rebuilds them from the immediates at the 40 call sites.
+- Insertion sites reveal them directly, since a chained map keeps the key in the node.
+
+What is *not* recoverable from the call shape alone is the meaning of `param_1`. It is used
+only as the map owner (`rcx`), never dereferenced for a name in this function.
+
+This also matters beyond labelling: **Mega Hack hashes strings with FNV-1a-64**, which is the
 same primitive the persistence sidecar uses for `FNV1aChecksumOfRecords` in
 `RE_NOTES_PERSISTENT_BEST_RUN.md`. One hashing convention spans the mod core and the patch.
 

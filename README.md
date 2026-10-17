@@ -134,11 +134,13 @@ as a chain of typed locals, `scripts/decode_sso.py` rebuilds the text from the i
 Two negative results are worth knowing before repeating the search, because both look like
 an obvious shortcut:
 
-- There is **no precomputed FNV-1a-64 table**. Mega Hack hashes strings with FNV-1a-64
-  (`FUN_18007CB60`, basis `0xCBF29CE484222325`), but the 8-byte hashes of every recoverable
-  string are absent from the image, so a guessed key cannot be confirmed by finding its hash
-  already stored. Verified with a positive control — see
-  [notes/fnv-hash-probe.md](notes/fnv-hash-probe.md).
+- There is **no precomputed FNV-1a-64 table**. Mega Hack looks strings up in a chained
+  FNV-1a-64 hash map (`FUN_18007CB60`: hash, mask, bucket, `memcmp`, chain walk), but the map
+  is built during initialisation, so the 8-byte hashes of every recoverable string are absent
+  from the image and a guessed key cannot be confirmed by finding its hash already stored.
+  Verified with a positive control, and the hash itself against published FNV-1a-64 test
+  vectors — see [notes/fnv-hash-probe.md](notes/fnv-hash-probe.md) and
+  [notes/settings-registry.md](notes/settings-registry.md).
 - Searching Ghidra's `DAT_` symbols alone finds only **4%** of code-referenced strings, because
   Ghidra names only the references it fails to decode.
 
@@ -173,7 +175,7 @@ python scripts/build_xref_index.py --grep best
 python scripts/settings_index.py
 python scripts/build_callgraph.py --callers-of 0x180169EB0
 python scripts/decode_sso.py --grep KEYBINDS
-python scripts/fnv_hash_probe.py --text CONFIG
+python scripts/fnv_hash_probe.py --selftest
 python scripts/make_progress_svg.py
 ```
 
