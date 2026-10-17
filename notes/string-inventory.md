@@ -120,26 +120,58 @@ It is **confirmed a single function**, not a Ghidra merge:
 exception handling — so a single entry settles it. The earlier caveat about several functions
 merged is withdrawn: it was worth checking, and it is not the case.
 
-Its zero callers are **explained**. The function's VA occurs exactly once in the image, at
-`0x18063F0C8` in `.rdata`, inside a run of code addresses:
+Its zero callers are **explained**, though the first answer was wrong and is recorded below
+rather than quietly replaced.
 
-| Slot | Address |
-| ---- | ------- |
-| preceding | `0x180042630` (`.text`) |
-| **`FUN_180062940`** | **`0x180062940`** |
-| following | `0x1800728D0` (`.text`) |
+### It is a CRT static-initializer entry, not a vtable slot
 
-A pointer into a run of `.text` addresses in read-only data is a **vtable slot**. Virtual
-dispatch is not a direct `call`, which is exactly why Ghidra attributed no callers — the zero
-was never evidence of dead code.
+The function's VA occurs exactly once in the image, at `0x18063F0C8`, inside a **281-entry
+table of `.text` function pointers** at `.rdata` `0x18063F070`–`0x18063F938`:
 
-**The owning class could not be named.** Reading `vtable[-1]` at `0x18063F0C0` returned
-`0x18003D1A0`, a `.text` address rather than a pointer to a Complete Object Locator, so the
-vtable base is assumed rather than proven, and following it to a Type Descriptor produced
-garbage rather than a class name. That garbage is **not** recorded as a finding.
+| Property | Value |
+| -------- | ----- |
+| Table start (`rcx`) | `0x18063F068` — holds `0` |
+| First entry | `0x18063F070` = `0x1803A50A8` |
+| `FUN_180062940` | entry **11** of 281, at `0x18063F0C8` |
+| Last entry | `0x18063F930` = `0x18027EDD0` |
+| Table end (`rdx`) | `0x18063F938` — one past the last entry |
+| Trailing table | `0x18063F940`–`0x18063F948`, **all zero** |
 
-To settle it the vtable base needs confirming — most likely the preceding slot belongs to a
-different table, or the class carries no RTTI and has no COL at `[-1]`. UNVERIFIED.
+The table has exactly **one** RIP-relative reference in the entire image, at `0x180531213`
+inside `FUN_18053118c`:
+
+```asm
+0x180531213  lea  rdx, [rip + 0x10e71e]   ; 0x18063F938  one past last entry
+0x18053121a  lea  rcx, [rip + 0x10de47]   ; 0x18063F068  start (holds 0)
+0x180531221  call 0x180533e10
+```
+
+`rcx`/`rdx` as a begin/last pair is the MSVC x64 range convention, so this iterates the
+table and calls each entry **indirectly**. That is the whole reason Ghidra attributed zero
+callers: the function is invoked through a pointer, never by a direct `call`.
+
+Residual uncertainty, kept explicit: `FUN_18053118c` is gated by a `0`→`1`→`2` dword phase
+marker written at `[rip + 0x2D05F8]` and `[rip + 0x2D061D]`, which is the MSVC `_initterm`
+shape, and the sibling empty table at `0x18063F940` called with `0x180533e20` is the
+matching `__xi`/`__xc` pair. So this is very likely the **CRT static-constructor table**,
+meaning these 281 entries are mostly library initialisers rather than Mega Hack dispatch.
+But the callees `0x180533e10` and `0x180533e20` are **absent from `_index.tsv` entirely** —
+Ghidra never made them functions — so their identity is not established. UNVERIFIED: would be
+confirmed by disassembling `0x180533e10` and showing it dereferences the range.
+
+### The first answer, and why it was wrong
+
+The initial guess was a **vtable slot**, on the reasonable-sounding grounds that the pointer
+sits in `.rdata` between two code addresses. `rtti_index.py` contradicts that directly:
+
+- `0x18063F0C0` is in **none** of the 497 validated vtables.
+- **No** vtable starts within ±`0x40` of it.
+- There is no Complete Object Locator at `[-1]`.
+
+Reading `vtable[-1]` returned `0x18003D1A0`, a `.text` address, and following it to a Type
+Descriptor produced garbage. That garbage is not recorded as a finding. A 281-entry,
+zero-terminated table with a single one-past-the-end reference is not a vtable; guessing from
+the neighbours instead of running the validator cost a commit and a correction.
 
 Sample of the names it wires up — this is a readable feature list:
 
