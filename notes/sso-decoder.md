@@ -162,6 +162,51 @@ note as fact — which is what the AGENTS.md verify-twice rule already requires.
 2. Mega Hack hashes strings with FNV-1a-64, matching the sidecar's checksum.
 3. The decoder has recall, not precision. Confirm before recording.
 
+## The store layout is partly recoverable — offsets are in the local names
+
+The open question above says this "needs the disassembly rather than the decompiler's local
+names". That is half right, and the half that is wrong is worth correcting: **Ghidra encodes the
+stack offset in the local's own name**. `local_58` is `rbp-0x58`, `uStack_1cc` is `rbp-0x1cc`.
+So position is available directly, without disassembly.
+
+| Measured over the recovered tree | Count |
+| -------------------------------- | ----: |
+| Store assignments | 30,176 |
+| … whose local name yields an offset | **16,890 (56.0%)** |
+| Files with stores | 5,121 |
+| … where *every* store name parses | 1,471 (28.7%) |
+| Of those, declared order ≠ address order | **880** |
+
+So for more than half the stores the true byte order is knowable, and in the files that matter it
+is knowable completely. `FUN_18003DD90` is the clean example:
+
+```c
+local_58   off=-58  = 0x444e494259454b   // "KEYBIND"
+uStack_51  off=-51  = 0x53               // "S"
+uStack_50  off=-50  = 0x5445532f         // "/SET"   -> one literal, "KEYBINDS/SET"
+uStack_4c  off=-4c  = 0x45564f           // "OVE"    -> a different buffer
+local_48   off=-48  = 0x11               // size
+uStack_40  off=-40  = 0x1f               // capacity = 31 -> buffer boundary
+```
+
+### A first attempt at the fix, which made things worse
+
+Grouping stores into runs where consecutive offsets are within 8 bytes — the obvious first
+reading — **regresses the exact case it was meant to fix**. In `FUN_18003DD90` the gaps are 7, 1
+and 4, all within threshold, so the grouping joined the unrelated `-0x4C` buffer and emitted
+`KEYBINDS/SETOVE`, replacing a decode of `KEYBINDS/REMOVE` that was already correct. It also
+stopped emitting `KEYBINDS/SET` and `KEYBINDS/REMOVE` at all.
+
+The change was reverted rather than shipped. It is recorded here so the next attempt does not
+repeat it, and because it pins down what the real rule has to be.
+
+**Contiguity is the wrong boundary; the buffer is.** An SSO buffer is 16 bytes, and its
+size/capacity pair — a small size with capacity 15 or 31, written at `rbp-0x48`/`rbp-0x40` above
+— marks where one literal ends and the next begins. Zero stores separate buffers but do not
+define them. Grouping by buffer, then ordering stores within a buffer by descending offset, is
+the approach that should work; recovering capacity 15 vs 31 to tell a 16-byte buffer from a
+32-byte one is the remaining unknown.
+
 ## Open questions
 
 - Determine whether the FNV-1a hash is used for lookup, comparison or change detection.
@@ -169,5 +214,6 @@ note as fact — which is what the AGENTS.md verify-twice rule already requires.
   the remaining unknown key names are.
 - Establish what `FUN_1801BA8A0` does with the login path — offline by assumption, so this
   stays a static reading and is not to be exercised against a live service.
-- Recover the store layout precisely enough to fix the split/merge error modes, which needs
-  the disassembly rather than the decompiler's local names.
+- Group SSO stores **by buffer** using the size/capacity pair rather than by offset
+  contiguity, then order within a buffer by descending offset. The data needed is present and
+  measured above; the rejected contiguity approach is documented so it is not retried.
