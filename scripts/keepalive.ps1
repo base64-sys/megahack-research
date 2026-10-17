@@ -53,7 +53,7 @@ param(
     [string]   $WindowTitle   = 'megahack-research',
     [int]      $IdleSeconds   = 120,
     [int]      $PollSeconds   = 10,
-    [int]      $MaxRuns       = 12,
+    [int]      $MaxRuns       = 100,
     [double]   $ChangeThreshold = 0.02,
     [switch]   $DryRun,
     # Where the AI chat input sits, as a fraction of the window rect. Measured
@@ -222,15 +222,26 @@ function Test-RedBanner {
     $g.CopyFromScreen($bx, $by, 0, 0, $bmp.Size)
     $g.Dispose()
     $red = 0
-    for ($y = 0; $y -lt $bh; $y += 3) {
-        for ($x = 0; $x -lt $bw; $x += 3) {
+    $rowsHit = 0
+    $rows = 0
+    for ($y = 0; $y -lt $bh; $y += 2) {
+        $rows++
+        $rowRed = 0
+        for ($x = 0; $x -lt $bw; $x += 2) {
             $c = $bmp.GetPixel($x, $y)
-            if ($c.R -gt 110 -and $c.R -gt ($c.G + 45) -and $c.R -gt ($c.B + 45)) { $red++ }
+            if ($c.R -gt 110 -and $c.R -gt ($c.G + 45) -and $c.R -gt ($c.B + 45)) { $rowRed++ }
         }
+        if ($rowRed -gt 2) { $rowsHit++ }
+        $red += $rowRed
     }
     $bmp.Dispose()
-    # A few hundred red pixels is a banner; a handful is an icon or syntax colour.
-    return ($red -gt 220)
+    # A banner fills the sampled band vertically; incidental red does not. The
+    # first version counted red pixels only, and the red "-2" in a
+    # "README.md +1 -2" diffstat sits in exactly this band - it reaches the
+    # threshold on a wide row while occupying two rows out of hundreds. Requiring
+    # the red to span most of the band height is what separates the two.
+    $span = if ($rows -gt 0) { $rowsHit / $rows } else { 0 }
+    return ($red -gt 220 -and $span -gt 0.35)
 }
 
 $target = Get-TargetWindow -TitleLike $WindowTitle
