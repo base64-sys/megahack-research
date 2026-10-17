@@ -170,9 +170,38 @@ their bases are recorded but not trusted. The `mangled` column in `_rtti.tsv` is
    and `iconic`.
 4. nlohmann/json 3.12.0 is statically linked.
 
+## Limits
+
+`demangle()` is a small recursive-descent parser for the RTTI subset, **not** a general
+demangler. It is correct for plain and nested classes, which is every name that matters for
+the hierarchy, and it now renders template arguments rather than dropping them.
+
+**`undname.exe` cannot be used here.** It is present
+(`VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/undname.exe`) and parses ordinary symbols
+correctly — `?func@@YAXXZ` → `void __cdecl func(void)` — but it fails on these type
+descriptors, echoing `. ?? AVCoreDirector` without consuming the `AV` class tag. Its output
+would have been worse than the hand parser, so the shapes are handled directly.
+
+Remaining imprecision: template argument scopes are not tracked, so a name can come out as
+`tabcore::std::shared_ptr<VSpecialCore, iconic>::PopupImpl<V>` — the argument's scope runs
+into the outer name. The `mangled` column stays authoritative for every row. UNVERIFIED:
+whether `PopupImpl` here is a real base or an artefact of that scope confusion.
+
+`scripts/test_demangle.py` pins the renderings and, just as importantly, that the parser
+**terminates**. The first version of it looped forever: the driver only advanced when the
+next character was `@`, so any other shape spun. A demangler that hangs on a malformed name
+is worse than one that gives up, so the regression test asserts both.
+
+## Conclusion
+
+1. 497 polymorphic classes with vtables recovered from `_original.dll`, each anchored to a VA.
+2. 794 distinct inheritance edges — `numBases` lives at `+8`, not `+0` as documented.
+3. Mega Hack's namespaces are `hackpro`, `core`, `mega::extensions`, `mega::utils`, `tabcore`,
+   and `iconic`.
+4. nlohmann/json 3.12.0 is statically linked.
+
 ## Open questions
 
-- Three classes have mis-demangled base names; `undname.exe` on their mangled names would
-  resolve them.
+- Template argument scoping in the demangler, which would fix the `PopupImpl` cases.
 - `mega::utils::CompressedBuffer` is unexamined and in scope; the encrypted sibling is not.
 - Check whether the Android `.so` carries the same class set, which is the M5 question.

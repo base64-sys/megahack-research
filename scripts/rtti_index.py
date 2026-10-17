@@ -59,41 +59,86 @@ def read_cstring(data: bytes, offset: int, limit: int = 512) -> str:
     return data[offset:end].decode("ascii", errors="replace")
 
 
-def demangle(mangled: str) -> str:
-    """Best-effort MSVC name -> readable form.
+UNNAMED_PREFIX = ".??"
 
-    This is not a demangler. It extracts the class name and the enclosing
-    namespaces, which is what the inventory needs, and leaves the rest alone
-    rather than inventing a signature. Real demangling stays with `undname.exe`;
-    the 30 exports in notes/hackpro-api.md were demangled that way.
+
+def demangle(mangled: str) -> str:
+    """Render an MSVC RTTI type name readably.
+
+    This is a small recursive-descent parser for the subset that appears in type
+    descriptors, not a general demangler. It exists because `undname.exe` cannot
+    be used here: it parses plain symbols correctly (`?func@@YAXXZ` ->
+    `void __cdecl func(void)`) but fails on `.?AVFoo@@`, echoing `. ?? AVFoo`
+    without consuming the `AV` class tag. Its output on this binary would have
+    been worse than useless, so the shapes are handled directly.
+
+    Supported: plain and nested classes, template instantiations
+    (`.?AV?$shared_ptr@VSpecialCore@iconic@@std@@`), lambda closure classes, and
+    the ``?0`` local-name escape. Anything unrecognised is returned unchanged
+    rather than mangled further, and `mangled` stays authoritative in the index.
     """
     if not mangled.startswith(NAME_PREFIXES):
         return mangled
 
-    body = mangled[4:]
-    # Strip the terminating "@@" and any template argument lists, which are
-    # balanced-brace free in MSVC mangling but can contain '@'.
+    body = mangled[4:]  # drop .?AV / .?AU
+    if not body:
+        return mangled
+
+    def parse(text: str):
+        """Return (rendered, rest). Stops at '@' or end."""
+        if not text:
+            return "", ""
+        if text.startswith("?$"):  # template class or member function
+            head, rest = parse(text[2:])
+            args, rest = parse_template_args(rest)
+            rendered = f"{head}<{', '.join(a for a in args if a)}>" if any(args) else head
+            return rendered, rest
+        if text.startswith("?0"):  # local name / lambda scope escape
+            _, rest = parse(text[2:])
+            inner, rest = parse(rest)
+            return inner, rest
+        if text.startswith("?1") or text.startswith("?2") or text.startswith("?3"):
+            return "", text[2:]
+        # a run of name characters
+        i = 0
+        while i < len(text) and text[i] not in "@?":
+            i += 1
+        return text[:i], text[i:]
+
+    def parse_template_args(text: str):
+        args, rest = [], text
+        if rest.startswith("@@"):
+            return args, rest[1:]  # empty template args
+        while rest:
+            arg, rest = parse(rest)
+            args.append(arg)
+            if rest.startswith("@"):
+                rest = rest[1:]
+                if rest.startswith("@"):
+                    rest = rest[1:]
+                    return args, rest
+            else:
+                return args, rest
+        return args, rest
+
     parts: list[str] = []
-    current = []
-    for ch in body:
-        if ch == "@":
-            if current:
-                parts.append("".join(current))
-                current = []
-            if not parts:
-                # leading '@' only for the outermost marker
-                continue
-        else:
-            current.append(ch)
-    if current:
-        parts.append("".join(current))
-    # A nested name is encoded most-derived first; drop the compiler's own
-    # function/vtable decoration at either end.
-    parts = [p for p in parts if p and not p.startswith(("$", "?"))]
+    rest = body
+    while rest:
+        before = rest
+        part, rest = parse(rest)
+        if part:
+            parts.append(part)
+        if rest.startswith("@"):
+            rest = rest[1:]
+        if rest == before:
+            # No progress: the input has a shape this parser does not model.
+            # Return the untouched mangled name rather than guessing, and stop -
+            # a loop that cannot consume input is an infinite loop otherwise.
+            return mangled
+
     if not parts:
         return mangled
-    parts.reverse()
-    return "::".join(parts)
+    return "::".join(reversed(parts))
 
 
 def find_type_descriptors(image: Image) -> dict[int, str]:
