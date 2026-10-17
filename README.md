@@ -131,9 +131,12 @@ claim; the raw dump does not get committed. Where the decompiler renders a short
 as a chain of typed locals, `scripts/decode_sso.py` rebuilds the text from the immediates;
 `notes/sso-decoder.md` records that method and its three error modes.
 
-Two negative results are worth knowing before repeating the search, because both look like
+Three results are worth knowing before repeating the search, because each looks like
 an obvious shortcut:
 
+- **The Android builds carry no RTTI.** Windows is MSVC with 518 type descriptors; both .so files
+  are clang/Itanium with 3,052 _ZN method symbols and zero typeinfo. The 497-class inventory
+  cannot be carried across, so M5 needs a different route — see [notes/android-abi.md](notes/android-abi.md).
 - There is **no precomputed FNV-1a-64 table**. Mega Hack looks strings up in a chained
   FNV-1a-64 hash map (`FUN_18007CB60`: hash, mask, bucket, `memcmp`, chain walk), but the map
   is built during initialisation, so the 8-byte hashes of every recoverable string are absent
@@ -168,6 +171,8 @@ These live in `scripts/`, so they exist on a fresh clone. Neither needs `samples
 | `notify.ps1`                  | Send an indexed ntfy push; all notifications go through it                     |
 | `watchdog.ps1`                | Liveness ping for long runs; refreshes the progress graphic on `-Action Start` |
 | `run_supervised.ps1`          | Run a long command with stall detection; see `AGENTS.md`                     |
+| `keepalive.ps1`             | Idle-detecting keep-alive that re-prompts the AI chat window                 |
+| `compare_platform_classes.py` | Compare Windows/Android class sets across the two ABIs                  |
 
 ```powershell
 python scripts/pe_rva.py <image.dll> <rva-or-va> ... [--sections]
