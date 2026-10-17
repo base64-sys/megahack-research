@@ -176,7 +176,7 @@ These live in `scripts/`, so they exist on a fresh clone. Neither needs `samples
 | `verify_platform_keys.py`     | Assert a Windows/Android key difference against both raw images             |
 | `classify_strings.py`        | Split the string inventory into categories, each anchored to a VA            |
 
-`_strings.tsv` splits4,145 code-referenced strings into 16 categories - 974 of them Mega Hack's
+`_strings.tsv` splits 4,145 code-referenced strings into 16 categories — 974 of them Mega Hack's
 own snake_case identifiers, 77 its own UI widget names. Largest bucket is still `other` at 33%,
 so M1's criterion is not yet met. See [notes/string-inventory.md](notes/string-inventory.md).
 
