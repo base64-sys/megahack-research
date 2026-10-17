@@ -87,20 +87,39 @@ looking for a function that both sides mention.
 - The single init entry that also has a direct caller (`0x1803EA850`), which is probably a
   deliberate explicit re-run but is unexamined.
 
-## The other indirect set: hook bodies, and a hypothesis that failed
+## The other indirect set: hook sites, and what the columns actually mean
 
-The same question applies to Mega Hack's 277 hook bodies in `_wrappers.tsv`, and it was worth
-asking before trusting any "unreachable function" claim elsewhere.
+The same question applies to Mega Hack's 277 rows in `_wrappers.tsv`, and it was worth asking
+before trusting any "unreachable function" claim elsewhere.
+
+**First, a correction to an earlier reading of this table.** `scripts/resolve_wrappers.py` is a
+**regex scan over decompiled text**, not a disassembly-derived map. It finds functions that
+mention `FUN_18010ddc0` (`GetModuleHandleA(NULL)`), then matches the cached-wrapper idiom
+`FUN_xxx(base + 0xRRRRRR)` and records the RVA. So the columns mean:
+
+| Column | Actually is |
+| ------ | ----------- |
+| `thunk` | **the recovered function containing a hook-registration site** |
+| `resolver` | the `FUN_…` performing the `base + rva` lookup |
+| `hook_target_rva` | RVA of a static *WrapperMetadata* record, not code |
+| `contains` | which recovered function that RVA lands in |
+
+The `thunk` column is therefore **not a hook body**, and describing those 277 functions as
+"hook bodies" was wrong. What the numbers actually support:
 
 | Set | Count |
 | ---- | ----: |
-| Hook bodies | 277 |
-| With ≥ 1 direct caller | **10** |
-| With zero direct callers | **267** |
-| Zero-caller bodies with any RIP-relative reference | **0** |
+| Rows in `_wrappers.tsv` | 277 |
+| Distinct recovered functions holding a hook site | 277 |
+| — with ≥ 1 direct caller | 10 |
+| — with zero direct callers | **267** |
+| — with any RIP-relative reference to the body | **0** |
 
-Disassembly confirms these are real hook bodies rather than stubs — stack-canary setup, then a
-tail `jmp` through a stored original-function pointer:
+So 267 functions that register Geode hooks are unreachable from the direct-call graph. That is
+the same blind spot as `_initterm`, and it matters for the same reason.
+
+One function was disassembled as a spot-check, and it does have the expected shape — stack
+canary, then a tail `jmp` through a stored original-function pointer:
 
 ```asm
 0x18010de30  push  rbp / sub rsp,0x30 / lea rbp,[rsp+0x30]
@@ -110,19 +129,20 @@ tail `jmp` through a stored original-function pointer:
 0x18010de6f  jmp  qword ptr [rip + 0x6f3ee1]    ; the original function
 ```
 
-So 267 hook bodies are reached by a mechanism neither the call graph nor a RIP-relative scan can
-see, which is the same blind spot as `_initterm` but larger.
+That is **one** function. It is not evidence about the other 266, and the table's regex-based
+derivation means the counts inherit that heuristic quality. Both limits are recorded here rather
+than left implicit.
 
 ### The RVA-table hypothesis, and why it is rejected
 
 The obvious hypothesis: registration stores **RVAs** rather than VAs, which would be
-ASLR-safe and consistent with the crashes recorded in `AGENTS.md`. A 4-byte search for every
-one of the 267 body RVAs in `.rdata` matches **267 of 267**.
+ASLR-safe and consistent with the crashes recorded in `AGENTS.md`. A 4-byte search for the RVA
+of every one of the 267 functions in `.rdata` matches **267 of 267**.
 
 That match is not believed, and the reason is worth recording:
 
 1. The hits span **1,428,418 bytes** of `.rdata` with gaps of 104/108/112/248/252/256 — not the
-   shape of a table, but of scattered coincidences.
+   shape of a table, but of scattered coincidences. No small (4 or 8 byte) gaps appear at all.
 2. The offsets are **not consistently aligned** (e.g. `0x1F912` and `0x149104` are 2 and 4
    past an 8-byte boundary).
 3. Dumping the bytes at the first hit shows **coherent x86-64 machine code**, not a record:
@@ -137,5 +157,7 @@ unaligned substring search produces. The address arithmetic was re-checked with
 interpretation is wrong.
 
 Recorded as a rejected approach so the next investigation does not spend the hour again.
-UNVERIFIED: how the 267 bodies are registered. It is not a RIP-relative reference, not a direct
-call, and not an aligned `.rdata` RVA table.
+UNVERIFIED: how the 267 hook-site functions are reached. It is not a RIP-relative reference, not
+a direct call, and not an aligned `.rdata` RVA table. A better route would start from
+`FUN_18010ddc0` and `createWrapper` and follow the registration data they consume, rather than
+guessing the storage format from the addresses.
