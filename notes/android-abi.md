@@ -294,14 +294,57 @@ Windows RTTI also carries the rest of the icon-preview implementation:
 `iconic::SimpleDeathEffect`, `iconic::SimpleGhostTrail` — the feature is not merely keyed, it
 is a substantial subsystem on Windows too.
 
+## The re-check I owed, and its result
+
+Every entry in the "Windows-only" list was re-tested against a **contiguous byte scan of the
+DLL**, the check that caught the `ICONIC/PREVIEW/` error.
+
+| Key | Windows | Android | Verdict |
+| --- | --- | --- | --- |
+| `DISPLAY/HACK_BORDERLESS_CLASSIC` | yes | no | Windows-only |
+| `ERROR/HOME/LEGACY_PARSE_FAIL` | yes | no | Windows-only |
+| `ERROR/HOME/LEGACY_SAVE_KEYBINDS` | yes | no | Windows-only |
+| `ERROR/HOME/LEGACY_SAVE_PARSE` | yes | no | Windows-only |
+| `ERROR/HOME/NO_APPDATA` | yes | no | Windows-only |
+| `HOME/HOTKEY_ICONS` | yes | no | Windows-only |
+| `HOME/THEME/{}/COL` | yes | no | Windows-only |
+| `HOME/THEME/{}/COL/ALT` | yes | no | Windows-only |
+| `HOME/THEME/{}/TOGGLE` | yes | no | Windows-only |
+| `KEYBINDS/DISABLE_IN_EDITOR` | yes | no | Windows-only |
+| `KEYBINDS/EMPTY` | yes | no | Windows-only |
+| `KEYBINDS/SHORTCUT` | yes | no | Windows-only |
+| `KEYBINDS/VERSION` | yes | no | Windows-only |
+| `MESSAGE/DISPLAY/FULLSCREEN_STOPPED` | yes | no | Windows-only |
+| `MESSAGE/HOME/CONFIRM_LOAD_LEGACY` | yes | no | Windows-only |
+| `MESSAGE/KEYBINDS/EMPTY` | yes | no | Windows-only |
+| `MESSAGE/KEYBINDS/UNBINDABLE` | yes | no | Windows-only |
+| `HOME/SEARCH` | yes | **yes** | **both** — reclassified |
+| `KEYBINDS/REMOVE` | SSO | no | Windows-only, not contiguous |
+| `KEYBINDS/SET` | SSO | no | Windows-only, not contiguous |
+| `KEYBINDS/VIEW` | SSO | no | Windows-only, not contiguous |
+| `MESSAGE/CANCEL` | SSO | no | Windows-only, not contiguous |
+
+**17 of 22 survive the check.** The four marked `SSO` are present in the Windows build but not
+contiguously, because they live in packed SSO immediates — a contiguous scan cannot see them,
+which is the same limitation that hid `ICONIC/PREVIEW/` from `_xrefs.tsv`. They are Windows-only
+on the evidence that they are absent from Android.
+
+`HOME/SEARCH` is the one genuine reclassification: it is present on **both**, and my earlier
+Android-side scan missed it. That is an Android-side extraction gap rather than a Windows one —
+the opposite of the `ICONIC/PREVIEW/` error, and worth noting that both directions occur.
+
+So the Windows-only group is real: **keyboard input, window management, desktop paths, legacy
+save migration, and theme toggles**. 17 keys confirmed by direct byte evidence.
+
 ## Conclusion
 
 1. Windows is MSVC with RTTI; Android is clang/Itanium with **no RTTI**. Solid.
 2. Under the union extraction: 80 Windows keys, 95 Android keys, **51 shared**.
-3. **Windows-only looks like input and windowing** — 7 `KEYBINDS/` keys, hotkey icons,
-   borderless and fullscreen display, theme toggles, `APPDATA` paths, legacy-save migration.
-   Every one of these needs re-checking against a raw DLL scan, because that is the error that
-   produced the false asymmetry corrected above.
+3. **17 of the 22 Windows-only keys are confirmed Windows-only** by a contiguous byte scan of
+   the DLL — keyboard input, window management, desktop paths, legacy-save migration, theme
+   toggles. Four more (`KEYBINDS/SET`, `REMOVE`, `VIEW`, `MESSAGE/CANCEL`) are Windows-only
+   but stored as packed SSO immediates, so they need the SSO decoder rather than a byte scan.
+   `HOME/SEARCH` was reclassified as shared after the re-check.
 4. **There is no icon-preview asymmetry.** An earlier claim that Android had an
    `ICONIC/PREVIEW/` layer Windows lacked was wrong; a raw scan finds all twelve keys on both
    sides.
