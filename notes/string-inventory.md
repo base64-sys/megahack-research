@@ -108,10 +108,21 @@ It calls none of the three numeric accessors (`FUN_18008F420`, `FUN_18002DE50`,
 localised to one function: **the UI is built here and the settings are read elsewhere**, and
 whatever connects them is a third thing this pass has not located.
 
-UNVERIFIED: whether this is a constructor, a registration table, or a generated blob. With
-zero callers it is either called indirectly through a pointer or reached from an initialiser
-that Ghidra did not attribute. The 16 KB size is also large enough that it may be several
-functions merged, so it should be split before being trusted as a single unit.
+It is **confirmed a single function**, not a Ghidra merge:
+
+| Check | Result |
+| ----- | ------ |
+| Other indexed functions starting inside the range | 0 |
+| `return` statements in the body | 2 |
+| **`.pdata` runtime-function entries** | **exactly 1**, `0x180062940`–`0x1800667EA`, 16,042 bytes |
+
+`.pdata` is the authoritative record of x64 function boundaries — the OS walks it for
+exception handling — so a single entry settles it. The earlier caveat about several functions
+merged is withdrawn: it was worth checking, and it is not the case.
+
+What remains open is *why it has no callers*. Either it is reached indirectly through a
+pointer or vtable, or from an initialiser Ghidra did not attribute, or it is dead code
+retained in the binary. UNVERIFIED, and not settled by the boundary question.
 
 Sample of the names it wires up — this is a readable feature list:
 
