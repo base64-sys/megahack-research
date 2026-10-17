@@ -93,3 +93,4 @@ scripts/.watchdog/
 .DS_Store
 Thumbs.db
 desktop.ini
+.keepalive.log
