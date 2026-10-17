@@ -111,6 +111,52 @@ not real divergence. Correcting that here rather than adding a second version of
 The lesson is the one AGENTS.md keeps stating: comparing two measurements taken by different
 methods produces a number, and the number is meaningless.
 
+## No single extraction is symmetric — and that is the actual finding
+
+A raw ASCII byte scan on **both** binaries is still not a fair comparison, and the Windows
+side proves it. The Windows-only list it produces is full of truncations:
+
+```
+CRASH/0H    ERROR/DIH    HOME/ANIH    HOME/DOTH    HOME/BG_H
+HH9/uCH     NDS/VIEWH    PEED/PREH    ICONIC/DH    LESETS/1H
+```
+
+Those are not settings keys. They are the regex landing on non-string bytes.
+
+Meanwhile the Android-only list is clean: `ICONIC/DISABLE`, `ICONIC/GLOW`, `MESSAGE/YES`,
+`REPLAY/SAVE`, `LEVEL/NOCLIP/HACK_NOCLIP`.
+
+And the giveaway is that **`ICONIC/DISABLE`, `ICONIC/RAND`, `ICONIC/GENERAL` and
+`ICONIC/EFFECTS` appear Android-only here** — those are precisely the keys recovered from the
+*Windows* build's SSO immediates back in [sso-decoder.md](sso-decoder.md).
+
+The reason is the storage format, and it is the whole reason this comparison keeps going
+wrong:
+
+| | Short string storage | Found by |
+| --- | --- | --- |
+| Windows (MSVC) | packed into 4-byte SSO immediates, **non-contiguous** | SSO decode only |
+| Android (clang) | plain contiguous ASCII | raw ASCII scan only |
+
+Neither method finds both platforms. A contiguous-bytes regex cannot see a Windows SSO
+string because the characters are interleaved with padding; an SSO decoder cannot see an
+Android string because there is no immediates stream to read.
+
+**So the only fair extraction is asymmetric by necessity:** Windows as the union of an ASCII
+scan and the SSO decode, Android as an ASCII scan. Until that union is built, **every
+overlap number in this note is unreliable** and the two earlier ones were both wrong — first
+because Windows was undercounted, then because Windows was overcounted with garbage. Corrected
+twice is still not a pass.
+
+What survives both errors, because it does not depend on the extraction:
+
+- The **ABI** result is solid: MSVC RTTI present on Windows, zero on Android. That is a
+  count of whole structures, not of strings.
+- `KEYBINDS/` and `DISPLAY/` are **absent from Android entirely**. Absence cannot be created
+  by a Windows-side extraction bug.
+- Assets are **fully shared** — 8 of 8 `.png` names, and those are long enough to be plain
+  ASCII on both sides.
+
 ## What is genuinely Windows-only
 
 Two prefixes are entirely absent from Android, under the symmetric extraction:
@@ -140,16 +186,19 @@ recovering template instantiations.
 
 ## Conclusion
 
-1. Windows is MSVC with RTTI; Android is clang/Itanium with **no RTTI**.
-2. The MSVC class inventory does not transfer to Android, and cannot be made to.
-3. Settings keys transfer almost completely: every `ICONIC/` key and 28 of 46 `HOME/` keys are
-   shared. Android's `ICONIC/` set is a strict superset of Windows'.
-4. **Two prefixes are Windows-only: `KEYBINDS/` (5 keys) and `DISPLAY/` (2).** Both are input
-   and window concerns.
-5. The normalised class-name overlap remains open.
+1. Windows is MSVC with RTTI; Android is clang/Itanium with **no RTTI**. Solid.
+2. `KEYBINDS/` and `DISPLAY/` are absent from Android entirely. Solid — absence is not
+   something a Windows-side extraction bug can manufacture.
+3. All 8 `.png` asset names are shared. Solid.
+4. **Every other overlap figure in this note is unreliable** and has been corrected twice.
+   A correct union extraction has not been built, so no class-set or key-set comparison
+   should be quoted from here yet.
 
 ## Open questions
 
-- Normalise the two ABIs' class encodings and produce a real overlap table.
+- Build the union extraction — Windows ASCII ∪ Windows SSO decode, Android ASCII — and only
+  then produce an overlap table. Until this exists the comparison is not publishable.
+- Normalise the two ABIs' class encodings for a class-level comparison.
 - Determine whether Android carries `KEYBINDS/` and `DISPLAY/` under a different prefix.
-- Check whether the 3 Android-only `HOME/` keys are new features or renamed ones.
+- Establish whether `REPLAY/*` and `MESSAGE/YES|OK|DISMISS`, which surface Android-side,
+  are genuinely Android-only features or Windows keys the SSO decoder missed.
