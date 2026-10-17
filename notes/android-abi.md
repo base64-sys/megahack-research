@@ -85,6 +85,46 @@ Windows, which is a lossy method with known split and merge error modes, while t
 count comes from plain ASCII strings. Part of that gap is therefore a measurement artefact
 rather than real divergence. The comparison is not yet apples-to-apples.
 
+## Correcting the ICONIC result: it was a measurement artefact
+
+The comparison above is **asymmetric** and its ICONIC row is wrong. Windows keys came from
+MSVC SSO reconstruction — lossy, with documented split and merge error modes — while Android
+keys came from plain ASCII strings. That made Windows look like it had almost no ICONIC keys
+when it has more than Android.
+
+Re-run with the **same extraction on both sides** — a raw byte scan of each binary, no
+decompiler involved:
+
+| Prefix | Windows | android64 | Shared | Win-only | Android-only |
+| ------ | ------: | --------: | -----: | -------: | -----------: |
+| `ICONIC/` | 17 | 24 | **17** | **0** | 7 |
+| `HOME/` | 46 | 31 | 28 | 18 | 3 |
+| `MESSAGE/` | 6 | 5 | 4 | 2 | 1 |
+| `ERROR/` | 8 | 7 | 6 | 2 | 1 |
+| `KEYBINDS/` | 5 | 0 | 0 | **5** | 0 |
+| `DISPLAY/` | 2 | 0 | 0 | **2** | 0 |
+
+The ICONIC row inverts completely. Windows has **every** key Android has, plus Android carries
+7 more. The earlier "1 of 7 shared" was an artefact of the SSO method undercounting Windows,
+not real divergence. Correcting that here rather than adding a second version of it.
+
+The lesson is the one AGENTS.md keeps stating: comparing two measurements taken by different
+methods produces a number, and the number is meaningless.
+
+## What is genuinely Windows-only
+
+Two prefixes are entirely absent from Android, under the symmetric extraction:
+
+- **`KEYBINDS/`** — 5 keys, Windows only.
+- **`DISPLAY/`** — 2 keys, Windows only.
+
+Both are input and window-management concerns, which is a consistent story with the earlier
+keybind finding. UNVERIFIED: whether Android carries these features under a different key
+prefix, or drops them entirely.
+
+`android32` and `android64` return identical counts for every prefix above, which is a
+consistent picture of the same source built for two ABIs.
+
 ## What is not yet established
 
 `compare_platform_classes.py` does **not** produce a usable Windows/Android class overlap,
@@ -102,16 +142,14 @@ recovering template instantiations.
 
 1. Windows is MSVC with RTTI; Android is clang/Itanium with **no RTTI**.
 2. The MSVC class inventory does not transfer to Android, and cannot be made to.
-3. 43% of all Windows ASCII strings are shared with Android, and where they differ the
-   divergence is concentrated in input handling, not in assets or core configuration.
-4. **Keybinds exist only on Windows** — the clearest platform split found so far.
+3. Settings keys transfer almost completely: every `ICONIC/` key and 28 of 46 `HOME/` keys are
+   shared. Android's `ICONIC/` set is a strict superset of Windows'.
+4. **Two prefixes are Windows-only: `KEYBINDS/` (5 keys) and `DISPLAY/` (2).** Both are input
+   and window concerns.
 5. The normalised class-name overlap remains open.
 
 ## Open questions
 
-- Normalise the two encodings and produce a real overlap table.
-- Re-run the string inventory (`_xrefs.tsv`) against an Android binary to check whether
-  setting keys and format strings are shared, which may be a better parity check than class
-  names.
-- Determine whether Android is `-fno-rtti` by policy or by build flag, since that decides
-  whether M5 can ever recover its class set.
+- Normalise the two ABIs' class encodings and produce a real overlap table.
+- Determine whether Android carries `KEYBINDS/` and `DISPLAY/` under a different prefix.
+- Check whether the 3 Android-only `HOME/` keys are new features or renamed ones.
