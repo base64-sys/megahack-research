@@ -247,17 +247,69 @@ findings that did not depend on extraction at all — the ABI difference, the ab
 Windows-only `KEYBINDS/` and `DISPLAY/`, and the fully shared asset names — the platform
 picture is coherent.
 
+## CORRECTION: Windows has the icon-preview layer too
+
+The previous section claims Android has "an entire icon-preview customisation layer that
+Windows does not". **That is wrong.** All of the keys are in the Windows binary:
+
+```
+ICONIC/PREVIEW/BASE_PARTICLES   ICONIC/PREVIEW/COL1      ICONIC/PREVIEW/COL2
+ICONIC/PREVIEW/DASH_EFFECT      ICONIC/PREVIEW/DEATH_EFFECT
+ICONIC/PREVIEW/EXTRA            ICONIC/PREVIEW/GHOST_TRAIL
+ICONIC/PREVIEW/GLOW             ICONIC/PREVIEW/ICONS
+ICONIC/PREVIEW/SHIP_FIRE        ICONIC/PREVIEW/TRAIL
+ICONIC/PREVIEW/TRAIL_COL        ICONIC/PREVIEW/WAVE_TRAIL
+```
+
+They went missing because the Windows side was taken from `_xrefs.tsv`, which contains only
+`ICONIC/PREVIEW/ICONS` and `ICONIC/SPECIAL/PREVIEW`. A raw scan of the same DLL finds all
+twelve. `_xrefs.tsv` undercounts SSO strings — it keeps only what the decompiler surfaced —
+so it is the wrong source for this question.
+
+This is the **fourth** correction in this note, and the failure mode is consistent: every time,
+a Windows-side extraction gap has been read as a platform difference. Absence of evidence was
+treated as evidence of absence, which AGENTS.md forbids and which I have now done three times
+on the same comparison.
+
+There is no icon-preview asymmetry. The Windows-only and Android-only lists above stand for
+the other groups, but every entry in them should be re-checked the same way before being
+treated as a real divergence.
+
+## What the two ABIs independently agree on
+
+One genuine cross-check is now possible, because the same class appears under both manglings:
+
+| Platform | Form | Class |
+| -------- | ---- | ----- |
+| Windows | MSVC `.?AVPreviewLayer@iconic@@` | `iconic::PreviewLayer` |
+| Android | Itanium `N6iconic12PreviewLayerE` | `iconic::PreviewLayer` |
+
+Two different ABIs, two different compilers, the same class — recovered independently on each
+side. That is the only fully verified platform-parity statement so far, and it happens to
+contradict the claim it was collected to support.
+
+Windows RTTI also carries the rest of the icon-preview implementation:
+`iconic::SpecialConfigLayer`, `iconic::SpecialCore`, `SpecialRGB`, `SpecialGradient`,
+`SpecialPastel`, `SpecialCustom`, `iconic::IconConfigPicker`, `iconic::SimpleParticles`,
+`iconic::SimpleDeathEffect`, `iconic::SimpleGhostTrail` — the feature is not merely keyed, it
+is a substantial subsystem on Windows too.
+
 ## Conclusion
 
 1. Windows is MSVC with RTTI; Android is clang/Itanium with **no RTTI**. Solid.
 2. Under the union extraction: 80 Windows keys, 95 Android keys, **51 shared**.
-3. **Windows-only is input and windowing** — 7 `KEYBINDS/` keys, hotkey icons, borderless and
-   fullscreen display, theme toggles, `APPDATA` paths, legacy-save migration.
-4. **Android-only is touch and customisation** — an 11-key `ICONIC/PREVIEW/` layer that has
-   no Windows counterpart, window geometry, and a replay UI using `MESSAGE/YES|NO` where
-   Windows uses `MESSAGE/CANCEL`.
-5. Assets are fully shared (8 of 8 `.png` names).
-6. Roughly a dozen regex artefacts remain on each side and are listed rather than hidden.
+3. **Windows-only looks like input and windowing** — 7 `KEYBINDS/` keys, hotkey icons,
+   borderless and fullscreen display, theme toggles, `APPDATA` paths, legacy-save migration.
+   Every one of these needs re-checking against a raw DLL scan, because that is the error that
+   produced the false asymmetry corrected above.
+4. **There is no icon-preview asymmetry.** An earlier claim that Android had an
+   `ICONIC/PREVIEW/` layer Windows lacked was wrong; a raw scan finds all twelve keys on both
+   sides.
+5. **The only fully verified parity statement** is `iconic::PreviewLayer`, which appears under
+   both manglings — MSVC `.?AVPreviewLayer@iconic@@` on Windows, Itanium
+   `N6iconic12PreviewLayerE` on Android.
+6. Assets are fully shared (8 of 8 `.png` names).
+7. Roughly a dozen regex artefacts remain on each side and are listed rather than hidden.
 
 ## Open questions
 
