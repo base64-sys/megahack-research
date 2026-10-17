@@ -63,6 +63,35 @@ capacity) with the value at `+0x30`. Chain order is insertion order, walked from
 This is why `notes/fnv-hash-probe.md` finds no precomputed table: the map is **built during
 initialisation**, not stored in the image. That negative result and this structure agree.
 
+## Map accessors found so far
+
+Searching for functions that touch all three manager fields (`+0x60`, `+0x70`, `+0x88`)
+returns 21 candidates. Most are false positives — unrelated structs that happen to have an
+8-byte field at the same offset. Three are confirmed members of this map, all of which
+reproduce the same bucket arithmetic `(hash & mask) * 0x10` and chain walk via `+0x08`:
+
+| Address | Size | Role | Callers |
+| ------- | ---: | ---- | ------: |
+| `0x18007CB60` | 365 | lookup by key; writes the value to `*param_2` | 40 |
+| `0x18007C700` | 957 | reader; walks the chain, tests `+0x28 < 0x10` for SSO | 5 |
+| `0x1800788D0` | 11,901 | full-map iterator, `callers: 1` | 1 |
+
+`FUN_1800788D0` is large enough to be walking every entry, which is the kind of function that
+serialises or compares the whole registry.
+
+**The insert was not found**, which is the one that would name every key directly. What was
+tried, and ruled out:
+
+- grep for a write of `0x10` into a `+0x28` capacity slot — one hit, `FUN_1804EA750`, which
+  is `FindFirstFile`/`WIN32_FIND_DATAW` file enumeration. The pattern was too loose; the
+  offset is not distinctive enough on its own.
+- The two co-located candidates beside the lookup (`0x1800788D0`, `0x18007C700`) both turned
+  out to be readers.
+
+UNVERIFIED: where entries are inserted, and therefore the complete key list. The 40 lookup call
+sites remain the practical route, with `scripts/decode_sso.py` recovering the key text from
+each site's immediates.
+
 ## Consequence for key names
 
 The key names are recoverable, and two routes exist:
