@@ -120,9 +120,26 @@ It is **confirmed a single function**, not a Ghidra merge:
 exception handling — so a single entry settles it. The earlier caveat about several functions
 merged is withdrawn: it was worth checking, and it is not the case.
 
-What remains open is *why it has no callers*. Either it is reached indirectly through a
-pointer or vtable, or from an initialiser Ghidra did not attribute, or it is dead code
-retained in the binary. UNVERIFIED, and not settled by the boundary question.
+Its zero callers are **explained**. The function's VA occurs exactly once in the image, at
+`0x18063F0C8` in `.rdata`, inside a run of code addresses:
+
+| Slot | Address |
+| ---- | ------- |
+| preceding | `0x180042630` (`.text`) |
+| **`FUN_180062940`** | **`0x180062940`** |
+| following | `0x1800728D0` (`.text`) |
+
+A pointer into a run of `.text` addresses in read-only data is a **vtable slot**. Virtual
+dispatch is not a direct `call`, which is exactly why Ghidra attributed no callers — the zero
+was never evidence of dead code.
+
+**The owning class could not be named.** Reading `vtable[-1]` at `0x18063F0C0` returned
+`0x18003D1A0`, a `.text` address rather than a pointer to a Complete Object Locator, so the
+vtable base is assumed rather than proven, and following it to a Type Descriptor produced
+garbage rather than a class name. That garbage is **not** recorded as a finding.
+
+To settle it the vtable base needs confirming — most likely the preceding slot belongs to a
+different table, or the class carries no RTTI and has no COL at `[-1]`. UNVERIFIED.
 
 Sample of the names it wires up — this is a readable feature list:
 
