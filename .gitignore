@@ -2,3 +2,4 @@
 *.exe
 samples/
 decompiled/
+.idea/
