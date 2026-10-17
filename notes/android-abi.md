@@ -47,6 +47,44 @@ some of it from the host.
 **android32 and android64 are near-identical builds** — 3,051 versus 3,052 `_ZN` symbols.
 The one-symbol difference is not worth chasing without a diff, and no claim is made about it.
 
+## String parity, which is a better check than class names
+
+Since class names do not transfer, the question becomes whether *strings* do. They do, mostly,
+and where they differ is where the platform split actually lives.
+
+ASCII strings of length ≥5: 21,320 in the Windows build, 29,298 in android64. **9,233 are
+shared — 43%.**
+
+| Marker | Windows | Android64 | Shared |
+| ------ | ------: | --------: | -----: |
+| `*.png` asset names | 8 | 10 | **8 (all)** |
+| `HOME/…` config keys | 36 | 26 | 24 |
+| `/api/mega_hack/…` | 3 | 3 | 2 |
+| `ICONIC/…` | 7 | 8 | 1 |
+| `MESSAGE/…` | 2 | 3 | 0 |
+| `KEYBINDS/…` | 3 | **0** | **0** |
+
+Three things follow, in order of confidence.
+
+**The asset pipeline is identical.** Every Windows `.png` name appears in the Android build —
+`iconic_sdc_off.png`, `snow.png`, `square02b_001.png` and the rest. Asset names are not a
+divergence point at all.
+
+**Keybinds are a Windows-only feature.** Three `KEYBINDS/…` keys on Windows, *zero* on
+Android, and no overlap. That is exactly what one would expect if the feature is gated on
+having a keyboard, and it is the clearest single signal of platform divergence found so far.
+UNVERIFIED: whether Android drops the feature entirely or ships it disabled, and whether the
+Android build routes keybinds through touch input under a different key prefix.
+
+**Core configuration is mostly shared.** 24 of 36 `HOME/…` keys are common to both, so the
+settings surface is broadly the same with 12 Windows-only keys. The divergence is concentrated
+in input and platform-specific features rather than in the configuration model itself.
+
+`ICONIC/…` sharing only 1 of 7 needs care: those keys were recovered from MSVC SSO literals on
+Windows, which is a lossy method with known split and merge error modes, while the Android
+count comes from plain ASCII strings. Part of that gap is therefore a measurement artefact
+rather than real divergence. The comparison is not yet apples-to-apples.
+
 ## What is not yet established
 
 `compare_platform_classes.py` does **not** produce a usable Windows/Android class overlap,
@@ -64,8 +102,10 @@ recovering template instantiations.
 
 1. Windows is MSVC with RTTI; Android is clang/Itanium with **no RTTI**.
 2. The MSVC class inventory does not transfer to Android, and cannot be made to.
-3. Android's method surface *is* recoverable from `_ZN` symbols, and is the practical route.
-4. The normalised class-name overlap remains open.
+3. 43% of all Windows ASCII strings are shared with Android, and where they differ the
+   divergence is concentrated in input handling, not in assets or core configuration.
+4. **Keybinds exist only on Windows** — the clearest platform split found so far.
+5. The normalised class-name overlap remains open.
 
 ## Open questions
 
