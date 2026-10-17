@@ -127,7 +127,20 @@ size and caller count — plus `_index.tsv`, `_symbols.tsv` and a manifest. Firs
 > `scripts/ghidra_scripts/ExportAllFunctions.java`.
 
 Any finding gets promoted out of that tree into `notes/` as an address-and-tool-backed
-claim; the raw dump does not get committed.
+claim; the raw dump does not get committed. Where the decompiler renders a short `std::string`
+as a chain of typed locals, `scripts/decode_sso.py` rebuilds the text from the immediates;
+`notes/sso-decoder.md` records that method and its three error modes.
+
+Two negative results are worth knowing before repeating the search, because both look like
+an obvious shortcut:
+
+- There is **no precomputed FNV-1a-64 table**. Mega Hack hashes strings with FNV-1a-64
+  (`FUN_18007CB60`, basis `0xCBF29CE484222325`), but the 8-byte hashes of every recoverable
+  string are absent from the image, so a guessed key cannot be confirmed by finding its hash
+  already stored. Verified with a positive control — see
+  [notes/fnv-hash-probe.md](notes/fnv-hash-probe.md).
+- Searching Ghidra's `DAT_` symbols alone finds only **4%** of code-referenced strings, because
+  Ghidra names only the references it fails to decode.
 
 ## Tooling
 
@@ -146,6 +159,7 @@ These live in `scripts/`, so they exist on a fresh clone. Neither needs `samples
 | `settings_index.py`           | Index the settings registry: 134 numeric ids and how often each is read      |
 | `build_callgraph.py`          | Build the call graph: 42,701 static edges over 16,204 functions              |
 | `decode_sso.py`               | Recover MSVC small-string literals the decompiler renders as typed locals    |
+| `fnv_hash_probe.py`           | Hash recovered strings and look for a precomputed FNV-1a-64 table            |
 | `make_progress_svg.py`        | Generate `docs/progress.svg` from live repo state                             |
 | `notify.ps1`                  | Send an indexed ntfy push; all notifications go through it                     |
 | `watchdog.ps1`                | Liveness ping for long runs; refreshes the progress graphic on `-Action Start` |
@@ -159,6 +173,7 @@ python scripts/build_xref_index.py --grep best
 python scripts/settings_index.py
 python scripts/build_callgraph.py --callers-of 0x180169EB0
 python scripts/decode_sso.py --grep KEYBINDS
+python scripts/fnv_hash_probe.py --text CONFIG
 python scripts/make_progress_svg.py
 ```
 
