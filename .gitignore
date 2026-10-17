@@ -1,5 +1,86 @@
-*.dll
-*.exe
+# megahack-research — nothing that cannot be inspected in a text editor is tracked.
+#
+# This repository publishes understanding and original tooling. Absolllute's
+# binaries, their shipped assets, and raw decompiler output never enter the index.
+# To force-add something here, it must be deliberate and it must be defensible.
+
+# --- Samples and the ground-truth binary set ---------------------------------
+# The Mega Hack release, its .geode package, the vendored Python toolchain and the
+# original RE notes. Evidence, not source. See docs/GOALS.md and AGENTS.md.
 samples/
+*.geode
+*.geode.zip
+.geode_cache
+.analysis_tools/
+
+# --- Native and packaged binaries --------------------------------------------
+*.dll
+*.so
+*.dylib
+*.exe
+*.lib
+*.a
+*.obj
+*.pdb
+*.zip
+*.7z
+*.apk
+*.ipa
+
+# --- Runtime data and scratch databases --------------------------------------
+# best_runs.bin and friends are player data, not source.
+*.bin
+*.tmp
+*.bak
+*.db
+*.sqlite
+*.log
+
+# --- Shipped assets -----------------------------------------------------------
+# Mega Hack's sprites and audio are Absolllute's work. Do not commit them.
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.mp3
+*.ogg
+*.wav
+*.mp4
+*.ttf
+*.otf
+
+# --- Decompiler output and analysis databases ---------------------------------
+# These are caches. Promote a *finding* into notes/, never the raw dump.
 decompiled/
+ghidra_out/
+reports/
+*.gpr
+*.rep/
+*.i64
+*.idb
+*.id0
+*.id1
+*.nam
+*.til
+*.gbf
+
+# --- Python -------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Editors, OS, tooling -----------------------------------------------------
 .idea/
+.vscode/
+.vs/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini

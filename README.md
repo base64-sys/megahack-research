@@ -1,2 +1,185 @@
 # megahack-research
-Research notes and original tooling only. No proprietary code.
+
+Decompilation and reverse-engineering workspace for **Mega Hack** v9.1.3, the Geode mod
+`absolllute.hackmega`.
+
+The goal is a faithful, source-level reconstruction of the mod: recovered C++, documented
+Geometry Dash host ABI, and reproducible tooling — **without** shipping, redistributing or
+depending on Absolllute's proprietary binaries.
+
+This repo holds research notes and original tooling only. See [docs/GOALS.md](docs/GOALS.md)
+for what "done" means and [AGENTS.md](AGENTS.md) for the rules that keep the work honest.
+
+## Baseline
+
+All work targets one pinned triple. Do not mix baselines.
+
+| Component     | Version                        |
+| ------------- | ------------------------------ |
+| Mega Hack     | v9.1.3 (2026-04-17)            |
+| Geometry Dash | 2.2081 (Windows + Android)     |
+| Geode         | 5.6.1                          |
+| Geode dep     | `geode.node-ids >= v1.22.0`    |
+
+`mod.json` declares `"early-load": true`, so Mega Hack initialises before other mods and
+relies on `node-ids` for stable hook addresses.
+
+## Target binaries
+
+| File                                      | Arch    | Size       | Notes                            |
+| ----------------------------------------- | ------- | ---------- | -------------------------------- |
+| `absolllute.hackmega.dll`                 | x86-64  | 8,697,056  | Generated extended build         |
+| `absolllute.hackmega_original.dll`        | x86-64  | 8,697,056  | Untouched release (baseline)     |
+| `absolllute.hackmega_pre_persistence.dll` | x86-64  | 8,697,056  | Incoming experiment              |
+| `absolllute.hackmega_working_aslr.dll`    | x86-64  | 8,697,056  | Minimal ASLR-safe build          |
+| `absolllute.megahack.android32.so`        | ARM32   | 7,591,352  | Android, deferred to M5          |
+| `absolllute.megahack.android64.so`        | ARM64   | 10,721,792 | Android, deferred to M5          |
+
+**Use `_original.dll` as the read-only ground truth.** The other DLLs are experiments and
+must never be treated as evidence about the released binary.
+
+## PE layout (`_original.dll`)
+
+Image base `0x180000000`. Verified with `tools/pe_caves.py`.
+
+| Section  | VA             | Virtual size | File offset | Raw size   | Characteristics |
+| -------- | -------------- | ------------ | ----------- | ---------- | --------------- |
+| `.text`  | `0x180001000`  | `0x532fe6`   | `0x400`     | `0x533000` | `0x60000020`    |
+| `.rdata` | `0x180534000`  | `0x1aaca4`   | `0x533400`  | `0x1aae00` | `0x40000040`    |
+| `.data`  | `0x1806df000`  | `0x13cd90`   | `0x6de200`  | `0x121600` | `0xc0000040`    |
+| `.pdata` | `0x18081c000`  | `0x39aec`    | `0x7ff800`  | `0x39c00`  | `0x40000040`    |
+| `.tls`   | `0x180856000`  | `0x15`       | `0x839400`  | `0x200`    | `0xc0000040`    |
+| `.rsrc`  | `0x180857000`  | `0x18c`      | `0x839600`  | `0x200`    | `0x40000040`    |
+| `.reloc` | `0x180858000`  | `0xecbc`     | `0x839800`  | `0xee00`   | `0x42000040`    |
+
+Two structural facts the patching work depends on:
+
+- **Code cave** — a contiguous `0xCC` (INT3) region at VA `0x180286371`, file offset
+  `0x285771`, size `0xc8f` (3215 bytes). All injected code lives here.
+- **Mutable state** — 48 zero-initialised bytes at preferred VA `0x18081BFC0`, in the
+  writable tail page of `.data`. Never place mutable state at an absolute address in
+  `.text`; see the ASLR rule in [AGENTS.md](AGENTS.md).
+
+## Layout
+
+```
+megahack-research/
+├── AGENTS.md            # rules for humans and agents
+├── docs/
+│   ├── GOALS.md         # mission, scope, non-goals, definition of done
+│   └── ROADMAP.md       # milestone tracker with exit criteria
+├── notes/               # durable findings, one file per subsystem
+├── references/          # external docs: Geode, GD host API, third-party research
+├── samples/             # GITIGNORED — captured binaries and Absolllute's tooling
+│   └── absolllute.hackmega/
+│       ├── tools/       # pe_*.py, build/validate, ghidra_scripts/
+│       └── .analysis_tools/  # vendored capstone, keystone, pefile, ordlookup
+└── scripts/             # original tooling that outlives one investigation
+```
+
+`samples/` is deliberately untracked: it holds Absolllute's binaries, their shipped assets
+and a vendored copy of their Python dependencies. Nothing in `docs/`, `notes/` or `scripts/`
+may require a tracked file inside `samples/` to exist.
+
+Consequence worth knowing: **the tooling in `samples/.../tools/` is not version-controlled
+either.** A fresh clone has no analysis tooling until the sample set is restored. Promoting
+the genuinely original parts into `scripts/` is tracked as open work in
+[docs/ROADMAP.md](docs/ROADMAP.md#m1--binary-inventory-and-host-abi-surface-in-progress).
+
+## Tooling
+
+### Python
+
+`python` is not on `PATH` on this machine (the WindowsApps entries are Store stubs). Use:
+
+```powershell
+$py = "C:\Users\Robert_\AppData\Local\Python\bin\python3.exe"   # 3.14.6
+```
+
+A second interpreter exists for the bundled GUI launcher:
+`%USERPROFILE%\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe`
+(3.12.14). Use the 3.14 one for analysis; both satisfy the tooling.
+
+Every tool in `samples/absolllute.hackmega/tools/` does
+`sys.path.insert(0, ".analysis_tools")`, so **run them from the mod root**:
+
+```powershell
+Set-Location samples/absolllute.hackmega
+& $py .\tools\pe_caves.py .\absolllute.hackmega_original.dll
+```
+
+| Tool                         | Purpose                                                     |
+| ---------------------------- | ----------------------------------------------------------- |
+| `pe_exports.py`              | Named exports and preferred-base VAs                         |
+| `pe_imports.py`              | Imports and IAT addresses                                    |
+| `pe_disasm.py`               | Disassemble at VA/RVA; `--callers` finds direct call sites    |
+| `pe_xrefs.py`                | Locate strings (ASCII/UTF-16) and code references to them     |
+| `pe_caves.py`                | Sections plus uniform-byte caves in executable sections       |
+| `build_persistence_patch.py` | Regenerates the extended persistence binary (idempotent)     |
+| `validate_persistence_patch.py` | Static validator: hooks, cave, ABI, ASLR, imports, state   |
+| `best_runs_db.py`            | Inspect/export/import/repair/compact the best-runs database  |
+| `test_best_runs_db.py`       | 12 DB/import regression tests                                 |
+| `update_geode_package.py`    | Persist a patched DLL back into the installed `.geode` archive |
+
+### Ghidra
+
+Ghidra 12.1.2 at `C:\Users\Robert_\Downloads\ghidra_12.1.2_PUBLIC_20260605`. Headless
+scripts live in `samples/absolllute.hackmega/tools/ghidra_scripts/` under category
+`HackMega`:
+
+- `DumpDecompile.java <address>...` — decompile the functions containing each address
+- `DumpDecompileFile.java <out> <address>...` — same, written to a report file
+- `FindAsciiReferences.java <out> <text>...` — strings, their references and their callers
+
+An IDA database of the same binary also exists outside this repo at
+`C:\Users\Robert_\Documents\decomp\mh` (`mh.gpr`, `mh.rep`). Treat it as a private cache;
+findings belong in `notes/`.
+
+## Workflow
+
+1. **Pin the question.** One investigation, one written question, recorded in `notes/`.
+2. **Locate.** `pe_xrefs.py` for strings, `FindAsciiReferences.java` in Ghidra,
+   `pe_exports.py` / `pe_imports.py` for the host ABI surface.
+3. **Disassemble.** `pe_disasm.py` for raw truth, Ghidra for structure.
+4. **Prove.** Re-derive the address from a second independent angle before writing it down.
+5. **Record.** Evidence with file, VA, RVA and the tool that produced it.
+6. **Only then** propose code. Anything derived goes in `scripts/`, and any binary a script
+   emits must be reproducible from that script alone.
+
+Before pushing anything that touches geometry or state:
+
+```powershell
+& $py .\tools\validate_persistence_patch.py
+& $py .\tools\test_best_runs_db.py
+```
+
+## Known geometry (verified)
+
+| Address        | Role                                                            |
+| -------------- | --------------------------------------------------------------- |
+| `0x180155155`  | Shutdown / destructor wrapper                                   |
+| `0x1801552D6`  | Original init call through the load/key wrapper                 |
+| `0x180155408`  | Reset / save wrapper                                            |
+| `0x180155419`  | Canonicalises StartPos percentage before Mega Hack stores it     |
+| `0x18015546B`  | Post-update tracking wrapper                                    |
+| `0x180174DE4`  | `PlayLayer::onQuit` exit/save call                              |
+| `0x1800023DC`  | Resolves the native import action tag after core load           |
+| `0x180027C30`  | Dispatches that tag to the `.dt` importer                       |
+| `0x180098868`  | Substitutes `STATUS/*/PREFIX` with `Import .dt` per language    |
+
+Full derivation, level-identity scheme and database format live in
+`samples/absolllute.hackmega/RE_NOTES_PERSISTENT_BEST_RUN.md`.
+
+## Disclaimer
+
+This project is for interoperability, research, preservation and compatibility. It does not
+include, distribute or require copyrighted software, firmware, keys or proprietary
+libraries. Mega Hack is the work of Absolllute; Geometry Dash is the work of RobTop Games.
+Anyone using binaries here is responsible for holding the relevant rights and complying
+with applicable law and licence terms.
+
+## License
+
+Original tooling and notes in this repository are licensed under the
+[GNU General Public License v3](LICENSE). Mega Hack, Geometry Dash and Geode are the
+property of their respective authors and are not relicensed by this repository.
