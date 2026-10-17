@@ -37,32 +37,48 @@ below are the ones that get broken, not the ones already obvious.
 
 ## Task completion notification
 
-When a user-requested task finishes, ping the user's phone so they can stop watching the
-terminal.
+An agent turn can die abruptly — out of tokens, a dead tool call, an interrupted
+session. Anything sent at the *end* of such a turn is simply never sent, so the signal
+must not depend on the turn finishing.
+
+**Arm the watchdog first, always, before any substantial work:**
 
 ```powershell
+# 1. before starting
+powershell -File scripts\watchdog.ps1 -Action Start -Label "<short task>"
+
+# 2. do the work
+
+# 3. before the final response: send the real completion ping, then disarm
 $c = "C:\Windows\System32\curl.exe"
 & $c -sS -m 20 -H "Title: megahack-research: <task>" -d "<one-line outcome>" https://ntfy.sh/ai_agent
+powershell -File scripts\watchdog.ps1 -Action Stop
 ```
+
+`scripts\watchdog.ps1` launches a **detached** PowerShell process that pings the topic on a
+timer, so it survives the agent's turn ending. `-Action Status` reports whether it is armed.
+Heartbeats stop when you disarm, so **silence after a heartbeat means the agent stalled**.
 
 Rules:
 
 - **The payload is public.** `ntfy.sh/ai_agent` is a topic on a public relay — anyone who
-  subscribes to `ai_agent` can read what is posted. Send a short outcome line only. Never
-  send command output, file contents, credentials, tokens, binary paths, hashes, user data,
-  or anything from `samples/`. If a summary would leak, send `"done"` and leave the detail
-  in the chat.
+  subscribes to `ai_agent` can read what is posted. Send a status word or a one-line outcome
+  only. Never send command output, file contents, credentials, tokens, binary paths, hashes,
+  user data, or anything from `samples/`. If a summary would leak, send `"done"`.
 - **`curl` is not `curl` on this machine.** The bare name is PowerShell's alias for
-  `Invoke-WebRequest`, which rejects `-H`, `-d` and `--version`. Always call
-  `curl.exe` by full path.
-- **Never block the task on it.** Keep `-m`, ignore the exit code, and carry on. A failed
+  `Invoke-WebRequest`, which rejects `-H` and `-d`. Always call `curl.exe` by full path.
+- **Never block the task on it.** Keep `-m`, ignore the exit code, carry on. A failed
   notification is not a failed task.
-- **One ping per user-requested task**, not per sub-step. A batch of five scripts is one
-  notification at the end, not five.
-- Dispatch it silently just before the final response, and do not print the curl invocation
-  in the reply. If it fails, say nothing unless the user asked about notifications.
+- **Never flood.** The interval is floored at 30 s (`ValidateRange`) and again inside the
+  worker, because a zero interval turns the heartbeat into a tight loop. Do not try to
+  "test" it with a sub-minute interval; use `-MaxMinutes 1` and read
+  `scripts/.watchdog/watchdog.log` instead.
 - **A test ping is not a completion ping.** Verifying the transport does not tell the user
-  the task finished. Send at the end, or say plainly that you did not.
+  the task finished. Send the real one at the end, or state plainly that you did not.
+- Do not leave a watchdog armed when going idle. `-Action Stop` first, always.
+- ntfy's delayed-message cancel was tried for this and is **not reliable** — a cancel
+  returned success and the message still fired. That is why the watchdog stops by being
+  stopped, rather than by cancelling a scheduled alarm.
 
 ### Asking a question by notification
 

@@ -44,6 +44,10 @@ Size therefore carries no information about which build is which — only the di
 
 ### Finding: the `.geode` package in `samples/` is NOT pristine
 
+**RESOLVED.** See [Cross-check against a pristine package](#cross-check-against-a-pristine-package)
+below. `samples/PRISTINE_MEGAHACK.geode` was supplied later, and `_original.dll` matches it
+byte for byte. The findings below still stand for the *modified* package.
+
 The `.geode` archive is byte-identical to `.geode.zip` (a Geode package is a zip), and the
 `absolllute.hackmega.dll` **inside** it hashes to:
 
@@ -62,13 +66,45 @@ untouched release.
 
 Consequences:
 
-- The roadmap's M1 criterion "cross-check `_original.dll` against a second extraction of
-  `absolllute.hackmega.geode`" **cannot be satisfied from the current sample set**. The
-  package has already been modified in place.
+- ~~The roadmap's M1 criterion "cross-check `_original.dll` against a second extraction of
+  `absolllute.hackmega.geode`" **cannot be satisfied from the current sample set**.~~
+  **Superseded** — see below. The check was performed against `PRISTINE_MEGAHACK.geode`
+  and passed.
 - The only pristine x64 artifact in the sample set is `_original.dll`. It must be preserved
   bit-for-bit; nothing else can stand in for it.
 - The Android `.so` files *are* pristine: their digests inside the package match the
   extracted copies exactly (`57bbe8d8…`, `06489f3b…`). They are usable as-is for M5.
+
+## Cross-check against a pristine package
+
+`samples/PRISTINE_MEGAHACK.geode` (12,526,065 bytes, SHA-256
+`b08e879e45ce555666da5c1048413e3131f687bee02147bf121b4855c0133dbf`, 63 entries) was supplied
+by the user on 2026-10-17 after the question was raised.
+
+Every relevant entry was extracted and hashed:
+
+| Package entry | SHA-256 | Matches |
+| ------------- | ------- | ------- |
+| `absolllute.hackmega.dll` | `1635c3391e853d68eb718965a756fd411ec6a876c23c0b92db508366e1107a92` | **`_original.dll`, exact** |
+| `absolllute.megahack.android32.so` | `57bbe8d84272eb7c9d3a9c2cfe0dd83544b4531829daaf610a59bfd6c981b913` | extracted copy, exact |
+| `absolllute.megahack.android64.so` | `06489f3b6ec0ad08ecdd07c0e3dd7b69bff3571c3a6c1fd574a6dae0249e31da` | extracted copy, exact |
+| `about.md` | `75bcef12e43fd1f5b45ff7006bbb6f370e1497ad0b5c381ef8dd1a507b81bc2d` | extracted copy, exact |
+| `changelog.md` | `928f1e7e88417cd1150ffe77c2aaba95df771044e56a4d034a1b8001503e2a59` | extracted copy, exact |
+| `mod.json` | `7626bcaed75cddf399dd04d4f36851091eff3594b83e2afe12520cc7a37cfcfb` | **differs** |
+
+**The cross-check passes.** The DLL shipped in a pristine v9.1.3 package is bit-identical to
+`absolllute.hackmega_original.dll`. `_original.dll` is now independently verified, and the
+M1 criterion that was blocked is met after all.
+
+Two secondary observations:
+
+- `mod.json` differs by one byte (940 shipped vs 941 extracted) with **no content change** —
+  `difflib` reports no differing lines, so the patch tooling rewrote the file with different
+  line endings or a trailing byte. Nothing semantic was altered.
+- The extracted folder is a **superset** of the pristine package: no entry present in the
+  pristine archive is missing from `samples/absolllute.hackmega/`. The extras are the
+  persistence-patch helpers. So the folder is the pristine release plus a known, enumerated
+  delta, which is the best possible arrangement for this project.
 
 ## Evidence — code cave
 
@@ -166,12 +202,12 @@ starts and the first group simply has an opcode byte that happens to match after
 
 ## Conclusion
 
-1. `_original.dll` (`1635c339…`) is the only pristine x64 artifact in the sample set, and is
-   independently confirmed unpatched by its uniformly-`0xCC` cave.
+1. `_original.dll` (`1635c339…`) is the pristine v9.1.3 release DLL, now **independently
+   verified** against `PRISTINE_MEGAHACK.geode`, and confirmed unpatched by its
+   uniformly-`0xCC` cave.
 2. The four same-sized DLLs must be told apart by digest, never by size or filename.
-3. The `.geode` package in `samples/` has been modified and **cannot** serve as a second
-   extraction for verifying the release. Restoring that check requires a freshly obtained
-   v9.1.3 package.
+3. The `.geode` package in `samples/` has been modified and cannot serve as a second
+   extraction, but `PRISTINE_MEGAHACK.geode` supplies that check and it passes.
 4. The 13 documented hook addresses are corroborated: 48/48 out-of-cave patched bytes are
    accounted for.
 5. The mutable-state block at `0x18081BFC0` is zero-filled and writable, but by page-rounding
@@ -179,8 +215,8 @@ starts and the first group simply has an opcode byte that happens to match after
 
 ## Open questions
 
-- Obtain a pristine v9.1.3 `.geode` and re-run the cross-check that is currently blocked.
-  Without it, `_original.dll` has no independent second source.
+- ~~Obtain a pristine v9.1.3 `.geode` and re-run the cross-check.~~ **Done 2026-10-17** —
+  `PRISTINE_MEGAHACK.geode` supplied, cross-check passed.
 - Does `_original.dll` match the Android `.so` builds? Both are nominally v9.1.3, but the
   ARM builds were not diffed and no shared-code check was run.
 - Resolve the opcode/operand question above so the README's hook table can state instruction

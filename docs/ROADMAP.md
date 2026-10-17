@@ -48,12 +48,12 @@ later milestone gets cheap lookups instead of fresh searching.
 
 Exit criteria:
 
-- [x] SHA-256 of each baseline binary recorded in `notes/provenance.md`. The planned second
-      extraction of `absolllute.hackmega.geode` turned out to be **impossible**: the package
-      in `samples/` has already been patched in place and its DLL is the generated build, not
-      the release. `_original.dll` is the only pristine x64 artifact and has no independent
-      second source. Blocked pending a fresh v9.1.3 download — see
-      [provenance.md](../notes/provenance.md#finding-the-geode-package-in-samples-is-not-pristine).
+- [x] SHA-256 of each baseline binary recorded in `notes/provenance.md`, and **cross-checked
+      against a pristine v9.1.3 package**. `samples/PRISTINE_MEGAHACK.geode` was supplied on
+      2026-10-17; its `absolllute.hackmega.dll` is bit-identical to
+      `absolllute.hackmega_original.dll` (`1635c339…`), as are both Android `.so` files. The
+      baseline is now independently verified — see
+      [provenance.md](../notes/provenance.md#cross-check-against-a-pristine-package).
 - [x] Export table recovered: 30 named MSVC-mangled symbols, demangled with
       `undname.exe`, recorded in `notes/hackpro-api.md`. The export table is **not** stripped.
 - [x] Full import table with preferred-base IAT addresses classified into Geometry Dash,
@@ -158,7 +158,7 @@ These are tracked per milestone rather than as milestones of their own.
 
 | Item                                   | Where | State   |
 | -------------------------------------- | ------ | ------- |
-| SHA-256 baseline pinning                | M1     | done, cross-check blocked |
+| SHA-256 baseline pinning                | M1     | done, cross-check passed |
 | Address map under version control       | M1     | open    |
 | `notes/` entries from RE_NOTES promoted out of `samples/` | M1 | in progress |
 | Script promotion policy (`scripts/` vs scratch) | all | defined in AGENTS.md |
