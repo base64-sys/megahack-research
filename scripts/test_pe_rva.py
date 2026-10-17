@@ -116,6 +116,30 @@ def main() -> int:
 
     check_backed_agrees_with_linear_arithmetic(image)
     print("ok   backed RVAs agree with linear arithmetic")
+
+    # The inverse mapping must round-trip for every backed address.
+    # Six sections have SizeOfRawData > VirtualSize: the trailing bytes are
+    # file alignment padding with no virtual mapping, so clamp the high probe.
+    mismatches = 0
+    for section in image.sections:
+        span = min(section.size_of_raw_data, section.virtual_size)
+        if span <= 0:
+            continue
+        for offset in (
+            section.pointer_to_raw_data,
+            section.pointer_to_raw_data + span - 1,
+        ):
+            va = image.va_of_file_offset(offset)
+            back = image.resolve(va) if va is not None else None
+            if back is None or not back.ok or back.file_offset != offset:
+                mismatches += 1
+    assert mismatches == 0, f"{mismatches} offset/VA round-trips failed"
+    print("ok   file offset -> VA round-trips at both section ends")
+
+    # Offsets outside every section have no VA and must be refused, not guessed.
+    assert image.va_of_file_offset(0) is None, "headers should not map to a VA"
+    assert image.va_of_file_offset(len(image.data) - 1) is None, "EOF should not map"
+
     check_read_refuses_unbacked(image)
     print("ok   read() refuses unbacked addresses")
 

@@ -275,6 +275,19 @@ class Image:
             )
         return self.data[start:end]
 
+    def va_of_file_offset(self, offset: int) -> int | None:
+        """Inverse of resolve(): file offset to preferred-base VA.
+
+        Returns None for offsets that do not belong to any section, which
+        includes the PE headers and any gap between sections.
+        """
+        for section in self.sections:
+            low = section.pointer_to_raw_data
+            high = low + section.size_of_raw_data
+            if low <= offset < high:
+                return self.image_base + section.virtual_address + (offset - low)
+        return None
+
     def _nearest_section(self, rva: int) -> Section | None:
         before = [s for s in self.sections if s.virtual_end <= rva]
         return max(before, key=lambda s: s.virtual_end, default=None)
