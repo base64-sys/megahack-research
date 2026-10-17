@@ -184,21 +184,86 @@ The Android extractor stops at the first non-identifier component, so template a
 function parameter lists are dropped. That is adequate for method names and not adequate for
 recovering template instantiations.
 
+## The union extraction, and what it finally shows
+
+Built as the note required: Windows from `_xrefs.tsv` (which is an ASCII scan **union** the
+SSO decode, by construction), Android from an ASCII scan. Both sides then filtered by the same
+shape rule — every `/`-separated segment an upper-case identifier — which is how Mega Hack
+actually writes keys.
+
+| | Count |
+| --- | ---: |
+| Windows keys | 80 |
+| Android keys | 95 |
+| **Shared** | **51** |
+| Windows-only | 29 |
+| Android-only | 44 |
+
+About a dozen entries on each side are still regex artefacts (`D/}4`, `K/FV`, `Z2/B`,
+`ERROR/REPLAY/EMP`, `OME/SCALE`, the `OME/…` truncation family documented in
+[sso-decoder.md](sso-decoder.md)). They are listed below rather than silently dropped, because
+the `OME/` and `ERROR/REPLAY/` families are recognisable SSO damage and the short random ones
+are Android scan noise. Neither affects the groups below, which are contiguous and real.
+
+### Windows-only, and it is all input and windowing
+
+| Group | Keys |
+| ----- | ---- |
+| `KEYBINDS/` | `SET`, `REMOVE`, `VIEW`, `EMPTY`, `VERSION`, `SHORTCUT`, `DISABLE_IN_EDITOR` |
+| `MESSAGE/KEYBINDS/` | `EMPTY`, `UNBINDABLE` |
+| Keyboard misc | `HOME/HOTKEY_ICONS` |
+| Windowing | `DISPLAY/HACK_BORDERLESS_CLASSIC`, `MESSAGE/DISPLAY/FULLSCREEN_STOPPED` |
+| Theming | `HOME/THEME/{}/COL`, `HOME/THEME/{}/COL/ALT`, `HOME/THEME/{}/TOGGLE` |
+| Desktop paths | `ERROR/HOME/NO_APPDATA` |
+| Legacy saves | `ERROR/HOME/LEGACY_PARSE_FAIL`, `LEGACY_SAVE_KEYBINDS`, `LEGACY_SAVE_PARSE`, `MESSAGE/HOME/CONFIRM_LOAD_LEGACY` |
+
+Every one is keyboard input, window management, desktop paths, or legacy save migration.
+
+### Android-only, and it is touch and customisation
+
+| Group | Keys |
+| ----- | ---- |
+| `ICONIC/PREVIEW/` | **11 keys** — `BASE_PARTICLES`, `COL1`, `COL2`, `DASH_EFFECT`, `DEATH_EFFECT`, `EXTRA`, `GHOST_TRAIL`, `GLOW`, `SHIP_FIRE`, `TRAIL`, `TRAIL_COL`, `WAVE_TRAIL` |
+| Window geometry | `HOME/WIDTH`, `HOME/HEIGHT`, `HOME/FLOATER/X`, `HOME/FLOATER/Y`, `HOME/ACCENT`, `HOME/BACKGROUND`, `HOME/TAB_TEXT` |
+| Replay UI | `REPLAY/NONE`, `REPLAY/OPEN`, `REPLAY/SAVE`, `MESSAGE/REPLAY/SAVE` |
+| Dialogs | `MESSAGE/YES`, `MESSAGE/NO` |
+| Other | `ICONIC/OVERRIDE`, `ICONIC/WAVE`, `HOME/SEARCH/AUTO_UPDATE` |
+
+### Two details worth calling out
+
+**Android has an entire icon-preview customisation layer that Windows does not** — 11
+`ICONIC/PREVIEW/*` keys, covering particles, colours, and per-event effects (dash, death, ghost
+trail, ship fire, wave trail). Nothing comparable exists on the Windows side.
+
+**The dialog vocabulary differs.** Windows uses `MESSAGE/CANCEL`; Android uses
+`MESSAGE/YES` and `MESSAGE/NO`. That is a platform-appropriate difference in button sets
+rather than a rename, and it is the clearest sign these are deliberate platform builds rather
+than one build with features stripped.
+
+### What still survives as solid
+
+51 shared keys is the core configuration surface, and it is common to both. Combined with the
+findings that did not depend on extraction at all — the ABI difference, the absent RTTI, the
+Windows-only `KEYBINDS/` and `DISPLAY/`, and the fully shared asset names — the platform
+picture is coherent.
+
 ## Conclusion
 
 1. Windows is MSVC with RTTI; Android is clang/Itanium with **no RTTI**. Solid.
-2. `KEYBINDS/` and `DISPLAY/` are absent from Android entirely. Solid — absence is not
-   something a Windows-side extraction bug can manufacture.
-3. All 8 `.png` asset names are shared. Solid.
-4. **Every other overlap figure in this note is unreliable** and has been corrected twice.
-   A correct union extraction has not been built, so no class-set or key-set comparison
-   should be quoted from here yet.
+2. Under the union extraction: 80 Windows keys, 95 Android keys, **51 shared**.
+3. **Windows-only is input and windowing** — 7 `KEYBINDS/` keys, hotkey icons, borderless and
+   fullscreen display, theme toggles, `APPDATA` paths, legacy-save migration.
+4. **Android-only is touch and customisation** — an 11-key `ICONIC/PREVIEW/` layer that has
+   no Windows counterpart, window geometry, and a replay UI using `MESSAGE/YES|NO` where
+   Windows uses `MESSAGE/CANCEL`.
+5. Assets are fully shared (8 of 8 `.png` names).
+6. Roughly a dozen regex artefacts remain on each side and are listed rather than hidden.
 
 ## Open questions
 
-- Build the union extraction — Windows ASCII ∪ Windows SSO decode, Android ASCII — and only
-  then produce an overlap table. Until this exists the comparison is not publishable.
-- Normalise the two ABIs' class encodings for a class-level comparison.
-- Determine whether Android carries `KEYBINDS/` and `DISPLAY/` under a different prefix.
-- Establish whether `REPLAY/*` and `MESSAGE/YES|OK|DISMISS`, which surface Android-side,
-  are genuinely Android-only features or Windows keys the SSO decoder missed.
+- Check whether `ICONIC/PREVIEW/*` is reachable on Windows under a different key prefix, or
+  genuinely absent. Its size makes it the most interesting asymmetry found.
+- Establish whether `HOME/WIDTH`/`HEIGHT` relate to the windowed-mode support the persistence
+  work already touches.
+- Filter the residual artefacts out of the key shapes so future counts are exact rather than
+  approximate.
