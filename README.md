@@ -173,6 +173,7 @@ These live in `scripts/`, so they exist on a fresh clone. Neither needs `samples
 | `run_supervised.ps1`          | Run a long command with stall detection; see `AGENTS.md`                     |
 | `keepalive.ps1`             | Idle-detecting keep-alive that re-prompts the AI chat window                 |
 | `compare_platform_classes.py` | Compare Windows/Android class sets across the two ABIs                  |
+| `verify_platform_keys.py`     | Assert a Windows/Android key difference against both raw images             |
 
 ```powershell
 python scripts/pe_rva.py <image.dll> <rva-or-va> ... [--sections]
