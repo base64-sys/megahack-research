@@ -61,6 +61,27 @@ Rules:
   notification at the end, not five.
 - Dispatch it silently just before the final response, and do not print the curl invocation
   in the reply. If it fails, say nothing unless the user asked about notifications.
+- **A test ping is not a completion ping.** Verifying the transport does not tell the user
+  the task finished. Send at the end, or say plainly that you did not.
+
+### Asking a question by notification
+
+The user reads these and comes back with an answer, so a question can unblock a long run
+instead of waiting for the next message. Ask only when an answer changes what to do next and
+only the user knows it.
+
+```powershell
+& $c -sS -m 20 -H "Title: megahack-research: question" -H "Tags: question" `
+       -d "One short question, plus the reason it blocks." https://ntfy.sh/ai_agent
+```
+
+- One short question per message. This is read on a lock screen; it is not the place for
+  context.
+- Only for a real fork in the road: missing evidence, a permission question, a choice
+  between valid approaches. Never ask what the code already answers.
+- Ask once. If there is no answer by the next task, keep working on the branch that does not
+  depend on it, and say in the reply which question is still open.
+- Same payload rules as above: no paths, hashes, command output or `samples/` data.
 
 ## Long-running commands
 
