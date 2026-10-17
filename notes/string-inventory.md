@@ -236,6 +236,34 @@ The ASN.1 fragments and the SSO artefacts both have a *known* fix that is not a 
 field names against the OpenSSL symbol table, and mark SSO rows whose shape matches a documented
 decoder error instead of classifying them at all.
 
+### A rejected approach: detecting SSO artefacts by text shape
+
+The obvious cheap fix for the 181 SSO rows is to flag them by shape. Measured, and **not
+adopted**, because precision is too low to be worth anything:
+
+| Test | Matches | Verdict |
+| ---- | ------: | ------- |
+| SSO text is a suffix of any other inventory string | 37 | false merges with genuine strings |
+| … requiring the longer string to be VA-backed (real image bytes) | 21 | still mostly false positives |
+| SSO text is a substring of a longer string | 20 | **unsound, rejected outright** |
+
+The substring test is wrong in principle: it flags `HACK_NO_CAMERA` because it is contained in
+`HACK_NO_CAMERA_ZOOM`, and `libcocos2d.dll` because it is contained in `libcocos2d.dll%/` — both
+genuine strings. The stricter suffix test is better but still imprecise, because ordinary words
+are suffixes of longer identifiers: `ball` of `player_ball`, `hack` of `absolllute.megahack`,
+`list` of `plist`, `string` of `cstring`, `label` of `ep-label`.
+
+So text alone cannot separate a truncated literal from a real short word, and no rule is added.
+The 181 rows stay where they are. The fix that *would* work is already recorded in
+[sso-decoder.md](sso-decoder.md): recover the store layout precisely enough to fix the
+split/merge modes, which needs the disassembly rather than the decompiler's local names. Shape
+matching is the guess that rule would replace.
+
+One incidental gain: the truncation test reproduces, from the data, three examples quoted in
+[sso-decoder.md](sso-decoder.md) as known error modes — `/SET`, `/REMOVE` and `/VIEW` as
+truncations of `KEYBINDS/SET`, `KEYBINDS/REMOVE` and `KEYBINDS/VIEW`. That is independent
+confirmation of the documented mode, not a new finding.
+
 ## Conclusion
 
 1. 4,145 strings classified into 17 categories, 3,609 VA-anchored and 536 SSO-only.
