@@ -88,6 +88,46 @@ This is exactly the gap M1's settings criterion names: "every key, its type, def
 function that applies it." The two key spaces are now known to be separate, and the join
 between them is the specific thing still missing.
 
+## The UI table: one function, 16 KB, no callers
+
+All 77 `ui-element` names are referenced from a **single** decompiled function:
+
+| | |
+| --- | --- |
+| Address | `FUN_180062940` (VA `0x180062940`, RVA `403776`) |
+| Size | **16,037 bytes** |
+| Callers | **0** |
+| Settings accessors called | none |
+
+A 16 KB function with no callers that names every control in the interface is a **static
+registration table** — the place Mega Hack builds its settings UI. It is the anchor M3's
+feature map was missing.
+
+It calls none of the three numeric accessors (`FUN_18008F420`, `FUN_18002DE50`,
+`FUN_180003D80`) and none of `FUN_18007CB60`. That is the same absence the join found, now
+localised to one function: **the UI is built here and the settings are read elsewhere**, and
+whatever connects them is a third thing this pass has not located.
+
+UNVERIFIED: whether this is a constructor, a registration table, or a generated blob. With
+zero callers it is either called indirectly through a pointer or reached from an initialiser
+that Ghidra did not attribute. The 16 KB size is also large enough that it may be several
+functions merged, so it should be split before being trusted as a single unit.
+
+Sample of the names it wires up — this is a readable feature list:
+
+```
+CHECKBOX_DEAFEN_IN_PRACTICE     CHECKBOX_NOCLIP_ACCURACY_LIMIT
+CHECKBOX_DEAFEN_WITH_STARTPOS   CHECKBOX_NOCLIP_DEATH_LIMIT
+CHECKBOX_FILL_HITBOX            CHECKBOX_HIDE_INTERFACE
+CHECKBOX_HAZARDS_HITBOX         CHECKBOX_HITBOXES_PLAYER
+CHECKBOX_LEGACY_CALCULATION     CHECKBOX_JUMPSCARE_ONLY_0
+COLOUR_PASSABLE_HITBOX
+```
+
+`CHECKBOX_DEAFEN_*` appears twice in the binary, so **"DEAFEN" is Mega Hack's own
+spelling**, not a decoding artefact from `decode_sso.py`. It is likely a typo in the mod's own source, and is recorded because a reconstruction should
+match it rather than silently correct it.
+
 ## What is still missing
 
 `other` is 1,359 rows — **33% of the inventory**, down from 76% at the first pass but still
