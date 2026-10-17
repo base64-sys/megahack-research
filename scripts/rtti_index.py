@@ -191,25 +191,63 @@ def read_u32(data: bytes, rva: int, image: Image) -> int | None:
 def decode_hierarchy(image: Image, col: dict, types: dict[int, str]) -> list[dict]:
     """Walk the Base Class Hierarchy Descriptor into real base/derived edges.
 
-    DISABLED - the layout is not yet confirmed, and returning empty would be
-    indistinguishable from "this class has no bases".
+    The layout is **not** the documented one. MSVC's
+    `_RTTIBaseClassHierarchyDescriptor` is `pNumBaseClasses(4) pBaseClassArray(4)`,
+    but in this binary `numBases` sits at **+8**, not +0, with the array RVA at +12
+    and two zero dwords in front. Reading it at +0 yields `numBases == 0` for every
+    class, which would claim Mega Hack has no inheritance at all - contradicted
+    immediately by the vtable layout.
 
-    MSVC documents `_RTTIBaseClassHierarchyDescriptor` as
-    `pNumBaseClasses(4) pBaseClassArray(4)` with the array elsewhere, but the
-    bytes at `pClassHierarchy` for `hackpro::ui::Object` (COL `0x1805439A0`,
-    hierarchy `0x5439B8`) read as:
+    Confirmed against `hackpro::ui::*`, whose inheritance is known from the
+    16-byte vtable stride: all seven derive directly from `hackpro::ui::Object`,
+    which is itself the sole root of that subtree.
 
-        0x5439b8: 00 00 00 00   00 00 00 00   01 00 00 00
-        0x5439c4: c8 39 54 00   d0 39 54 00   00 00 00 00
+        pClassHierarchy + 0   0x00000000   unused
+        pClassHierarchy + 4   0x00000000   unused
+        pClassHierarchy + 8   numBaseClasses
+        pClassHierarchy + 12  RVA of the array
+        pClassHierarchy + 16  (the first array entry, inline)
 
-    so `numBases` would be 0 at +0 and the plausible `[1, 0x5439c8]` pair sits at
-    +8 instead, which is not the documented layout. Either this compiler variant
-    differs, or the descriptor is anchored elsewhere. Guessing which would
-    manufacture a hierarchy, so this stays off until it is verified.
+    Each array entry is an RVA to a Base Class Descriptor:
 
-    See notes/rtti-classes.md for the raw bytes and the candidate readings.
+        +0 pTypeDescriptor   +4 numContainedBases
+        +8 mdisp             +12 pdisp      +16 vdisp
+
+    Entry 0 is the class itself, with `numContainedBases` equal to its base count.
+    Later entries are its bases in inheritance order, most-derived first;
+    `numContainedBases == 0` marks a direct base.
     """
-    return []
+    data = image.data
+    bases: list[dict] = []
+    hier_rva = col["hierarchy_rva"]
+
+    count = read_u32(data, hier_rva + 8, image)
+    array_rva = read_u32(data, hier_rva + 12, image)
+    if count is None or not (0 < count <= 64) or not array_rva:
+        return bases
+
+    for i in range(1, count):  # entry 0 is the class itself
+        bcd_rva = read_u32(data, array_rva + 4 * i, image)
+        if not bcd_rva:
+            continue
+        td = read_u32(data, bcd_rva, image)
+        contained = read_u32(data, bcd_rva + 4, image)
+        mdisp = read_u32(data, bcd_rva + 8, image)
+        pdisp = read_u32(data, bcd_rva + 12, image)
+        vdisp = read_u32(data, bcd_rva + 16, image)
+        if td is None:
+            continue
+        bases.append(
+            {
+                "name": demangle(types.get(td, f"<td {td:#x}>")),
+                "mangled": types.get(td, ""),
+                "direct": contained == 0,
+                "mdisp": mdisp if mdisp is not None else 0,
+                "pdisp": pdisp if pdisp is not None else 0,
+                "vdisp": vdisp if vdisp is not None else 0,
+            }
+        )
+    return bases
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -287,16 +325,24 @@ def main(argv: list[str] | None = None) -> int:
 
     hier_out = args.out.with_name("_rtti_hierarchy.tsv")
     if edges:
+        # A class with N vtables contributes N identical base lists - one COL per
+        # vtable. Emit one row per (derived, base) pair, keeping the lowest vtable,
+        # so the edge count reflects classes rather than vtable multiplicity.
+        seen: set[tuple[str, str]] = set()
         with hier_out.open("w", encoding="utf-8") as fh:
-            fh.write("# derived\tbase\tdirect\tnon_class\tmdisp\tvdisp\tvt_derived\n")
-            for r in rows:
+            fh.write("# derived\tbase\tdirect\tmdisp\tpdisp\tvdisp\tvt_derived\n")
+            for r in sorted(rows, key=lambda x: x["vt_va"]):
                 for b in r["bases"]:
+                    key = (r["name"], b["name"])
+                    if key in seen:
+                        continue
+                    seen.add(key)
                     fh.write(
                         f"{r['name']}\t{b['name']}\t{int(b['direct'])}\t"
-                        f"{int(b['non_class'])}\t{b['mdisp']}\t{b['vdisp']}\t{r['vt_va']:#x}\n"
+                        f"{b['mdisp']}\t{b['pdisp']}\t{b['vdisp']}\t{r['vt_va']:#x}\n"
                     )
         if not args.quiet:
-            print(f"hierarchy: {hier_out} ({edges} edges)")
+            print(f"hierarchy: {hier_out} ({edges} raw, {len(seen)} distinct edges)")
     elif not args.quiet:
         # Deliberately not written: an empty hierarchy table reads as "this binary
         # has no inheritance", which is a claim nothing here supports.

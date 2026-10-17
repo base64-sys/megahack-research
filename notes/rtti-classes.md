@@ -94,46 +94,85 @@ is what a closure comes out as. The exact mangled name is kept in the `mangled` 
 every row, so nothing is lost. Real demangling stays with `undname.exe`, as used for the 30
 exports in [hackpro-api.md](hackpro-api.md).
 
-UNVERIFIED: inheritance relationships between the COLs. `pClassHierarchy` is captured but
-**not decoded**, and `rtti_index.py` deliberately returns no bases rather than a guess.
-Reading the documented `_RTTIBaseClassHierarchyDescriptor` (`pNumBaseClasses(4)`
-`pBaseClassArray(4)`) yields `numBases == 0` for every class, which would mean Mega Hack has
-no inheritance at all — contradicted by the vtable evidence.
+## Inheritance: solved
 
-Raw bytes at `pClassHierarchy` for `hackpro::ui::Object` (COL RVA `0x5439A0`, hierarchy RVA
-`0x5439B8`, `.rdata`, resolves `backed`):
+`pClassHierarchy` decodes, and **the layout is not the documented one.** MSVC's
+`_RTTIBaseClassHierarchyDescriptor` is `pNumBaseClasses(4) pBaseClassArray(4)`, but in this
+binary `numBases` sits at **+8**, with the array RVA at +12 and two zero dwords ahead of it.
+Read at +0 it yields `numBases == 0` for every class, which claims Mega Hack has no
+inheritance at all — refuted immediately by the vtable layout.
 
 ```
-0x5439b8:  00 00 00 00   00 00 00 00   01 00 00 00
-0x5439c4:  c8 39 54 00   d0 39 54 00   00 00 00 00
+pClassHierarchy + 0    0x00000000   unused
+pClassHierarchy + 4    0x00000000   unused
+pClassHierarchy + 8    numBaseClasses
+pClassHierarchy + 12   RVA of the array
+pClassHierarchy + 16   first array entry, inline
 ```
 
-The plausible `[numBases=1, array=0x5439c8]` pair sits at **+8**, not +0, and `0x5439d0`
-would then be the single base-class descriptor RVA. Three readings remain open and they were
-not separated within this pass:
+Each array entry is an RVA to a Base Class Descriptor: `pTypeDescriptor(4)
+numContainedBases(4) mdisp(4) pdisp(4) vdisp(4)`. Entry 0 is the class itself; later entries
+are its bases most-derived first, with `numContainedBases == 0` marking a direct base.
 
-1. The descriptor is anchored at `pClassHierarchy + 8` in this compiler variant.
-2. `pClassHierarchy` does not point at the descriptor itself but at a related table.
-3. The COL's field order differs, shifting which dword was taken as the hierarchy pointer.
+Confirmed against `hackpro::ui::*`, whose inheritance was already known from the 16-byte
+vtable stride. All seven derive **directly** from `hackpro::ui::Object`, which is itself the
+root — so the earlier guess that `Option` parented `Checkbox` was wrong, and testing it is
+what caught that.
 
-Separating them needs a known-single-inheritance class to check against — the `hackpro::ui::*`
-chain at vtables `0x180543698`-`0x180543708` is the obvious candidate, since a 16-byte stride
-across `Object`, `Option`, `Checkbox`, `Spinner`, `Shortcut`, `Colour`, `TextBox`, `Picker` is
-what single inheritance of a small UI base looks like.
+| Metric | Count |
+| ------ | ----: |
+| Raw edges | 3,102 |
+| Distinct (derived, base) pairs | **757** |
+| Classes with at least one base | 279 |
 
-Shipping an empty `_rtti_hierarchy.tsv` labelled "0 edges" would read as a finding, so
-`decode_hierarchy()` returns `[]` with the reasoning in its docstring until this is settled.
+Raw exceeds distinct because a class with *N* vtables has *N* COLs contributing the same base
+list; the index de-duplicates.
+
+### Mega Hack's own hierarchy
+
+In-project edges only, excluding cocos2d and GD host types:
+
+| Derived | Base |
+| ------- | ---- |
+| `hackpro::ui::{Option,Checkbox,Spinner,Shortcut,Colour,TextBox,Picker}` | `hackpro::ui::Object` |
+| `hackpro::Config` | `hackpro::BasicConfig`, `hackpro::NodeDelegate` |
+| `core::HomeWin` | `mega::extensions::Home`, `hackpro::extensions::Delegate` |
+| `core::Keybinds` | `hackpro::extensions::Delegate` |
+| `mega::extensions::Home` | `hackpro::extensions::Delegate` |
+| `mega::utils::Resources` | `hackpro::DataDelegate` |
+| `iconic::SpecialPastel` | `iconic::SpecialRGB` → `iconic::SpecialCore` |
+| `iconic::{SpecialRGB,SpecialGradient,SpecialCustom}` | `iconic::SpecialCore` |
+| `tabcore::menu::{ItemToggle,Toggle,Input,Button}` | `tabcore::menu::Item` |
+| `tabcore::menu::Spinner` | `tabcore::menu::Input` → `tabcore::menu::Item` |
+| `tabcore::layout::{Grid,SwitcherContainer}` | `tabcore::layout::ScrollerDelegate` |
+| `tabcore::dialog::SwitcherNode` | `tabcore::menu::Menu` |
+
+Three things worth stating plainly:
+
+1. **`hackpro::ui::Object` is a flat root.** Seven widget types, all direct children, none
+   derived from each other. That is why the vtables are 16 bytes apart.
+2. **`iconic::` is a three-level hierarchy** — `SpecialCore` → `SpecialRGB` → `SpecialPastel`
+   — which is the only genuine multi-level chain among Mega Hack's own classes.
+3. **Multiple inheritance is real.** `hackpro::Config` derives from both `BasicConfig` and
+   `NodeDelegate`, and `core::HomeWin` from both `mega::extensions::Home` and
+   `hackpro::extensions::Delegate`. This is the same shape as the `hackpro::Config` COL pair
+   seen earlier, where the second COL carries `offset = 0x128`.
+
+`session::Login`, `core::NoclipTracker` and `tabcore::dialog::ColourPicker` have base names
+that are clearly mis-demangled — `tabcore::std`, and a nonsense `tabcore::...` string — so
+their bases are recorded but not trusted. The `mangled` column in `_rtti.tsv` is authoritative.
 
 ## Conclusion
 
 1. 497 polymorphic classes with vtables recovered from `_original.dll`, each anchored to a VA.
-2. Mega Hack's namespaces are `hackpro`, `core`, `mega::extensions`, `mega::utils` and —
-   newly — `tabcore`.
-3. nlohmann/json 3.12.0 is statically linked.
-4. Inheritance edges are captured but not decoded.
+2. 757 distinct inheritance edges — `numBases` lives at `+8`, not `+0` as documented.
+3. Mega Hack's namespaces are `hackpro`, `core`, `mega::extensions`, `mega::utils`, `tabcore`,
+   and `iconic`.
+4. nlohmann/json 3.12.0 is statically linked.
 
 ## Open questions
 
-- Decode `pClassHierarchy` to recover the actual base-class graph.
+- Three classes have mis-demangled base names; `undname.exe` on their mangled names would
+  resolve them.
 - `mega::utils::CompressedBuffer` is unexamined and in scope; the encrypted sibling is not.
 - Check whether the Android `.so` carries the same class set, which is the M5 question.
