@@ -86,6 +86,56 @@ looking for a function that both sides mention.
 - Where the UI key space is bridged to the numeric settings at runtime.
 - The single init entry that also has a direct caller (`0x1803EA850`), which is probably a
   deliberate explicit re-run but is unexamined.
-- Whether other pointer-reached sets matter as much as this one. The 230 undecoded init
-  entries are thunks, but Mega Hack registers hooks through Geode, so **hook tables are the
-  other large indirect-call set** and have not been enumerated the same way.
+
+## The other indirect set: hook bodies, and a hypothesis that failed
+
+The same question applies to Mega Hack's 277 hook bodies in `_wrappers.tsv`, and it was worth
+asking before trusting any "unreachable function" claim elsewhere.
+
+| Set | Count |
+| ---- | ----: |
+| Hook bodies | 277 |
+| With ≥ 1 direct caller | **10** |
+| With zero direct callers | **267** |
+| Zero-caller bodies with any RIP-relative reference | **0** |
+
+Disassembly confirms these are real hook bodies rather than stubs — stack-canary setup, then a
+tail `jmp` through a stored original-function pointer:
+
+```asm
+0x18010de30  push  rbp / sub rsp,0x30 / lea rbp,[rsp+0x30]
+0x18010de3a  mov  qword ptr [rbp-8], -2
+0x18010de42  mov  eax, dword ptr [rip+...]      ; stack cookie
+0x18010de4e  mov  rdx, qword ptr gs:[0x58]      ; CookieBase
+0x18010de6f  jmp  qword ptr [rip + 0x6f3ee1]    ; the original function
+```
+
+So 267 hook bodies are reached by a mechanism neither the call graph nor a RIP-relative scan can
+see, which is the same blind spot as `_initterm` but larger.
+
+### The RVA-table hypothesis, and why it is rejected
+
+The obvious hypothesis: registration stores **RVAs** rather than VAs, which would be
+ASLR-safe and consistent with the crashes recorded in `AGENTS.md`. A 4-byte search for every
+one of the 267 body RVAs in `.rdata` matches **267 of 267**.
+
+That match is not believed, and the reason is worth recording:
+
+1. The hits span **1,428,418 bytes** of `.rdata` with gaps of 104/108/112/248/252/256 — not the
+   shape of a table, but of scattered coincidences.
+2. The offsets are **not consistently aligned** (e.g. `0x1F912` and `0x149104` are 2 and 4
+   past an 8-byte boundary).
+3. Dumping the bytes at the first hit shows **coherent x86-64 machine code**, not a record:
+   `48 c7 45 ff fe 18 45 c7` is `mov qword ptr [rbp-1], 0xC74518FE`, `4d 8b 48 04` is
+   `mov r9, qword ptr [r8+4]`. `.rdata` is `0x40000040` — readable, **not executable** — so this
+   is stored code, plausibly original bytes saved for unhooking.
+
+A 4-byte value match inside stored instruction bytes is exactly the false positive an
+unaligned substring search produces. The address arithmetic was re-checked with
+`scripts/pe_rva.py` (`0x18067D018` resolves to `backed`, `.rdata`, note `0x149018 into
+.rdata`), so this is **not** an RVA/offset mapping bug — the mapping is right and the
+interpretation is wrong.
+
+Recorded as a rejected approach so the next investigation does not spend the hour again.
+UNVERIFIED: how the 267 bodies are registered. It is not a RIP-relative reference, not a direct
+call, and not an aligned `.rdata` RVA table.
