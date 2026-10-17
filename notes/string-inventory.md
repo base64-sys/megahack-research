@@ -62,6 +62,32 @@ The general lesson, which has now cost real rework twice in this repo: **check w
 bucket, not how big it is.** A category that looks tidier than the data is a category that
 is lying.
 
+## The UI names and the numeric settings never meet
+
+Joining the 77 `ui-element` names against the 138 numeric settings in `_settings.tsv`, by
+shared decompiled function, gives **zero overlaps**. Not one UI control name and one numeric
+setting id are read by the same function.
+
+That is a useful negative. It means the two key spaces are not connected the way the obvious
+join assumes:
+
+- **Numeric ids** — 138 of them, read through `FUN_18008F420`, `FUN_18002DE50` and
+  `FUN_180003D80`. See [settings-registry.md](settings-registry.md).
+- **UI control names** — the `CHECKBOX_*` / `COLOUR_*` strings, apparently read somewhere else
+  entirely.
+
+So Mega Hack appears to have **at least two key spaces** that are bridged somewhere this pass
+has not found: a numeric id registry, and a string-keyed map behind `FUN_18007CB60`. The UI
+names most likely go through the string side, and something translates between them.
+
+UNVERIFIED: where the bridge is. The obvious candidate is `hackpro::Config`, which the RTTI
+hierarchy shows deriving from both `hackpro::BasicConfig` and `hackpro::NodeDelegate` — a type
+sitting across both worlds. That is a lead, not a finding, and no code path was traced.
+
+This is exactly the gap M1's settings criterion names: "every key, its type, default, and the
+function that applies it." The two key spaces are now known to be separate, and the join
+between them is the specific thing still missing.
+
 ## What is still missing
 
 `other` is 1,359 rows — **33% of the inventory**, down from 76% at the first pass but still

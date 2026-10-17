@@ -180,6 +180,9 @@ These live in `scripts/`, so they exist on a fresh clone. Neither needs `samples
 own snake_case identifiers, 77 its own UI widget names. Largest bucket is still `other` at 33%,
 so M1's criterion is not yet met. See [notes/string-inventory.md](notes/string-inventory.md).
 
+Those UI names and the 138 numeric settings share **no** decompiled function, so Mega Hack has at least
+two key spaces bridged somewhere not yet found - which is the specific gap M1's settings criterion names.
+
 ```powershell
 python scripts/pe_rva.py <image.dll> <rva-or-va> ... [--sections]
 python scripts/test_pe_rva.py
