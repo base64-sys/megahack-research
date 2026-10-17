@@ -44,7 +44,8 @@ must not depend on the turn finishing.
 **Arm the watchdog first, always, before any substantial work:**
 
 ```powershell
-# 1. before starting  — this also sends the "Armed" ping and opens a new run index
+# 1. before starting  — this also sends the "Armed" ping, refreshes
+#    docs/progress.svg from live repo state, and opens a new run index
 powershell -File scripts\watchdog.ps1 -Action Start -Label "<short task>"
 
 # 2. do the work

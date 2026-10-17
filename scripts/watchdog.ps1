@@ -70,6 +70,34 @@ function Get-WatchdogPid {
     return $null
 }
 
+function Get-Python {
+    # Bare `python` here is a Microsoft Store stub that exits without doing
+    # anything, so prefer the real interpreter by absolute path.
+    $candidates = @(
+        $env:MEGAHACK_PYTHON,
+        'C:\Users\Robert_\AppData\Local\Python\bin\python3.exe',
+        'C:\Users\Robert_AppData\Local\Python\bin\python3.exe'
+    ) | Where-Object { $_ -and (Test-Path -LiteralPath $_) }
+    return $candidates | Select-Object -First 1
+}
+
+function Update-ProgressGraphic {
+    # Arming the watchdog means work is starting, so refresh the progress
+    # graphic at the same moment. Never let this block or fail the run.
+    $python = Get-Python
+    if (-not $python) { Write-Verbose 'no python found; progress graphic not refreshed'; return }
+    $script = Join-Path $PSScriptRoot 'make_progress_svg.py'
+    if (-not (Test-Path -LiteralPath $script)) { return }
+    Push-Location (Split-Path $PSScriptRoot -Parent)
+    try {
+        & $python $script 2>&1 | Out-Null
+    } catch {
+        Write-Verbose "progress graphic refresh failed: $_"
+    } finally {
+        Pop-Location
+    }
+}
+
 switch ($Action) {
     'Status' {
         $pid_ = Get-WatchdogPid
@@ -142,6 +170,8 @@ Beat 'Heartbeat' "watchdog deadline reached for $Label. The agent turn is over."
 
         Set-Content -LiteralPath $PidFile -Value $proc.Id -Encoding ASCII
         "watchdog started: pid=$($proc.Id) interval=${IntervalMinutes}m max=${MaxMinutes}m label=$Label"
+        Update-ProgressGraphic
+        'progress graphic refreshed'
         break
     }
 }

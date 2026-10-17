@@ -33,6 +33,11 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 from pe_rva import Image  # noqa: E402
 
+# The SSO decoder shares this module's view of the recovered tree, so import it
+# rather than re-implementing the literal extraction.
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from decode_sso import decode_from_file  # noqa: E402
+
 REPO = pathlib.Path(__file__).resolve().parent.parent
 BASELINE = REPO / "samples" / "absolllute.hackmega" / "absolllute.hackmega_original.dll"
 FUNCTIONS = REPO / "recovered" / "functions"
@@ -89,6 +94,7 @@ def main(argv: list[str] | None = None) -> int:
     files = sorted(args.functions.glob("*.c"))
     dat_refs = 0
     literal_refs = 0
+    sso_refs: dict[str, set[str]] = collections.defaultdict(set)
     for path in files:
         text = path.read_text(encoding="utf-8", errors="replace")
         seen = {int(h, 16) for h in DAT_RE.findall(text)}
@@ -99,6 +105,12 @@ def main(argv: list[str] | None = None) -> int:
             for va in by_text.get(literal, ()):
                 seen.add(va)
                 literal_refs += 1
+        # Pass 3: strings MSVC built in the SSO buffer, which Ghidra renders as a
+        # chain of typed immediates and therefore never appears as a literal at
+        # all. These have no VA - the bytes only exist on the stack - so they
+        # are indexed by text alone.
+        for _, decoded in decode_from_file(path):
+            sso_refs[decoded].add(path.stem)
         for va in seen:
             refs[va].append(path.stem)
 
@@ -128,18 +140,24 @@ def main(argv: list[str] | None = None) -> int:
             mapped = {wrapper_target.get(f, f) for f in fns}
             linked += 1
             fh.write(f"{va:#x}\t{len(fns)}\t{','.join(sorted(mapped))}\t{text}\n")
+        # Stack-built literals have no VA; they live only in the function body.
+        fh.write("#\n# text\tfunctions\t(note: stack-built, no VA)\n")
+        for text in sorted(sso_refs):
+            fns = sorted({wrapper_target.get(f, f) for f in sso_refs[text]})
+            fh.write(f"sso\t{len(fns)}\t{','.join(fns)}\t{text}\n")
 
     if not args.quiet:
         print(f"strings found        : {len(strings)}")
         print(f"strings referenced    : {linked}")
-        print(f"  DAT_ references      : {dat_refs}")
+        print(f"  DAT_ references     : {dat_refs}")
         print(f"  literal references  : {literal_refs}")
+        print(f"  stack-built literals : {len(sso_refs)} distinct (SSO, no VA)")
         print(f"recovered functions   : {len(files)}")
         print(f"hook targets folded in: {len(wrapper_target)}")
         print(f"index                 : {out}")
         print()
         print("A string appears when at least one decompiled function names it, either")
-        print("as a DAT_ symbol or as an inlined literal.")
+        print("as a DAT_ symbol, an inlined literal, or an SSO buffer it built itself.")
 
     if args.grep:
         needles = [n.lower() for n in args.grep]

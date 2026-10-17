@@ -56,6 +56,38 @@ def immediate_bytes(value: int, width: int = 4) -> bytes:
     return value.to_bytes(width, "little", signed=False)
 
 
+OK = set(
+    "abcdefghijklmnopqrstuvwxyz"
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    "0123456789_/.- +()"
+)
+
+
+def plausible(text: str) -> bool:
+    """Reject immediate runs that are not strings.
+
+    Concatenating every store in a file also picks up offsets and numbers whose
+    bytes happen to be printable: ` GD`, `(nL`, `/3E`. Two rules separate those
+    from real Mega Hack literals without overfitting to any one sample:
+
+    - the run is trimmed, so padding space never counts as content;
+    - at least two alphabetic characters, because every real literal here is a
+      word or a key - `ICONIC/DISABLE`, `ERROR/DISMISS`, `v9.1.3`.
+
+    A recall-first gate, not proof. See notes/sso-decoder.md for the two error
+    modes it does not fix: adjacent literals merging, and a lost leading byte.
+    """
+    text = text.strip()
+    if len(text) < 3:
+        return False
+    if text[0] not in OK:
+        return False
+    if sum(1 for c in text if c.isalpha()) < 2:
+        return False
+    good = sum(1 for c in text if c in OK)
+    return good / len(text) >= 0.85
+
+
 def decode_from_file(path: pathlib.Path) -> list[tuple[str, str]]:
     """Return [(local, decoded_text)] for each SSO literal in one file.
 
@@ -70,8 +102,10 @@ def decode_from_file(path: pathlib.Path) -> list[tuple[str, str]]:
     text = path.read_text(encoding="utf-8", errors="replace")
     results: list[tuple[str, str]] = []
 
+    # A decoded literal is proof on its own, so it bypasses the plausibility gate.
     for literal in STRNCPY_RE.findall(text):
-        results.append(("strncpy", literal))
+        if len(literal) >= 3:
+            results.append(("strncpy", literal))
 
     stream: list[tuple[str, bytes]] = []
     for line in text.splitlines():
@@ -102,36 +136,12 @@ def decode_from_file(path: pathlib.Path) -> list[tuple[str, str]]:
             current.append(byte)
             continue
         if len(current) >= 3:
-            results.append((start_name, current.decode("ascii", errors="replace")))
+            run = current.decode("ascii", errors="replace").strip()
+            if len(run) >= 3 and plausible(run):
+                results.append((start_name, run))
         current = bytearray()
 
     return results
-
-
-def decode(parts: list[tuple[str, bytes]]) -> str:
-    """Longest printable ASCII run in an SSO group.
-
-    A group is not just the string bytes: MSVC also emits the initialisation
-    sentinel (0xfffffffffffffffe), the zero-filled tail of the buffer, and the
-    size/capacity fields, all as stores. Taking the whole group and splitting at
-    the first NUL truncates at the sentinel, so scan for the longest printable
-    run instead.
-    """
-    blob = bytearray()
-    for _, raw in parts:
-        blob.extend(raw)
-    best = ""
-    current = bytearray()
-    for byte in blob:
-        if 32 <= byte < 127:
-            current.append(byte)
-            continue
-        if len(current) > len(best):
-            best = current.decode("ascii", errors="replace")
-        current = bytearray()
-    if len(current) > len(best):
-        best = current.decode("ascii", errors="replace")
-    return best
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -154,10 +164,7 @@ def main(argv: list[str] | None = None) -> int:
     seen: collections.Counter = collections.Counter()
     for path in targets:
         for local, text in decode_from_file(path):
-            if not text or len(text) < 3:
-                continue
-            printable = sum(1 for c in text if 32 <= ord(c) < 127)
-            if printable / len(text) < 0.9:
+            if not plausible(text):
                 continue
             seen[text] += 1
             if needle and needle not in text.lower():
