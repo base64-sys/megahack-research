@@ -288,6 +288,17 @@ class Image:
                 return self.image_base + section.virtual_address + (offset - low)
         return None
 
+    def rva_of_offset(self, offset: int) -> int | None:
+        """File offset to RVA, the inverse of `va_of_file_offset`.
+
+        Added because walking a buffer by offset and needing the RVA is the
+        normal direction when scanning for RTTI structures, and doing it by hand
+        invites the RVA-as-buffer-index mistake this module exists to prevent.
+        Returns None for offsets outside every section.
+        """
+        va = self.va_of_file_offset(offset)
+        return None if va is None else va - self.image_base
+
     def _nearest_section(self, rva: int) -> Section | None:
         before = [s for s in self.sections if s.virtual_end <= rva]
         return max(before, key=lambda s: s.virtual_end, default=None)
