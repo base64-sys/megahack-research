@@ -72,8 +72,12 @@ seven and two vtables respectively. Neither `hackpro`, `hackpro::extensions` nor
 need this.
 
 **`mega::utils::EncryptedBuffer` and `CompressedBuffer`.** Buffers with an inner
-`InputBuffer`, at vtables `0x180547A98`/`0x180547C98`. Given the persistence work, an
-encrypted buffer type in `mega::utils` is directly relevant and was not previously on the map.
+`InputBuffer`, at vtables `0x180547A98`/`0x180547C98`. Follow-up established that the
+encrypted buffer sits in the **licence/entitlement validation path** — OpenSSL statically
+linked, a login endpoint, `Error validating license`, `Serial Number:` — which
+`AGENTS.md` puts out of scope. Investigation stopped there on purpose; see
+[not-investigated-licence-path.md](not-investigated-licence-path.md). `CompressedBuffer` is
+compression rather than licensing and remains in scope.
 
 **Bundled third-party code.** `nlohmann::json_abi_v3_12_0::detail::{exception, type_error,
 out_of_range, invalid_iterator, parse_error}` — Mega Hack statically links nlohmann/json
@@ -131,5 +135,5 @@ Shipping an empty `_rtti_hierarchy.tsv` labelled "0 edges" would read as a findi
 ## Open questions
 
 - Decode `pClassHierarchy` to recover the actual base-class graph.
-- `mega::utils::EncryptedBuffer` is unexamined and relevant to the persistence work.
+- `mega::utils::CompressedBuffer` is unexamined and in scope; the encrypted sibling is not.
 - Check whether the Android `.so` carries the same class set, which is the M5 question.
