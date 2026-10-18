@@ -161,6 +161,51 @@ inside it. `FUN_18019B5F0()` is the shared predicate that gates all three hooks.
 **Verified GD structure offset: `PlayLayer + 0x3230`.** Derived from the load/store pair
 above, not from any struct layout assumption.
 
+## The shared gate, `FUN_18019B5F0`
+
+`FUN_18019B5F0`, VA `0x18019B5F0`, 117 bytes, 2 callers — the predicate all three hooks
+consult. Read in full it is the mod's anti-cheat check, and it is short enough to state
+exactly:
+
+```
+lVar2 = FUN_1801acdb0();                       // 50 callers
+if (lVar2 != 0) {                              // ...there is a current level
+    uVar3 = FUN_18008a510();
+    if (FUN_18008f420(uVar3, 0x1e2))  goto ACTIVE;                  // config tag
+    if (FUN_18008f420(uVar3, 0x1e1) && DAT_18080cbd8) goto ACTIVE; // config tag + safe mode
+    if (FUN_18002de50(uVar3, 0x49) && FUN_180199520() >= 1.0) goto ACTIVE;
+}
+return INACTIVE;
+```
+
+with no current level meaning **inactive**, so the hooks pass GD's original through
+untouched.
+
+Its three parts:
+
+- `FUN_1801ACDB0` (VA `0x1801ACDB0`, 21 bytes, **50 callers**) is
+  `*(thunk_FUN_180147BA0() + 0x208)` — the current level pointer, with the null test being
+  the "not in a level" guard.
+- `DAT_18080CBD8` is a cached safe-mode flag. `FUN_18019B330`, VA `0x18019B330`, 20 bytes,
+  one caller, is the whole writer:
+  `DAT_18080CBD8 = mega::utils::safe_mode::areCheatsEnabled();`
+  and it runs after **every** `resetLevel`, because `FUN_180199E80` calls it. So safe mode
+  is re-evaluated once per level start, not per frame.
+- `FUN_180199520` (VA `0x180199520`, 58 bytes) is a two-global float expression:
+  `(1.0 - DAT_18080cb78 / DAT_18080cb70)` when `DAT_18080cb70 > 0.0`, else `1.0`. It is a
+  **progress fraction** built from two `double` globals, and the gate fires when it reaches
+  `1.0`.
+
+`mega::utils::safe_mode::areCheatsEnabled` is one of the 30 exported symbols
+(VA `0x18019B350`), so this whole scheme is reachable from other mods through the
+extension API.
+
+UNVERIFIED: what the two progress globals at `DAT_18080CB70` / `DAT_18080CB78` measure, and
+why `>= 1.0` is the trigger rather than `>= 100.0` or a fraction of one. The expression
+yields `1.0` both when the denominator is zero and when the numerator equals it, so at least
+two different states collapse onto the same value and the comparison is disambiguating
+between them by exclusion.
+
 ## What this means for the milestones
 
 - **M1, "verified GD offsets"**: three GD function RVAs and one GD field offset are now
@@ -179,15 +224,15 @@ above, not from any struct layout assumption.
 
 ## Open questions
 
-- `FUN_18019B5F0` — what does the shared gate test? It decides whether three hooks are
-  transparent or active, so it is probably a "safe mode" or "level is hackable" predicate.
-- `FUN_18019B330` — Mega Hack's post-`resetLevel` work; this is the closest thing to a
-  "post-update tracking" chokepoint.
+- The two progress globals in `FUN_18019B5F0` (see above).
 - `FUN_1800AB850` versus `FUN_18019A0C0`: both call `createConvention` then register, but
-  they are distinct functions. Whether they differ in hook kind (member vs. free) is not
-  established.
-- The lazy-thunk family is large and mechanical. Counting them would give the true size of
-  the GD surface, but no index exists for it yet.
+  they are distinct functions with very different caller counts — 33 versus 1. The single
+  caller of `FUN_18019A0C0` is `FUN_180199D10`, which registers all three of the hooks in
+  this note. That asymmetry is unexplained.
+- The lazy-thunk family is large and mechanical: 43 registration sites imply at least that
+  many thunks, but only 27 callers of `FUN_1801A4300` and 2 of `FUN_1801A5190` were
+  counted. No index enumerates the family, so the true size of the GD surface reached
+  through `GetModuleHandleA(NULL) + rva` is not yet counted.
 
 ## Failure modes recorded
 

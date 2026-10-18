@@ -303,9 +303,19 @@ On persistence, one correction is worth stating loudly rather than burying: **th
 `best_runs.bin` sidecar documented in `samples/.../RE_NOTES_PERSISTENT_BEST_RUN.md` is not
 Mega Hack's format.** A byte scan of all four Windows images finds `best_runs` and
 `MHBRDB1` only in binaries this repo's patch generates; `_original.dll` contains neither,
-and `_xrefs.tsv` gives them zero references. The release's own stores are `hackpro.json`
-and GD's `data.json` / `save.json` under `%LOCALAPPDATA%\…\Octavus\`. See
+and `_xrefs.tsv` gives them zero references. The release's own store is `hackpro.json`,
+which is a flat name → typed-value map with no room for a per-level table. See
 [notes/persistence.md](notes/persistence.md).
+
+And the corollary, since it is surprising: **Mega Hack does not store Best Run data at
+all.** Every hook it installs was enumerated — 43 registration sites naming just **12**
+distinct GD methods, eleven of them `PlayLayer` — and the only storage-side hook,
+`GJGameLevel::savePercentage`, can *veto* the call but never write one. Best Run is GD's own
+saved percentage; Mega Hack's contribution is to stop a cheated run from being persisted.
+That is also why the local patch needed a sidecar: there was no table to extend.
+
+Note the gap between two numbers that are easy to conflate: Mega Hack **names** 214 host
+methods but **hooks** only 12. Naming one is not hooking it.
 
 `build_xref_index.py` matches Ghidra's `DAT_` symbols, its inlined string literals, **and**
 strings MSVC built in an SSO buffer: 3,609 of the rows are VA-backed, 566 are stack-built

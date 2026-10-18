@@ -94,16 +94,82 @@ save-data paths — see [references/](references/).
 release. Absence of a filename is not proof of absence of persistence, so this is a bounded
 result: **the three above are every store this pass found**, not an exhaustive proof.
 
+## Where Best Run is stored: it is not, by Mega Hack
+
+This was the file's biggest open question. It now has an answer, and the answer is a
+negative — reached by enumeration rather than by inference.
+
+**Every hook Mega Hack installs.** Hook registration has a fixed call shape
+(`FUN_18019A0C0` / `FUN_1800AB850`, see [hook-dispatch.md](hook-dispatch.md)), and the
+method name is a literal argument at every site. Sweeping the recovered tree for those two
+calls yields **43 registration sites naming 12 distinct methods**:
+
+| Method | Sites |
+| ------ | ----: |
+| `PlayLayer::resetLevel` | 25 |
+| `PlayLayer::setupHasCompleted` | 5 |
+| `PlayLayer::updateProgressbar` | 2 |
+| `PlayLayer::startGame` | 2 |
+| `PlayLayer::levelComplete` | 2 |
+| `PlayLayer::updateAttempts` | 1 |
+| `PlayLayer::showCompleteEffect` | 1 |
+| `PlayLayer::onQuit` | 1 |
+| `PlayLayer::updateTestModeLabel` | 1 |
+| `PlayLayer::toggleProgressbar` | 1 |
+| `PlayLayer::showEndLayer` | 1 |
+| `GJGameLevel::savePercentage` | 1 |
+
+Eleven of the twelve are `PlayLayer`. **The twelfth is the only storage-side hook in the
+entire mod**, and its callback `FUN_180199DF0` cannot write anything — it either vetoes the
+call or forwards it:
+
+```
+cVar1 = FUN_18019b5f0();
+if (cVar1 != '\0') return;                                  // blocked
+FUN_1801462c0(param_1, param_2, param_3, param_4);           // the original
+```
+
+So **Mega Hack v9.1.3 does not store Best Run data.** Best Run is GD's own saved
+percentage, and Mega Hack's role is to stop a cheated run from being persisted by vetoing
+`GJGameLevel::savePercentage`. That also explains why the local patch had to invent
+`best_runs.bin`: there was no Mega Hack table to extend, because there is no Mega Hack
+table.
+
+Two independent supports:
+
+1. **No write path.** A per-level `(level, startPercent) → bestEndPercent` table would need
+   a hook that writes it, or a serializer that emits it. The complete hook list above has
+   neither, and `FUN_180076EB0`, the only registry serialiser, writes the five
+   `V_*` type groups — no per-level structure.
+2. **No room in the schema.** `hackpro.json` is a flat name → typed-value map
+   (bool / int / double / string / bytes), and the single value slot per name cannot hold a
+   map.
+
+UNVERIFIED: the completeness of the 43-site sweep. It is a textual sweep of the recovered
+tree for two known call shapes, so a registration whose call Ghidra split, inlined or
+rendered differently would be missed. The 12 names are what this pass found, not a proof
+that no thirteenth exists. Reading the registration helper's own parameters would make it
+rigorous.
+
+A consequence worth recording: `_host_methods.tsv` lists **214** methods that Mega Hack
+*names*, but only **12** of them are *hooked*. Naming a method — for diagnostics, for a
+lookup, or incidentally — is not hooking it, and the two numbers should not be confused.
+
 ## Open questions
 
-- **Where does v9.1.3 natively persist Best Run data?** The strongest candidate is GD's own
-  `data.json`, since it already carries per-level progress and the Best Run feature is
-  `(level, startPercent) -> bestEndPercent`, which maps onto GD's level data. Not yet
-  traced; this is the real M4 question now that the sidecar framing is gone.
-- The `%LOCALAPPDATA%` → `Octavus` path segment.
-- Whether `hackpro.json` write-back happens on a timer, at shutdown, or both.
+- **Where does v9.1.3 natively persist Best Run data?** **Answered: it does not.** See the
+  section above — the complete hook list contains no writer, and the one storage-side hook
+  can only veto. Mega Hack reads GD's saved percentage and blocks GD from persisting a
+  cheated one.
+- The directory segment between `%LOCALAPPDATA%` and `Octavus`.
+- Whether `hackpro.json` write-back happens on a timer, at shutdown, or both. Both its
+  reader and its writer have **zero direct callers**, so neither is reachable by a direct
+  call-graph walk; they are dispatched through a pointer.
 - `FUN_180042FB0` has one caller, `FUN_180042D70`; whether it is a startup-only read or also
   a migration path is untraced.
+- `FUN_18019B5F0`, the shared hook gate, is now traced in
+  [hook-dispatch.md](hook-dispatch.md#the-shared-gate-fun_18019b5f0) and is the anti-cheat
+  predicate; what the `>= 1.0` progress test means is still open.
 
 ## Failure modes recorded
 

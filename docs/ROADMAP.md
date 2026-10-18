@@ -189,6 +189,14 @@ Exit criteria:
 - [ ] Mega Hack's native Best Run storage located and documented: which of GD's `data.json`
       fields carry `(level, startPercent) -> bestEndPercent`, and on which flush points it
       is written.
+      **Answered, negatively: Mega Hack stores no Best Run data.** Sweeping every hook
+      registration site yields 43 sites naming only 12 distinct GD methods, eleven of them
+      `PlayLayer`. The single storage-side hook is `GJGameLevel::savePercentage`, whose
+      callback can only *veto* the call, never write. Best Run is GD's own saved percentage,
+      and Mega Hack's role is to stop a cheated run from being persisted. See
+      [persistence.md](../notes/persistence.md). Residual work: the exact
+      `(level, startPercent)` fields inside GD's own structures, which are GD's schema and
+      not Mega Hack's.
 - [ ] `hackpro.json` read/write lifecycle mapped: which of `FUN_1800BF190` /
       `FUN_1800BF400` are called from where, given both have zero direct callers.
 - [ ] The `%LOCALAPPDATA%` → `Octavus` path segment resolved.
