@@ -101,31 +101,44 @@ refers to the stored copy. A sibling `/api/mega_hack/v8/logout_all` appears in t
 pass. UNVERIFIED: the transport, the payload, and whether `v8` here is a fallback for older
 clients rather than a distinct service. Do not test against it.
 
-## Correction: `FUN_18007CB60` is an FNV-1a hash, not a keyed lookup
+## Correction (superseded): `FUN_18007CB60` and the FNV constant
 
-`notes/settings-registry.md` described `FUN_18007CB60(manager, out, key)` as a key-based
-settings lookup, with the key appearing only as a Ghidra local. **That was wrong.**
+This section previously read "Correction: `FUN_18007CB60` is an FNV-1a hash, not a keyed
+lookup", asserting the function only hashes and does not look anything up. **That claim was
+wrong and has been replaced.** It came from reading the hashing half of the function and
+missing the lookup that follows it — the same mistake made once already in
+[settings-registry.md](settings-registry.md), which records the full history.
 
-Decompiling it shows `0xCBF29CE484222325`, the FNV-1a-64 offset basis, and it reads
-`param_3[2]` as the string size and `param_3[3]` as the capacity, spilling to the heap above
-15. So the signature is:
+The settled position, from `pe_disasm.py` on the whole function and from `keyFor`'s use of a
+neighbouring function:
 
-```
-uint64_t FUN_18007cb60(const char *owner, uint64_t *out, const std::string &key)
-```
+| Function | VA | Direction |
+| -------- | -- | --------- |
+| `FUN_18007CB60` | `0x18007CB60` | **name → `Tag`**, the body of exported `tagFor` |
+| `FUN_18007CCF0` | `0x18007CCF0` | **`Tag` → name**, the body of exported `keyFor` |
 
-— **an FNV-1a-64 hash of a string.** The apparent `'%#"'` string the decoder surfaced was a
-fragment of the hash constant, which is exactly the kind of coincidence that makes an index
-look broken when it is not.
+Both hash with FNV-1a-64 — that part was always right — and both then probe a chained map.
+The original claim also asserted `param_3[2]`/`param_3[3]` are the string's size and
+capacity; those displacements are a `std::string` argument, and they belong to the hashed
+key, not to the function's return.
 
-Two consequences:
+One consequence here survives unchanged and is still useful:
 
-1. The four "key-based lookups" in the settings table are hashes, not lookups. The setting
-   names are not recoverable from the call shape at all; the correct way to read them is the
-   SSO decoder, or the disassembly of the stores.
-2. **Mega Hack hashes strings with FNV-1a-64** — the same primitive the persistence sidecar
-   uses for `FNV1aChecksumOfRecords` in `RE_NOTES_PERSISTENT_BEST_RUN.md`. One hashing
-   convention spans the mod core and the patch, which is useful when writing validators.
+> **Mega Hack hashes strings with FNV-1a-64** — the same primitive the persistence sidecar
+> uses for `FNV1aChecksumOfRecords` in `RE_NOTES_PERSISTENT_BEST_RUN.md`. One hashing
+> convention spans the mod core and the patch, which is useful when writing validators.
+
+The other consequence does not: the four `FUN_18007CB60` sites in the settings table are
+not "hashes of setting names". They are profile-key lookups made by `FUN_18008ABC0`, and
+their names come from a profile JSON at runtime.
+
+### A caution on the URL recorded above
+
+The endpoint in the preceding section is recorded as UNVERIFIED and untested, which is
+correct handling. Add to that: its *provenance* is also unestablished — nothing in the
+binary or the sample set was cited as its source, so it should not be treated as a known
+Mega Hack service, and it should not be reproduced elsewhere in this repository without a
+citation.
 
 UNVERIFIED: what the first parameter is, and whether the hash feeds a lookup, a comparison,
 or only change detection.
@@ -153,6 +166,86 @@ sample: the goal is to reject a class of noise, not to memorise the answers.
 So treat the output as a high-recall candidate list to be confirmed, never as a finished
 inventory. Every string here should be re-derived from the disassembly before it goes into a
 note as fact — which is what the AGENTS.md verify-twice rule already requires.
+
+### A fourth mode the decoder could not see: the whole store was skipped
+
+Found while trying to decode the serialiser group keys in `FUN_180076EB0`
+(`notes/settings-registry.md`). `decode_sso.py --file` on that function returned
+**0 literals**, even though the function contains `V_BOOL`, `V_INT`, `V_STRING` and
+`V_BYTES` as immediates.
+
+Cause: `STORE_RE` demanded a bare hex literal after `=`. Where the compiler typed the local
+as a pointer, Ghidra emits the store as
+
+```
+local_c8 = (longlong *)0x4c4f4f425f56;      // "V_BOOL"
+local_c8 = (longlong *)0x544e495f56;        // "V_INT"
+```
+
+and the cast made every one of them fail to match. Nothing was rejected by the plausibility
+gate; the evidence was never read.
+
+Fixed by making the cast optional in the pattern. This is a **syntactic** variant of the
+same evidence, so it deliberately leaves `plausible()` alone.
+
+| Tree | Decoded | Distinct |
+| ---- | ------: | ------: |
+| Before | 677 | 495 |
+| After | 736 | **525** |
+
+68 literals gained, 9 lost. Every one of the 9 is an improvement or a duplicate: `CTORZ`
+(×3) and `LCONFIG` were merge artefacts, `COREINTERFACE` (×2) now reads `COREINTERFACE*`,
+`/SET` now reads `KEYBINDS/SET`, and `scroll` was a truncation of `content-scroll`, which
+now decodes correctly alongside `tab-scroll` and `tab-backdrop`. `drop` is still recovered,
+once instead of three times.
+
+### A rejected variant: emitting a delimiter for zero stores
+
+The same investigation suggested an obvious second fix. A store of pure zeros rstrips to
+nothing, so it contributes no delimiter — and in `FUN_180076EB0` the store
+`plStack_c0 = 0;` was the only thing separating `V_BYTES` from what followed it. Emitting
+one `0x00` for such a store recovered `V_BYTES`, which looked like a clear win.
+
+It was not. Across the tree:
+
+| Tree | Decoded | Distinct |
+| ---- | ------: | ------: |
+| Cast fix only | 736 | **525** |
+| Cast fix + zero delimiter | 771 | 521 |
+
+Distinct count went **down**. The zero stores sit inside literals as well as between them,
+so the extra delimiter over-split runs and cost about 48 real literals: `libcocos2d.dll`
+(×30), `size`, `label`, `Enter`, `KEYBINDS/REMOVE` (×3), `HOME/RULESETS/0`,
+`ICONIC/OVERRIDE`, `fmod.dll`, `HACK_LEVEL_EDIT`. One gain against 48 losses.
+
+**Rejected, and not shipped.** The reasoning it came from — "a zero store is a delimiter, so
+emit a delimiter" — is sound in the abstract and wrong in the data, because the same store
+plays both roles. Recorded here so the idea is not re-proposed.
+
+`V_BYTES` is instead decoded by hand from `0x53455459425f56` with `pe_disasm.py`, which is
+what the verify-twice rule asks for anyway.
+
+### A remaining gap: single-byte tail stores
+
+The same disassembly shows why one of the five keys is invisible to the decoder. MSVC does
+not always build a short `std::string` with one wide immediate. For a 9-byte literal in
+`FUN_180076EB0` it emits:
+
+```
+movabs rax, 0x414d494345445f56   ; "V_DECIMA"
+mov      qword ptr [rbp-0x50], rax
+mov      byte  ptr [rbp-0x48], 0x4c ; 'L'
+```
+
+Ghidra collapses the `mov byte` into `plStack_c0 = (longlong *)0x4c`, which the store
+pattern does not match, so the tail character is lost. The same shape appears for
+`V_INT` (`mov dword …, 0x4e495f56` + `mov byte …, 0x54`), where the literal never even
+appears contiguously in `.text` — it exists only in immediates.
+
+Open work: a rule for single-byte tail stores. It has the same shape of risk as the
+rejected zero-delimiter variant above, so it should be measured the same way — count
+distinct literals before and after across the whole tree, and list what was lost, not just
+what was gained.
 
 ## Conclusion
 

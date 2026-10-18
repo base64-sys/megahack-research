@@ -36,8 +36,17 @@ REPO = pathlib.Path(__file__).resolve().parent.parent
 FUNCTIONS = REPO / "recovered" / "functions"
 
 # local_XX = 0x...;   /  uStack_XX = 0x...;   /  local_XX._0_1_ = 0x...
+#
+# The optional cast is a real gap, not a loosening. Where the compiler typed the
+# local as a pointer, Ghidra emits `local_c8 = (longlong *)0x4c4f4f425f56;`
+# instead of `local_c8 = 0x4c4f4f425f56;`. Demanding a bare hex literal after
+# `=` silently dropped every such store; in `FUN_180076EB0` that was three of the
+# five serialiser group keys (`V_BOOL`, `V_INT`, `V_STRING`). This accepts a
+# syntactic variant of the same evidence, so it does not touch the plausibility
+# gate and does not reintroduce the false positives notes/sso-decoder.md records.
+CAST = r"(?:\((?:(?:unsigned|signed|long|short|char|const)\s+)*[A-Za-z_][\w:]*\s*\**\)\s*)?"
 STORE_RE = re.compile(
-    r"^\s*(\w+)\s*(?:\._\d+_\d+)?\s*=\s*(0x[0-9a-fA-F]+|\d+)\s*;"
+    r"^\s*(\w+)\s*(?:\._\d+_\d+)?\s*=\s*" + CAST + r"(0x[0-9a-fA-F]+|\d+)\s*;"
 )
 # a literal Ghidra already decoded
 LITERAL_RE = re.compile(r'"((?:[^"\\\n]|\\.){2,})"')
@@ -125,6 +134,15 @@ def decode_from_file(path: pathlib.Path) -> list[tuple[str, str]]:
         # a literal whole; the zero bytes that separate one literal from the
         # next come from the buffer initialisation and the size/capacity fields,
         # which are separate stores and survive here.
+        #
+        # A store of pure zeros rstrips to nothing, so it contributes no
+        # delimiter. Emitting one 0x00 for it was tried and rejected: it looks
+        # like it should be strictly more correct, and on one file it was - it
+        # recovered `V_BYTES` from FUN_180076EB0. Across the whole tree it lost
+        # about 48 real literals (`libcocos2d.dll`, `size`, `label`, `Enter`,
+        # `KEYBINDS/REMOVE`, `HOME/RULESETS/0`, `ICONIC/OVERRIDE`, ...) because
+        # those zero stores sit *inside* literals too, over-splitting them.
+        # Distinct count went 525 -> 521 for that trade. See notes/sso-decoder.md.
         blob.extend(raw.rstrip(b"\x00"))
 
     current = bytearray()

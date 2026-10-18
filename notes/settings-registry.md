@@ -320,19 +320,36 @@ name, and groups the output under one key per type:
 | --------- | --------- | ----------------------------- |
 | `\0` | `V_BOOL` | `0x4c4f4f425f56`, len 6 |
 | `\1` | `V_INT` | `0x544e495f56`, len 5 |
-| `\2` | `V_DECIMA…` | `&DAT_414d494345445f56`, len 9 |
+| `\2` | `V_DECIMAL` | `movabs rax, 0x414d494345445f56` + `mov byte ptr, 0x4c`, len 9 |
 | `\3` | `V_STRING` | `0x474e495254535f56`, len 8 |
 | `\4` | `V_BYTES` | `0x53455459425f56`, len 7 |
 
-Each decodes cleanly from its little-endian immediate (`0x4c4f4f425f56` = `"V_BOOL"`). The
-type-2 key is a VA-backed literal of 9 bytes whose first 8 are `V_DECIMA`.
+Four of the five decode from their little-endian immediate alone
+(`0x4c4f4f425f56` = `"V_BOOL"`). The fifth does not appear as one immediate, because
+MSVC split it across a `movabs` and a single-byte tail store. `pe_disasm.py` at VA
+`0x180077403`, RVA `0x77403`, file `0x767F0`:
 
-UNVERIFIED: the 9th byte of the type-2 group key. `scripts/decode_sso.py --grep V_`
-returns **nothing** for these five literals despite decoding 677 elsewhere, so the tool's
-scan does not cover this function's stack-SSO form. Reading the 9th byte at the
-VA Ghidra labelled, or extending `decode_sso.py` to this pattern, would confirm whether it
-is `V_DECIMAL`, `V_DECIMAL64` truncated, or something else. The five types otherwise agree
-with the five value types named independently in `hackpro-api.md`.
+```
+0000000180077403  48 c7 45 b8 00 00 00 00   mov qword ptr [rbp - 0x48], 0
+000000018007740b  48 c7 45 c0 09 00 00 00   mov qword ptr [rbp - 0x40], 9      ; size
+0000000180077413  48 c7 45 c8 0f 00 00 00   mov qword ptr [rbp - 0x38], 0xf    ; capacity
+000000018007741b  48 b8 56 5f 44 45 43 49 4d 41   movabs rax, 0x414d494345445f56
+0000000180077425  48 89 45 b0             mov qword ptr [rbp - 0x50], rax
+0000000180077429  c6 45 b8 4c             mov byte ptr [rbp - 0x48], 0x4c     ; 'L'
+```
+
+Size 9, eight bytes `V_DECIMA`, then `0x4C` — **`V_DECIMAL`**. Ghidra renders the
+`mov byte` as `plStack_c0 = (longlong *)0x4c` and the `movabs` as `&DAT_414d494345445f56`,
+which is why the decompiled form looked like a lost pointer. It is a lost *byte store*, and
+`scripts/decode_sso.py` has no rule for single-byte tail stores — open work, and the reason
+it recovers only three of these five from the recovered tree.
+
+Type 2 is confirmed twice over, not just by the name: the entry loop at `0x1800774D6`
+selects type `2` with `cmp byte ptr [r13 + 0x38], 2` and then loads its value with
+`movsd xmm0, qword ptr [r13 + 0x18]` — an IEEE double. That agrees with the exported
+`getConfigVar<double>` and `registerListener<double>`.
+
+The five types agree with the five value types named independently in `hackpro-api.md`.
 
 Consequence for M1: **the on-disk settings file is keyed by tag name, not by number.**
 Any reconstruction of save/load has to reproduce the `keyFor` name map, not just the
@@ -477,8 +494,10 @@ names and the `"nosave"` flag is what keeps an entry out of the file.
    numeric accessors. That is the bridge between the UI widget names and the numeric
    settings, and it is invisible to per-function string xrefs because the names arrive as
    caller arguments rather than literals.
-6. Five value types, written as `V_BOOL`, `V_INT`, `V_DECIMA…`, `V_STRING`, `V_BYTES`
-   groups by `FUN_180076EB0`, agreeing with `hackpro-api.md`'s five.
+6. Five value types, written as `V_BOOL`, `V_INT`, `V_DECIMAL`, `V_STRING`, `V_BYTES`
+   groups by `FUN_180076EB0`, agreeing with `hackpro-api.md`'s five. `V_DECIMAL` is
+   confirmed by disassembly (a `movabs` plus a `0x4C` byte store, size 9) and type 2 is
+   confirmed independently by the `movsd` that loads its value.
 7. The save file is keyed by **name**, so save/load parity requires reproducing the name
    map and honouring `"nosave"`.
 8. All seven ids previously listed as unknown are located and their roles partly identified.
@@ -491,7 +510,11 @@ names and the `"nosave"` flag is what keeps an entry out of the file.
 - The per-setting `"action"` flag is read but its effect on `FUN_18008B780`'s dispatch is not
   fully traced; it plausibly gates whether the entry lands in the hack list or the
   action list.
-- Confirm the 9th byte of the type-2 group key in `FUN_180076EB0`.
+- `scripts/decode_sso.py` has no rule for MSVC's single-byte tail stores
+  (`mov byte ptr [rbp - 0x48], 0x4c`), which is why it recovers only three of the five
+  `V_*` group keys from the recovered tree. `pe_disasm.py` closes the gap for any single
+  case; a general rule needs the same before/after counting that the rejected zero-delimiter
+  variant got — see [sso-decoder.md](sso-decoder.md).
 - `FUN_18008A510`'s 208 callers all take the same registry, so nothing in the binary bounds
   the tag space. Whether `hackpro.json` and the mod's UI agree on the full list is a
   question about the data, not the binary.
