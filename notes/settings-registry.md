@@ -633,8 +633,21 @@ rather than an extension of either.
 
 ## Failure modes recorded
 
-- A guessed accessor list produced a plausible table that silently omitted setting 501. The
-  omission was only visible because a hand-recorded id from an earlier note failed to appear.
-  Cross-check index output against ids already known from other notes.
-- Indexing `&local_XX` as if it were a key name would have produced four nonsense entries. It
-  is better to report the local than to invent a name.
+- **A guessed accessor list produced a plausible table that silently omitted setting 501.**
+  The omission was only visible because a hand-recorded id from an earlier note failed to
+  appear. Cross-check index output against ids already known from other notes.
+- **Guessing *argument position* cost tag 285, in exactly the same way.** The matcher took
+  "the first comma-separated argument that looks numeric"; `FUN_18002EE40` puts its tag
+  third. Fixed by recording the index per accessor, and now pinned by
+  `scripts/test_settings_index.py`.
+- **That test was verified to fail before it was trusted.** Both bug classes were
+  re-injected deliberately: setting the accessor index back to 1 reproduces the original
+  failure exactly (tag count drops 149 → 134, eleven assertions fail), and replacing the
+  nesting-aware split with a naive `split(",")` fails the two comma-in-a-cast checks. A test
+  that has never been seen to fail is not evidence of anything.
+- **Indexing `&local_XX` as if it were a key name would have produced four nonsense
+  entries.** It is better to report the local than to invent a name.
+- The splitter must track nesting: a real call is
+  `FUN_18002ee40(param_1,(vector<unsigned_int,std::allocator<unsigned_int>_> *)…)`, whose
+  cast contains a comma. A naive split puts the tag one position later and reads it as
+  `None`.

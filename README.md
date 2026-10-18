@@ -179,6 +179,7 @@ These live in `scripts/`, so they exist on a fresh clone. Neither needs `samples
 | `hook_sites.py`             | Enumerate every hook Mega Hack installs: method, host RVA and callback       |
 | `init_table.py`              | Recover the CRT `_initterm` tables and the functions they call indirectly   |
 | `test_init_table.py`         | Pin those tables and the zero-caller counts; skips without a sample set       |
+| `test_settings_index.py`     | Pin the tag table and the argument splitter that has lost tags twice         |
 
 `_strings.tsv` splits 4,175 code-referenced strings into 17 categories — 980 of them Mega Hack's
 own snake_case identifiers, 77 its own UI widget names. Largest bucket is still `other` at **26%**
@@ -207,7 +208,11 @@ analysis of `_original.dll` can enumerate the full key list — which is why the
 `_settings.tsv` are a sample of what code happens to read, not a count of what exists.
 `FUN_18002EE40` reads a **second registry**, distinguished by its own map layout (`+0xC0`
 with the mask at `+0xD8`), and takes the tag as its *third* argument — which is why an index
-that guessed argument position had missed it entirely. See
+that guessed argument position had missed it entirely. That gap is now closed, and
+`scripts/test_settings_index.py` pins it: the argument splitter is tested as a pure
+function so it needs no sample set, and the specific tags (285, 501, `0x353`–`0x358`) are
+pinned so a future accessor cannot go missing silently again. Both bug classes were
+confirmed to fail the suite before the guards were trusted. See
 [notes/settings-registry.md](notes/settings-registry.md).
 
 ```powershell
@@ -216,6 +221,7 @@ python scripts/test_pe_rva.py
 python scripts/resolve_wrappers.py
 python scripts/build_xref_index.py --grep best
 python scripts/settings_index.py
+python scripts/test_settings_index.py
 python scripts/build_callgraph.py --callers-of 0x180169EB0
 python scripts/rtti_index.py --hier
 python scripts/decode_sso.py --grep KEYBINDS
