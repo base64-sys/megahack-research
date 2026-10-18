@@ -206,6 +206,14 @@ key as the setting name and its `"tag"` number as the `Tag`, plus optional `"def
 maintained as a bijection in two runtime maps on `hackpro::BasicConfig`. So no static
 analysis of `_original.dll` can enumerate the full key list — which is why the tags in
 `_settings.tsv` are a sample of what code happens to read, not a count of what exists.
+
+The registry is the **global object at VA `0x180800F58`**, at least `0x4A8` bytes, in
+`.data`'s zero-fill tail — it has no bytes in the file at all and is built entirely by the
+static constructor `FUN_1800A27E0`. Every accessor receives that global `+0xD8`. Its
+constructor writes `hackpro::Config::vftable` at both `+0x00` and `+0x128`, which
+independently confirms the `Config`-at-`+0x128` layout that the `add rcx, -0x128` thunk in
+`FUN_1800917B0` implies — two unrelated functions agreeing on the same offset.
+
 `FUN_18002EE40` is the typed accessor for **`hackpro::Bytes`** — it logs that literal on a
 miss — so all four accessors read the one registry with four different value types. It takes
 the tag as its *third* argument, which is why an index that guessed argument position had
@@ -285,9 +293,9 @@ level lifecycle. That consistency is itself the check on the index: 25 registrat
 RVAs confirmed above all reproduce.
 
 Two costs worth knowing about this index: two of the 43 callbacks are Ghidra `LAB_` labels
-with no recovered `.c`, and the `onQuit` hook body calls `FUN_18002EE40`, a **settings
-accessor over a second registry** — which is why tag 285 was missing from
-`_settings.tsv` until the index recorded argument position explicitly.
+with no recovered `.c`, and the `onQuit` hook body calls `FUN_18002EE40`, the
+`hackpro::Bytes` accessor — which is why tag 285 was missing from `_settings.tsv` until the
+index recorded argument position explicitly.
 
 `_xrefs.tsv` (4,178) and `_strings.tsv` (4,175) differ by **three, and that is correct**: the
 classifier drops rows whose text is whitespace only, and there are exactly three — two

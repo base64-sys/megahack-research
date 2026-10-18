@@ -84,12 +84,15 @@ Exit criteria:
       folder, loaded by `FUN_18008B780` and interned by `FUN_18007C700`, whose schema is
       now documented. That is also the answer to the string-inventory gap — the join
       between UI widget names and numeric tags is `tagFor` at the exported API boundary.
-      Outstanding: the three RVAs other than the four confirmed are paired positionally from the
-      registration text and are flagged UNVERIFIED per row in `_hook_sites.tsv`. One
-      structural question is genuinely open: `+0xB0` is read as a bucket-array pointer by
-      `FUN_18002EE40` and as an intrusive list head by the serialiser `FUN_180076EB0`, so the
-      registry's map layout cannot be written down until that is settled — see
-      [settings-registry.md](../notes/settings-registry.md). The criterion stays open
+      Outstanding: three of the twelve hook RVAs are paired positionally from the registration
+      text and are flagged UNVERIFIED per row in `_hook_sites.tsv`. The registry object is
+      now identified — the global at `0x180800F58`, at least `0x4A8` bytes, in `.data`'s
+      zero-fill tail with no file backing, and every accessor receives it `+0xD8`. Its
+      constructor writing `hackpro::Config::vftable` at `+0x00` and `+0x128` independently
+      confirms the `Config`-at-`+0x128` layout. One question is now well-posed with two
+      routes exhausted: `+0xB0` is read as a bucket-array pointer by `FUN_18002EE40` and as
+      an intrusive list head by the serialiser, and neither the image (zero-fill) nor the
+      constructor (does not write it) can break the tie. A third reader of `+0xB0` would. The criterion stays open
       because the *contents* are data, and that data is user data this repo deliberately
       does not commit.
 - [ ] Save/load file formats mapped. **The three stores the release uses are now

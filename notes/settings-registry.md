@@ -263,48 +263,105 @@ resolves GD methods. That is consistent with
 [host-methods.md](host-methods.md) flagging them, and it explains why they looked like
 `Class::method` strings.
 
-### The offset conflict, left open
+### The registry is a global in `.data`'s zero-fill tail
 
-Verified by `pe_disasm.py` on `_original.dll`, not taken from the decompiler:
-
-| Accessor | Sentinel | Buckets | Mask |
-| -------- | -------: | ------: | ---: |
-| `FUN_18002EE40` (`Bytes`) | `+0xB0` | `+0xC0` | `+0xD8` |
-| `FUN_18008F420` (`bool`) | `+0x138` | `+0x148` | `+0x160` |
-
-```
-000000018002eeee  4c 23 81 d8 00 00 00  and  r8, qword ptr [rcx + 0xd8]
-000000018002eef5  48 8b 91 b0 00 00 00  mov  rdx, qword ptr [rcx + 0xb0]
-000000018002eefc  48 8b 89 c0 00 00 00  mov  rcx, qword ptr [rcx + 0xc0]
-```
-
-Two problems with reading those as two maps on one object:
-
-1. Both accessors receive `FUN_18008A510()` at their call sites — the same value — so a
-   shared object would have to carry two differently-offset maps. Possible, but then the
-   typed accessors would not agree about where values live.
-2. **`+0xB0` is claimed twice, incompatibly.** `FUN_18002EE40` reads it as a pointer to a
-   bucket array. `FUN_180076EB0`, the serialiser, walks `param_1 + 0xB0` as an intrusive list
-   of entries. One of those readings is wrong, or the two functions have differently-based
-   `this`.
-
-UNVERIFIED: which. Settling it needs the type of the object `FUN_18008A510()` returns.
-Recorded rather than resolved by assumption, because picking the convenient reading would
-have produced a confident and wrong struct layout.
-
-### What `FUN_18008A510` actually returns
-
-While checking the above:
+`FUN_18008A510()` is `FUN_1800A2F90(FUN_1800A2720())`, and both halves are now known:
 
 ```
 FUN_1800a2f90(longlong param_1) { return param_1 + 0xd8; }
+
+FUN_1800a2720() {
+  if (tls_guard < DAT_180801400) {
+      FUN_1800a27e0(&DAT_180800f58);        // the static constructor
+      atexit(FUN_1800a2890);               // and its destructor
+      _Init_thread_footer(&DAT_180801400);
+      return &DAT_180800f58;
+  }
+  return &DAT_180800f58;
+}
 ```
 
-and `FUN_18008A510()` is `FUN_1800A2F90(FUN_1800A2720())`. So the "config accessor" every
-exported API uses returns **a fixed offset, `+0xD8`, into the object `FUN_1800A2720`
-returns**. That is more specific than "the global registry", and it is why an offset read
-off one accessor cannot be compared against an offset read off another without knowing the
-base — which is exactly the mistake above.
+So the settings registry is the **global object at VA `0x180800F58`**, not a heap allocation,
+and every accessor receives that global `+0xD8`.
+
+`scripts/pe_rva.py` says where it lives, and the answer explains why every map field reads
+as zero in the image:
+
+```
+0x800f58  zero-fill  no file offset  0x958 past .data SizeOfRawData; mapped, reads as 0
+0x801030  zero-fill  no file offset  0xa30 past .data SizeOfRawData; mapped, reads as 0
+0x8010e0  zero-fill  no file offset  0xae0 past .data SizeOfRawData; mapped, reads as 0
+0x801190  zero-fill  no file offset  0xb90 past .data SizeOfRawData; mapped, reads as 0
+```
+
+**The whole registry has no bytes in the file.** It is populated entirely by
+`FUN_1800A27E0` at load. That is the same region as the patch's mutable-state block at
+`0x18081BFC0`, and `pe_rva.py` gives the two different verdicts they deserve:
+
+| Address | Verdict |
+| ------- | ------- |
+| `0x180800F58` (the registry) | `zero-fill` — mapped, reads 0 |
+| `0x18081BFC0` (patch state block) | `gap` — past `VirtualSize`, unmapped |
+
+### Constructor, and a second angle on the `+0x128` layout
+
+`FUN_1800A27E0` (`0x1800A27E0`, 97 bytes) calls `FUN_1800A5BA0`, then `FUN_1800A28C0`, then
+zeroes three qwords at the end. `FUN_1800A28C0` (359 bytes) contains:
+
+```
+*param_1              = hackpro::Config::vftable;
+param_1[0x25]         = hackpro::Config::vftable;     // 0x25 * 8 = 0x128
+```
+
+This is an **independent confirmation** of the layout derived in
+[hook-dispatch.md](hook-dispatch.md) from the `add rcx, -0x128` adjustment in
+`FUN_1800917B0`. Two unrelated functions — a thunk and a constructor — agree that
+`hackpro::Config` sits at `+0x128` of this object and `hackpro::BasicConfig` at 0.
+
+The constructor's other writes give the object's extent and its initialised members:
+
+| Offset | Written as |
+| ------ | ---------- |
+| `+0x00` | `hackpro::Config::vftable` |
+| `+0x08`, `+0x10` | zeroed by `FUN_1800A5BA0` |
+| `+0x50`, `+0x90` | map constructors |
+| `+0x128` | `hackpro::Config::vftable` |
+| `+0x1B0`, `+0x1C0`, `+0x1D8` | zeroed as a consecutive group |
+| `+0x248` | `FUN_1803A50B4(0x28)` sentinel node, self-referential with `+0x18 = 0x101` |
+| `+0x490`–`+0x4A0` | zeroed |
+
+So the object is at least **`0x4A8` = 1192 bytes**.
+
+### Why the `+0xB0` conflict cannot be settled from the image
+
+Worth stating plainly, because it stops a line of attack that otherwise looks obvious.
+
+**Neither `+0xB0`/`+0xC0`/`+0xD8` nor `+0x138`/`+0x148`/`+0x160` is written by the
+constructor.** Both triples are left as an empty map, which is the expected state for a
+container that fills in its sentinel at first insertion.
+
+Combined with the object living in zero-fill, this means:
+
+- reading the bytes gives 0 either way, so the image cannot distinguish the interpretations;
+- the constructor does not distinguish them either.
+
+The only remaining route is a **third function** that reads `+0xB0` and shows which shape it
+expects — an intrusive list (self-referential first node, `node+8 = next`) or a bucket
+pointer. `FUN_180076EB0` shows the former; `FUN_18002EE40` shows the latter; a third reader
+would break the tie.
+
+UNVERIFIED: which. This is now a well-posed question with two exhausted routes and one
+remaining, rather than an open-ended one.
+
+### A correction to my own reasoning
+
+The "second registry" claim was made because `FUN_18002EE40`'s offsets differ from
+`getConfigVar<bool>`'s. The offsets do differ — but that is now explicable without a second
+object, because `FUN_18008A510()` returns **a fixed `+0xD8` into a global whose extent and
+layout were unknown at the time**. Comparing an offset read through one accessor against an
+offset read through another was never a valid comparison without the base. It happened to
+give the right answer for the wrong reason, and then the right answer got the wrong
+justification.
 
 ## The six-tag group is a string-prefix dispatch
 
@@ -448,9 +505,16 @@ break on a tag above `0x7FFFFFFF`.
 
 | Field | Map | Node layout |
 | ----- | --- | ----------- |
-| `+0x20` sentinel, `+0x30` buckets, `+0x48` mask | `uint64_t Tag` → key name (`std::string`) | `+0x08` next, `+0x10` tag, `+0x18` buffer, `+0x28` size, `+0x30` capacity |
-| `+0x138` sentinel, `+0x148` buckets, `+0x160` mask | `uint64_t Tag` → value | `+0x08` next, `+0x10` tag, `+0x18` value |
-| `+0xB0` | `std::list` of entries | `+0x08` next, `+0x10` tag, `+0x18` value, `+0x38` type byte, `+0x20`/`+0x28` for type 4 |
+| `+0x18` | `uint64_t Tag` → key name (`std::string`) | `+0x08` next, `+0x10` tag, `+0x18` buffer, `+0x28` size, `+0x30` capacity |
+| `+0x58` | key name → `uint64_t Tag` | same shape, mirrored |
+| `+0x98` | set of known tags | `+0x08`/`+0x10` red-black tree links, `+0x20` key |
+| `+0xB0` | **disputed** — see the offset conflict below | |
+| `+0xB0`/`+0xC0`/`+0xD8` | read by `FUN_18002EE40` (`hackpro::Bytes`) | |
+| `+0x138`/`+0x148`/`+0x160` | read by `FUN_18008F420` (`bool`) | `+0x08` next, `+0x10` tag, `+0x18` value |
+
+All offsets are relative to `FUN_18008A510()`, which is the global at `0x180800F58` plus
+`0xD8`. The object is at least `0x4A8` bytes and lives in `.data`'s zero-fill tail, so none
+of these fields has a file backing and every one reads as 0 before load-time construction.
 
 ## `keyFor`: the tag → name direction exists and is exported
 
