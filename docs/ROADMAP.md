@@ -89,10 +89,11 @@ Exit criteria:
       now identified — the global at `0x180800F58`, at least `0x4A8` bytes, in `.data`'s
       zero-fill tail with no file backing, and every accessor receives it `+0xD8`. Its
       constructor writing `hackpro::Config::vftable` at `+0x00` and `+0x128` independently
-      confirms the `Config`-at-`+0x128` layout. One question is now well-posed with two
-      routes exhausted: `+0xB0` is read as a bucket-array pointer by `FUN_18002EE40` and as
-      an intrusive list head by the serialiser, and neither the image (zero-fill) nor the
-      constructor (does not write it) can break the tie. A third reader of `+0xB0` would. The criterion stays open
+      confirms the `Config`-at-`+0x128` layout. The apparent "`+0xB0` is claimed twice"
+      conflict is **resolved**: the two readers use different bases — the serialiser arrives
+      by virtual dispatch at `+0x128`, the accessors at `+0xD8` — so they are different
+      fields. A residual disagreement over object `+0x1D8` remains and is marked UNVERIFIED;
+      it needs one function read, not a new line of attack. The criterion stays open
       because the *contents* are data, and that data is user data this repo deliberately
       does not commit.
 - [ ] Save/load file formats mapped. **The three stores the release uses are now

@@ -332,26 +332,58 @@ The constructor's other writes give the object's extent and its initialised memb
 
 So the object is at least **`0x4A8` = 1192 bytes**.
 
-### Why the `+0xB0` conflict cannot be settled from the image
+### The `+0xB0` conflict resolved: the two readers use different bases
 
-Worth stating plainly, because it stops a line of attack that otherwise looks obvious.
+`scripts/hook_dispatch` and `FUN_180076EB0` are reached through **virtual dispatch**, and
+that changes the base. `FUN_18008A530` is `hackpro::Config::vtable[0]`, so its `this` is
+`object + 0x128` — not the `object + 0xD8` the accessors receive.
 
-**Neither `+0xB0`/`+0xC0`/`+0xD8` nor `+0x138`/`+0x148`/`+0x160` is written by the
-constructor.** Both triples are left as an empty map, which is the expected state for a
-container that fills in its sentinel at first insertion.
+`pe_disasm.py` at `0x18008A530` settles what it forwards:
 
-Combined with the object living in zero-fill, this means:
+```
+000000018008a557  48 89 d6             mov    rsi, rdx
+000000018008a55a  48 89 cb             mov    rbx, rcx
+000000018008a55d  e8 4e c9 fe ff       call   0x180076eb0
+```
 
-- reading the bytes gives 0 either way, so the image cannot distinguish the interpretations;
-- the constructor does not distinguish them either.
+`rcx` and `rdx` are **not** clobbered before the call; the `mov`s copy them to callee-saved
+registers for later use. So the serialiser receives the original `rcx`, i.e.
+`this = object + 0x128`.
 
-The only remaining route is a **third function** that reads `+0xB0` and shows which shape it
-expects — an intrusive list (self-referential first node, `node+8 = next`) or a bucket
-pointer. `FUN_180076EB0` shows the former; `FUN_18002EE40` shows the latter; a third reader
-would break the tie.
+Putting both readers on the one object at `0x180800F58`:
 
-UNVERIFIED: which. This is now a well-posed question with two exhausted routes and one
-remaining, rather than an open-ended one.
+| Reader | Base | Reads `+0xB0` as |
+| ------ | ---- | ---------------- |
+| `FUN_180076EB0` (serialiser) | `object + 0x128` | **object + `0x1D8`** |
+| `FUN_18002EE40` (`Bytes`) | `object + 0xD8` | **object + `0x188`** |
+
+**They are different fields.** There is no conflict. What looked like one field claimed twice
+was the same offset number read through two bases, which is the same class of error as the
+"second registry" claim, one level down.
+
+One residual disagreement does survive, and it is worth stating precisely because it is now
+a question about a single known address rather than an ambiguous offset:
+
+- the `Bytes` accessor's **mask** is object `+0x1B0`;
+- the serialiser's **list head** is object `+0x1D8`;
+- the constructor zeroes `+0x1B0`, `+0x1C0`, `+0x1D8` together.
+
+So the constructor-initialised group is exactly the `Bytes` accessor's map plus the
+serialiser's list, and the serialiser's list head sits at the third field of a
+`(sentinel, ?, mask)` triple — which is where an empty container's first bucket would be, not
+where an intrusive list head belongs.
+
+UNVERIFIED: that residual. Two readings remain, not distinguished here:
+
+1. the serialiser walks a node reached through a *different pointer* than the one
+   `FUN_18002EE40` reads as a mask, and the three fields are unrelated; or
+2. one of the two decompilations has typed the same field as two things.
+
+Settling it needs `pe_disasm.py` over the whole of `FUN_180076EB0`, checking whether its
+`+0xB0` value is dereferenced as `*(ptr)` and then `*node == node` — an intrusive-list
+sentinel test — or as `mask` in a bucket index. One function, one read. Not done.
+
+Every other offset in this section is derived rather than assumed.
 
 ### A correction to my own reasoning
 
@@ -508,13 +540,33 @@ break on a tag above `0x7FFFFFFF`.
 | `+0x18` | `uint64_t Tag` → key name (`std::string`) | `+0x08` next, `+0x10` tag, `+0x18` buffer, `+0x28` size, `+0x30` capacity |
 | `+0x58` | key name → `uint64_t Tag` | same shape, mirrored |
 | `+0x98` | set of known tags | `+0x08`/`+0x10` red-black tree links, `+0x20` key |
-| `+0xB0` | **disputed** — see the offset conflict below | |
-| `+0xB0`/`+0xC0`/`+0xD8` | read by `FUN_18002EE40` (`hackpro::Bytes`) | |
-| `+0x138`/`+0x148`/`+0x160` | read by `FUN_18008F420` (`bool`) | `+0x08` next, `+0x10` tag, `+0x18` value |
 
-All offsets are relative to `FUN_18008A510()`, which is the global at `0x180800F58` plus
+Offsets above are relative to `FUN_18008A510()`, which is the global at `0x180800F58` plus
 `0xD8`. The object is at least `0x4A8` bytes and lives in `.data`'s zero-fill tail, so none
 of these fields has a file backing and every one reads as 0 before load-time construction.
+
+Offsets from different bases are not comparable, so everything translated onto the object
+itself. **This is the only form in which the triples can be checked against each other**,
+and getting it wrong is exactly what produced the two false claims this file has corrected:
+
+| Reader | Base | Field | Object offset |
+| ------ | ---- | ----- | ------------: |
+| `FUN_18002EE40` (`Bytes`) | `+0xD8` | sentinel | `+0x188` |
+| | | buckets | `+0x198` |
+| | | mask | **`+0x1B0`** |
+| `FUN_18008F420` (`bool`) | `+0xD8` | sentinel | `+0x210` |
+| | | buckets | `+0x220` |
+| | | mask | `+0x238` |
+| `FUN_180076EB0` (serialiser) | `+0x128` | list head | **`+0x1D8`** |
+
+The constructor zeroes `+0x1B0`, `+0x1C0` and `+0x1D8` as a consecutive group. Two of the
+readers land on the ends of that group — the `Bytes` accessor's **mask** and the serialiser's
+**list head** — while the `bool` accessor's triple lands entirely outside it at
+`+0x210`/`+0x220`/`+0x238`, which the constructor does not touch at all.
+
+That is consistent rather than contradictory: an empty map needs no constructor write, so the
+untouched triple is simply a container that is still empty, and the initialised triple is the
+one the constructor prepared.
 
 ## `keyFor`: the tag → name direction exists and is exported
 
@@ -816,6 +868,18 @@ rather than an extension of either.
 
 ## Failure modes recorded
 
+- **Comparing struct offsets read through different `this` bases.** This produced **two**
+  false claims in this file. The first was "`FUN_18002EE40` is a second registry", from its
+  offsets differing from `getConfigVar<bool>`'s. The second was "`+0xB0` is claimed twice",
+  from the serialiser and the accessor both writing `+0xB0`. In both cases the offsets were
+  read through differently-based pointers — one via `FUN_18008A510()` (`object + 0xD8`), one
+  via virtual dispatch (`object + 0x128`) — and neither was the same field.
+  **Offsets are only comparable once translated onto a common base**, and the base has to be
+  derived, not assumed from the fact that both functions talk about "the config".
+- **Grepping for an offset across the whole tree is worse than useless.** `+0xB0` appears 385
+  times in 280 files. Filtering to functions that actually receive the registry reduces that
+  to **two**, neither of which is the pair in question. Always filter by *receiver* first,
+  then by offset.
 - **A guessed accessor list produced a plausible table that silently omitted setting 501.**
   The omission was only visible because a hand-recorded id from an earlier note failed to
   appear. Cross-check index output against ids already known from other notes.
