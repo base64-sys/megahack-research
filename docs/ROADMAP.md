@@ -100,11 +100,15 @@ Exit criteria:
       `early-load` ordering and the shutdown path still outstanding.
 - [ ] Geometry Dash structures Mega Hack touches documented with verified offsets
       (`GJGameLevel+0x148`, `+0x14C`, `+0x158`, `+0x198`, `+0x1B8`, `+0x2C4`, `+0x35C`).
-      **The handle now exists.** Because Mega Hack imports zero GD gameplay symbols,
-      `scripts/host_methods.py` indexes the 214 method-name strings it resolves at
-      runtime, and 350 functions reference them — the only way to reach the host ABI from
-      the image. See [host-methods.md](../notes/host-methods.md). The offsets themselves are
-      still unverified.
+      **The handle now exists, and the mechanism is recovered.** Because Mega Hack imports
+      zero GD gameplay symbols, `scripts/host_methods.py` indexes the 214 method-name
+      strings it resolves at runtime, and 350 functions reference them — the only way to
+      reach the host ABI from the image. Separately, Mega Hack calls GD through absolute
+      RVAs into `GetModuleHandleA(NULL)`, wrapped by Geode under a `TulipConvention`; see
+      [hook-dispatch.md](../notes/hook-dispatch.md). Three GD function RVAs and one GD
+      field offset (`PlayLayer+0x3230`) are now verified from two angles each. The
+      `GJGameLevel` offsets themselves are still unverified, and Mega Hack does **not** use
+      `node-ids` for this, so they change on any GD re-baseline.
 - [ ] Output: `notes/` map files, one per subsystem, each fact cited by VA. Four written
       (`provenance`, `hackpro-api`, `host-abi`, `tab-registration`).
 
@@ -137,6 +141,16 @@ Exit criteria:
       interact — including why a packed interface has no spare row and a definition hook
       substitutes a label per language dictionary load.
 - [ ] Hook dispatch mechanism recovered, so new hooks are mechanical rather than bespoke.
+      **Recovered.** Mega Hack takes `GetModuleHandleA(NULL)` — the GD executable's base,
+      `FUN_18010DDC0`, 278 direct callers — and treats hard-coded RVAs into it as GD
+      function addresses, wrapping each in a Geode hook under a convention its debug types
+      name `TulipConvention`. Registering is
+      `(resolver, targetFromGDBase(rva), callback, name, -32, 1)`; calling an original is
+      `createWrapper(GetModuleHandleA(NULL) + rva)`. Three GD function RVAs and one GD
+      field offset (`PlayLayer+0x3230`) are verified from two angles each. See
+      [hook-dispatch.md](../notes/hook-dispatch.md). A reconstruction should reproduce the
+      mechanism, not copy the RVAs — they are absolute into the host image and change on
+      any GD re-baseline.
 - [ ] Save lifecycle reconstructed: `postUpdate`, `resetLevel`, `PlayLayer::onQuit` and
       shutdown-destructor flush points.
 - [ ] A minimal Geode-compatible skeleton loads under the loader with core behaviour intact.

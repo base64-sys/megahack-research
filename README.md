@@ -247,6 +247,22 @@ is to the **level lifecycle**: `PlayLayer::resetLevel` alone is named by 25 func
 `postUpdate` by 11 and `init` by 10 — 46 of 350 references between three methods. See
 [notes/host-methods.md](notes/host-methods.md).
 
+Having those strings is what made the call path recoverable. Mega Hack calls GD through
+`GetModuleHandleA(NULL)` — `FUN_18010DDC0`, **278 direct callers**, the highest fan-out in the
+binary — and treats hard-coded RVAs into that image as GD function addresses, wrapping each
+in a Geode hook under a convention its debug types name `TulipConvention`:
+
+| GD method | RVA into the host image |
+| --------- | -----------------------: |
+| `PlayLayer::resetLevel` | `0x3B8EB0` |
+| `PlayLayer::levelComplete` | `0x3A7A80` |
+| `GJGameLevel::savePercentage` | `0x16C8B0` |
+
+Each is confirmed twice: the registration passes the RVA, and a lazy thunk independently
+re-reads `GetModuleHandleA(NULL) + rva`. These are **absolute offsets into GD**, not
+`node-ids`, so a re-baseline changes every one of them. See
+[notes/hook-dispatch.md](notes/hook-dispatch.md).
+
 `_xrefs.tsv` (4,178) and `_strings.tsv` (4,175) differ by **three, and that is correct**: the
 classifier drops rows whose text is whitespace only, and there are exactly three — two
 VA-backed whitespace literals (`0x1805BDEE8`, `0x1805BEDA4`) and one SSO (`'   '`).
