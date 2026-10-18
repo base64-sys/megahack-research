@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1060" viewBox="0 0 900 1060" role="img" aria-label="Exit criteria — every box, ticked or not">
+<rect width="900" height="1060" fill="#0d1117"/>
+<rect x="0.5" y="0.5" width="899" height="1059" fill="none" stroke="#30363d" rx="10"/>
+<text x="28" y="40" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="19" font-weight="600" fill="#e6edf3">Exit criteria — every box, ticked or not</text>
+<text x="28" y="61" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#8b949e">11 of 34 criteria met across 6 milestones</text>
+<rect x="28.0" y="96.0" width="844.0" height="16.0" fill="#21262d" rx="4"/>
+<rect x="28.0" y="96.0" width="273.1" height="16.0" fill="#58a6ff" rx="4"/>
+<text x="28.0" y="140.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="14" fill="#e6edf3" font-weight="600">M0</text>
+<text x="872.0" y="140.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="12" fill="#8b949e" text-anchor="end">6/6</text>
+<line x1="28.0" y1="148.0" x2="872.0" y2="148.0" stroke="#30363d" stroke-width="1"/>
+<rect x="30.0" y="157.0" width="12.0" height="12.0" fill="#3fb950" rx="3"/>
+<path d="M33 162.5 l2.5 2.5 l4.5 -5" fill="none" stroke="#0d1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="52.0" y="166.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#e6edf3">Baseline pinned from mod.json and changelog.md: v9.1.3, GD 2.2081, Geode 5.6.1,</text>
+<rect x="30.0" y="182.0" width="12.0" height="12.0" fill="#3fb950" rx="3"/>
+<path d="M33 187.5 l2.5 2.5 l4.5 -5" fill="none" stroke="#0d1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="52.0" y="191.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#e6edf3">Ground-truth binary distinguished from experiments:</text>
+<rect x="30.0" y="207.0" width="12.0" height="12.0" fill="#3fb950" rx="3"/>
+<path d="M33 212.5 l2.5 2.5 l4.5 -5" fill="none" stroke="#0d1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="52.0" y="216.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#e6edf3">Section map, image base, code cave and mutable-state page verified with</text>
+<rect x="30.0" y="232.0" width="12.0" height="12.0" fill="#3fb950" rx="3"/>
+<path d="M33 237.5 l2.5 2.5 l4.5 -5" fill="none" stroke="#0d1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="52.0" y="241.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#e6edf3">Toolchain located and working: Python 3.14.6, capstone 5.0.9, keystone-engine</text>
+<rect x="30.0" y="257.0" width="12.0" height="12.0" fill="#3fb950" rx="3"/>
+<path d="M33 262.5 l2.5 2.5 l4.5 -5" fill="none" stroke="#0d1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="52.0" y="266.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#e6edf3">samples/ untracked; .gitignore blocks *.dll, *.exe, samples/, decompiled/.</text>
+<rect x="30.0" y="282.0" width="12.0" height="12.0" fill="#3fb950" rx="3"/>
+<path d="M33 287.5 l2.5 2.5 l4.5 -5" fill="none" stroke="#0d1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="52.0" y="291.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#e6edf3">Repo skeleton and rules written down.</text>
+<text x="28.0" y="326.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="14" fill="#e6edf3" font-weight="600">M1</text>
+<text x="872.0" y="326.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="12" fill="#8b949e" text-anchor="end">5/10</text>
+<line x1="28.0" y1="334.0" x2="872.0" y2="334.0" stroke="#30363d" stroke-width="1"/>
+<rect x="30.0" y="343.0" width="12.0" height="12.0" fill="#3fb950" rx="3"/>
+<path d="M33 348.5 l2.5 2.5 l4.5 -5" fill="none" stroke="#0d1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="52.0" y="352.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#e6edf3">SHA-256 of each baseline binary recorded in notes/provenance.md, and cross-checked</text>
+<rect x="30.0" y="368.0" width="12.0" height="12.0" fill="#3fb950" rx="3"/>
+<path d="M33 373.5 l2.5 2.5 l4.5 -5" fill="none" stroke="#0d1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="52.0" y="377.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#e6edf3">Export table recovered: 30 named MSVC-mangled symbols, demangled with</text>
+<rect x="30.0" y="393.0" width="12.0" height="12.0" fill="#3fb950" rx="3"/>
+<path d="M33 398.5 l2.5 2.5 l4.5 -5" fill="none" stroke="#0d1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="52.0" y="402.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#e6edf3">Full import table with preferred-base IAT addresses classified into Geometry Dash,</text>
+<rect x="30.0" y="418.0" width="12.0" height="12.0" fill="#21262d" rx="3" stroke="#30363d" stroke-width="1"/>
+<text x="52.0" y="427.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#8b949e">Full string inventory split into user-visible labels, setting keys, file paths,</text>
+<rect x="30.0" y="443.0" width="12.0" height="12.0" fill="#3fb950" rx="3"/>
+<path d="M33 448.5 l2.5 2.5 l4.5 -5" fill="none" stroke="#0d1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="52.0" y="452.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#e6edf3">Mega Hack's own RTTI/vtable set enumerated; the class hierarchy recovered. Partly</text>
+<rect x="30.0" y="468.0" width="12.0" height="12.0" fill="#21262d" rx="3" stroke="#30363d" stroke-width="1"/>
+<text x="52.0" y="477.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#8b949e">Settings registry map: every key, its type, default, and the function that applies it.</text>
+<rect x="30.0" y="493.0" width="12.0" height="12.0" fill="#21262d" rx="3" stroke="#30363d" stroke-width="1"/>
+<text x="52.0" y="502.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#8b949e">Save/load file formats mapped. The three stores the release uses are now</text>
+<rect x="30.0" y="518.0" width="12.0" height="12.0" fill="#3fb950" rx="3"/>
+<path d="M33 523.5 l2.5 2.5 l4.5 -5" fill="none" stroke="#0d1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="52.0" y="527.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#e6edf3">Entry and lifecycle order, partially: geodeImplicitEntry at 0x180072B60 is the</text>
+<rect x="30.0" y="543.0" width="12.0" height="12.0" fill="#21262d" rx="3" stroke="#30363d" stroke-width="1"/>
+<text x="52.0" y="552.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#8b949e">Geometry Dash structures Mega Hack touches documented with verified offsets</text>
+<rect x="30.0" y="568.0" width="12.0" height="12.0" fill="#21262d" rx="3" stroke="#30363d" stroke-width="1"/>
+<text x="52.0" y="577.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#8b949e">Output: notes/ map files, one per subsystem, each fact cited by VA. Four written</text>
+<text x="28.0" y="612.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="14" fill="#e6edf3" font-weight="600">M2</text>
+<text x="872.0" y="612.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="12" fill="#8b949e" text-anchor="end">0/6</text>
+<line x1="28.0" y1="620.0" x2="872.0" y2="620.0" stroke="#30363d" stroke-width="1"/>
+<rect x="30.0" y="629.0" width="12.0" height="12.0" fill="#21262d" rx="3" stroke="#30363d" stroke-width="1"/>
+<text x="52.0" y="638.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#8b949e">Module entry and early-load path reconstructed as compiling C++. Root is</text>
+<rect x="30.0" y="654.0" width="12.0" height="12.0" fill="#21262d" rx="3" stroke="#30363d" stroke-width="1"/>
+<text x="52.0" y="663.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#8b949e">Settings registry reconstructed: typed keys, defaults, load/save, and the boolean</text>
+<rect x="30.0" y="679.0" width="12.0" height="12.0" fill="#21262d" rx="3" stroke="#30363d" stroke-width="1"/>
+<text x="52.0" y="688.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#8b949e">nxUI menu reconstructed well enough to explain how rows, tags and languages</text>
+<rect x="30.0" y="704.0" width="12.0" height="12.0" fill="#21262d" rx="3" stroke="#30363d" stroke-width="1"/>
+<text x="52.0" y="713.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#8b949e">Hook dispatch mechanism recovered, so new hooks are mechanical rather than bespoke.</text>
+<rect x="30.0" y="729.0" width="12.0" height="12.0" fill="#21262d" rx="3" stroke="#30363d" stroke-width="1"/>
+<text x="52.0" y="738.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#8b949e">Save lifecycle reconstructed: postUpdate, resetLevel, PlayLayer::onQuit and</text>
+<rect x="30.0" y="754.0" width="12.0" height="12.0" fill="#21262d" rx="3" stroke="#30363d" stroke-width="1"/>
+<text x="52.0" y="763.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#8b949e">A minimal Geode-compatible skeleton loads under the loader with core behaviour intact.</text>
+<text x="28.0" y="798.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="14" fill="#e6edf3" font-weight="600">M3</text>
+<text x="872.0" y="798.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="12" fill="#8b949e" text-anchor="end">0/4</text>
+<line x1="28.0" y1="806.0" x2="872.0" y2="806.0" stroke="#30363d" stroke-width="1"/>
+<rect x="30.0" y="815.0" width="12.0" height="12.0" fill="#21262d" rx="3" stroke="#30363d" stroke-width="1"/>
+<text x="52.0" y="824.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#8b949e">Every feature listed in changelog.md accounted for: implemented, alias, or dead.</text>
+<rect x="30.0" y="840.0" width="12.0" height="12.0" fill="#21262d" rx="3" stroke="#30363d" stroke-width="1"/>
+<text x="52.0" y="849.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#8b949e">Each feature mapped to its implementing function(s) with VAs, its settings keys, its</text>
+<rect x="30.0" y="865.0" width="12.0" height="12.0" fill="#21262d" rx="3" stroke="#30363d" stroke-width="1"/>
+<text x="52.0" y="874.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#8b949e">High-value clusters documented as patterns rather than 160 isolated notes: input</text>
+<rect x="30.0" y="890.0" width="12.0" height="12.0" fill="#21262d" rx="3" stroke="#30363d" stroke-width="1"/>
+<text x="52.0" y="899.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#8b949e">Reconstructed modules validated against release behaviour for the sampled clusters.</text>
+<text x="28.0" y="934.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="14" fill="#e6edf3" font-weight="600">M4</text>
+<text x="872.0" y="934.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="12" fill="#8b949e" text-anchor="end">0/5</text>
+<line x1="28.0" y1="942.0" x2="872.0" y2="942.0" stroke="#30363d" stroke-width="1"/>
+<rect x="30.0" y="951.0" width="12.0" height="12.0" fill="#21262d" rx="3" stroke="#30363d" stroke-width="1"/>
+<text x="52.0" y="960.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#8b949e">Mega Hack's native Best Run storage located and documented: which of GD's data.json</text>
+<rect x="30.0" y="976.0" width="12.0" height="12.0" fill="#21262d" rx="3" stroke="#30363d" stroke-width="1"/>
+<text x="52.0" y="985.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#8b949e">hackpro.json read/write lifecycle mapped: which of FUN_1800BF190 /</text>
+<rect x="30.0" y="1001.0" width="12.0" height="12.0" fill="#21262d" rx="3" stroke="#30363d" stroke-width="1"/>
+<text x="52.0" y="1010.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#8b949e">The %LOCALAPPDATA% → Octavus path segment resolved.</text>
+<rect x="30.0" y="1026.0" width="12.0" height="12.0" fill="#21262d" rx="3" stroke="#30363d" stroke-width="1"/>
+<text x="52.0" y="1035.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#8b949e">Native Import .dt action reproduced end to end: GetOpenFileNameW wrapper,</text>
+<rect x="30.0" y="1051.0" width="12.0" height="12.0" fill="#21262d" rx="3" stroke="#30363d" stroke-width="1"/>
+<text x="52.0" y="1060.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#8b949e">Reconstructed persistence code validated against release behaviour on the sampled</text>
+<text x="28.0" y="1095.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="14" fill="#e6edf3" font-weight="600">M5</text>
+<text x="872.0" y="1095.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="12" fill="#8b949e" text-anchor="end">0/3</text>
+<line x1="28.0" y1="1103.0" x2="872.0" y2="1103.0" stroke="#30363d" stroke-width="1"/>
+<rect x="30.0" y="1112.0" width="12.0" height="12.0" fill="#21262d" rx="3" stroke="#30363d" stroke-width="1"/>
+<text x="52.0" y="1121.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#8b949e">ARM64 lib mapped against the x86-64 map; divergences catalogued rather than assumed.</text>
+<rect x="30.0" y="1137.0" width="12.0" height="12.0" fill="#21262d" rx="3" stroke="#30363d" stroke-width="1"/>
+<text x="52.0" y="1146.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#8b949e">Behaviour of the same features confirmed on device.</text>
+<rect x="30.0" y="1162.0" width="12.0" height="12.0" fill="#21262d" rx="3" stroke="#30363d" stroke-width="1"/>
+<text x="52.0" y="1171.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#8b949e">Cross-platform implementation compiles from one source tree.</text>
+<line x1="28.0" y1="1016.0" x2="872.0" y2="1016.0" stroke="#30363d" stroke-width="1"/>
+<text x="28.0" y="1030.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="10" fill="#8b949e">ticks are read from docs/ROADMAP.md — untick a box and this goes stale · image 2 of 4</text>
+<text x="872.0" y="1030.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">git 642d731</text>
+</svg>

@@ -83,9 +83,11 @@ function Get-Python {
 
 function Update-ProgressGraphic {
     # Arming the watchdog means work is starting, so refresh the progress
-    # graphic at the same moment. Never let this block or fail the run.
+    # graphics at the same moment. All four are regenerated, so a turn's work
+    # shows up without anyone having to remember. Never let this block or fail
+    # the run.
     $python = Get-Python
-    if (-not $python) { Write-Verbose 'no python found; progress graphic not refreshed'; return }
+    if (-not $python) { Write-Verbose 'no python found; progress graphics not refreshed'; return }
     $script = Join-Path $PSScriptRoot 'make_progress_svg.py'
     if (-not (Test-Path -LiteralPath $script)) { return }
     Push-Location (Split-Path $PSScriptRoot -Parent)
