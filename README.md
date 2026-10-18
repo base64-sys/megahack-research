@@ -38,10 +38,15 @@ reality. They are regenerated on every `watchdog.ps1 -Action Start`, so arming t
 is enough to refresh them.
 
 `python scripts/make_progress_svg.py --check` fails if any is stale, and skips cleanly on a
-fresh clone with no recovered tree. `scripts/test_progress_svg.py` re-renders all four and
-asserts that no text leaves the canvas, that nothing overlaps on a shared baseline, and that
-every roadmap criterion gets exactly one checkbox — the failure modes that XML validity alone
-does not catch.
+fresh clone with no recovered tree. Two graphics are compared with the footer commit stamp
+blanked, and `progress-activity.svg` is checked by subject against `git log` rather than by
+bytes: every graphic stamps the HEAD it was built from, and the activity graphic shows the
+most recent commits — so the newest of those is by definition the commit carrying the image.
+Byte-comparing either against a fresh render would fail forever.
+
+`scripts/test_progress_svg.py` re-renders all four and asserts that no text leaves the
+canvas, that nothing overlaps on a shared baseline, and that every roadmap criterion gets
+exactly one checkbox — the failure modes that XML validity alone does not catch.
 
 | Milestone                                        | State       | Exit criteria |
 | ------------------------------------------------ | ----------- | ------------: |

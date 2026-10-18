@@ -544,6 +544,71 @@ GRAPHS = {
 }
 
 
+def strip_tags(fragment: str) -> str:
+    return html.unescape(re.sub(r"<[^>]+>", "", fragment)).strip()
+
+
+SHA_STAMP_RE = re.compile(r">git [0-9a-f]{7,40}<")
+
+
+def strip_self_reference(svg: str) -> str:
+    """Blank the footer commit stamp so `--check` can compare meaningfully.
+
+    Every graphic stamps the HEAD it was generated from. That stamp is
+    self-referential: committing the graphic *is* what changes HEAD, so a
+    byte-comparison against a fresh render can never succeed. The stamp is
+    provenance, not content, so it is excluded from the staleness check.
+    """
+    return SHA_STAMP_RE.sub(">git <sha><", svg)
+
+
+def activity_subjects(svg: str) -> list[str]:
+    """Pull the commit subjects back out of a rendered activity graphic.
+
+    Subjects are drawn at x=52; the title and subtitle sit at x=28 and the
+    commit kind is right-aligned. Selecting on x is what keeps the subtitle
+    from being mistaken for a commit subject.
+    """
+    subjects: list[str] = []
+    for match in re.finditer(
+        r'<text x="([\d.]+)" y="[\d.]+"[^>]*font-size="12"[^>]*>([^<]*)</text>', svg
+    ):
+        x, body = float(match.group(1)), strip_tags(match.group(2))
+        if x == 52.0 and body:
+            subjects.append(body)
+    return subjects
+
+
+def recent_commit_subjects(depth: int) -> list[str]:
+    out = subprocess.run(
+        ["git", "log", f"-{depth}", "--format=%s"],
+        cwd=REPO, capture_output=True, text=True, check=True,
+    )
+    return out.stdout.splitlines()
+
+
+def activity_subjects_live() -> tuple[bool, str]:
+    """Check the activity graphic's commits still exist.
+
+    `progress-activity.svg` cannot be byte-compared, for a stronger version of
+    the same reason: it shows the most recent commits, and the newest of those
+    is by definition the commit carrying the image. Instead, every subject it
+    shows must still be a real, recent commit.
+    """
+    target = DOCS / "progress-activity.svg"
+    if not target.exists():
+        return False, "missing"
+    shown = activity_subjects(target.read_text(encoding="utf-8"))
+    if not shown:
+        return False, "shows no commits"
+    live = recent_commit_subjects(80)
+    for subject in shown:
+        probe = subject.rstrip("…")
+        if not any(s.startswith(probe) for s in live):
+            return False, f"shows a commit that is not in git log: {probe!r}"
+    return True, ""
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -574,9 +639,17 @@ def main(argv: list[str] | None = None) -> int:
             svg = render(sha)
 
         if args.check:
+            if key == "activity":
+                # Cannot be byte-compared: it shows the most recent commits, and
+                # the newest of those is the commit carrying this graphic. Handled
+                # by subject check below.
+                if not target.exists():
+                    stale.append(f"{filename}: missing")
+                continue
             if not target.exists():
                 stale.append(f"{filename}: missing")
-            elif target.read_text(encoding="utf-8").strip() != svg.strip():
+            elif strip_self_reference(target.read_text(encoding="utf-8")).strip() \
+                    != strip_self_reference(svg).strip():
                 stale.append(f"{filename}: stale")
             continue
 
@@ -596,6 +669,14 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"stale: {s}")
             print("run scripts/make_progress_svg.py")
             return 1
+        if "activity" in chosen:
+            ok, detail = activity_subjects_live()
+            if not ok:
+                print(f"stale: progress-activity.svg: {detail}")
+                print("run scripts/make_progress_svg.py")
+                return 1
+            print("live : progress-activity.svg (subjects verified against git log; "
+                  "not byte-compared — see README)")
         print(f"all {len(chosen)} graphic(s) up to date")
         return 0
 
