@@ -161,7 +161,7 @@ These live in `scripts/`, so they exist on a fresh clone. Neither needs `samples
 | `ghidra_scripts/ExportAllFunctions.java` | Decompiles every function, one `.c` per function                   |
 | `resolve_wrappers.py`         | Map Mega Hack's 277 runtime hook sites to their real targets                |
 | `build_xref_index.py`         | Index every code-referenced string to the functions that name it            |
-| `settings_index.py`           | Index the settings registry: 149 read tags over four accessors               |
+| `settings_index.py`           | Index the settings registry: 149 read tags over four typed accessors         |
 | `build_callgraph.py`          | Build the call graph: 42,701 static edges over 16,204 functions              |
 | `rtti_index.py`               | Walk MSVC RTTI: 497 polymorphic classes, each anchored to its vtable VA       |
 | `decode_sso.py`               | Recover MSVC small-string literals the decompiler renders as typed locals    |
@@ -206,9 +206,10 @@ key as the setting name and its `"tag"` number as the `Tag`, plus optional `"def
 maintained as a bijection in two runtime maps on `hackpro::BasicConfig`. So no static
 analysis of `_original.dll` can enumerate the full key list — which is why the tags in
 `_settings.tsv` are a sample of what code happens to read, not a count of what exists.
-`FUN_18002EE40` reads a **second registry**, distinguished by its own map layout (`+0xC0`
-with the mask at `+0xD8`), and takes the tag as its *third* argument — which is why an index
-that guessed argument position had missed it entirely. That gap is now closed, and
+`FUN_18002EE40` is the typed accessor for **`hackpro::Bytes`** — it logs that literal on a
+miss — so all four accessors read the one registry with four different value types. It takes
+the tag as its *third* argument, which is why an index that guessed argument position had
+missed it entirely. That gap is now closed, and
 `scripts/test_settings_index.py` pins it: the argument splitter is tested as a pure
 function so it needs no sample set, and the specific tags (285, 501, `0x353`–`0x358`) are
 pinned so a future accessor cannot go missing silently again. Both bug classes were
@@ -341,7 +342,10 @@ saved percentage; Mega Hack's contribution is to stop a cheated run from being p
 That is also why the local patch needed a sidecar: there was no table to extend.
 
 Note the gap between two numbers that are easy to conflate: Mega Hack **names** 214 host
-methods but **hooks** only 12. Naming one is not hooking it.
+methods but **hooks** only 12. Naming one is not hooking it. Five of those 214 are not host
+methods at all — `hackpro::Bool`, `hackpro::Int`, `hackpro::Decimal`, `hackpro::String` and
+`hackpro::Bytes` are Mega Hack's own **value types**, named through the same resolver. That
+is how `FUN_18002EE40` was identified as `getConfigVar<hackpro::Bytes>`.
 
 `build_xref_index.py` matches Ghidra's `DAT_` symbols, its inlined string literals, **and**
 strings MSVC built in an SSO buffer: 3,609 of the rows are VA-backed, 566 are stack-built

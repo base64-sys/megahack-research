@@ -123,8 +123,13 @@ recovered functions    : 18825
 distinct tags          : 149
 total tag reads        : 192
 tag range              : 3..881
-accessors recognised   : 4  (FUN_18008F420, FUN_18002DE50, FUN_180003D80, FUN_18002EE40)
+accessors recognised   : 4  (FUN_18008F420 bool, FUN_18002DE50, FUN_180003D80 scalar,
+                            FUN_18002EE40 hackpro::Bytes)
 ```
+
+The four are not four registries. `FUN_18002EE40` is the typed accessor for
+`hackpro::Bytes` — it logs that literal on a miss — so all four read the one registry with
+four different value types.
 
 Most-read ids:
 
@@ -226,12 +231,126 @@ The 15 recovered tags are `3`, `131`, `132`, `285`, `303`, `304`, `305`, `321`, 
 `851`–`856`. Every one was verified by reading its call site, not by trusting the count.
 
 **`FUN_1801904F0` reads six consecutive tags — `0x353` to `0x358`** — each into its own
-local. That is the "read as a group" shape already noted for `445`/`446`/`447` and
-`487`/`500`/`501`/`502`, now found in the second registry too, and it is a lead worth
-following: six related settings resolved together in one function usually means one feature.
+local. An earlier draft read that as "six related settings, therefore one feature". **That
+was wrong**: they are six `hackpro::Bytes` values forming a string-prefix dispatch table,
+documented above. The "sibling tags mean one feature" rule does not survive contact with
+this example, and it was stated too confidently.
 
-UNVERIFIED: what the second registry is, whether it has a name file of its own like
-`hackpro.json`, and whether tag 285 is a game-mod setting or a hackpro-internal one.
+UNVERIFIED: whether any other tag group in `_settings.tsv` is a dispatch table rather than a
+feature. With 149 tags read by 192 sites, that cannot be answered from the table alone.
+
+### Corrected: `FUN_18002EE40` is `getConfigVar<hackpro::Bytes>`, not a second registry
+
+An earlier draft of this section called `FUN_18002EE40` "a second registry's accessor",
+because its map sits at a different offset from `getConfigVar<bool>`'s. **That was wrong**,
+and the evidence against it is one line of the function itself:
+
+```
+local_60 = "hackpro::Bytes";
+FUN_1800202a0(&local_64, 3, local_58, &local_80, &local_70, &local_60);
+```
+
+The literal is the *requested type's name*, emitted on a miss alongside the tag. So
+`FUN_18002EE40` is the typed accessor for **`hackpro::Bytes`** — the fifth of the five value
+types, the one `FUN_180076EB0` writes under `V_BYTES` and the exported API exposes as
+`std::vector<unsigned int>`. It is the same registry, and this is the sixth type-aware
+accessor found rather than a new key space.
+
+Two of the host-method inventory's non-GD entries are therefore **value types, not host
+methods**: `hackpro::Bool`, `hackpro::Decimal`, `hackpro::Int`, `hackpro::String` and
+`hackpro::Bytes` are named by these accessors through the same runtime resolver that
+resolves GD methods. That is consistent with
+[host-methods.md](host-methods.md) flagging them, and it explains why they looked like
+`Class::method` strings.
+
+### The offset conflict, left open
+
+Verified by `pe_disasm.py` on `_original.dll`, not taken from the decompiler:
+
+| Accessor | Sentinel | Buckets | Mask |
+| -------- | -------: | ------: | ---: |
+| `FUN_18002EE40` (`Bytes`) | `+0xB0` | `+0xC0` | `+0xD8` |
+| `FUN_18008F420` (`bool`) | `+0x138` | `+0x148` | `+0x160` |
+
+```
+000000018002eeee  4c 23 81 d8 00 00 00  and  r8, qword ptr [rcx + 0xd8]
+000000018002eef5  48 8b 91 b0 00 00 00  mov  rdx, qword ptr [rcx + 0xb0]
+000000018002eefc  48 8b 89 c0 00 00 00  mov  rcx, qword ptr [rcx + 0xc0]
+```
+
+Two problems with reading those as two maps on one object:
+
+1. Both accessors receive `FUN_18008A510()` at their call sites — the same value — so a
+   shared object would have to carry two differently-offset maps. Possible, but then the
+   typed accessors would not agree about where values live.
+2. **`+0xB0` is claimed twice, incompatibly.** `FUN_18002EE40` reads it as a pointer to a
+   bucket array. `FUN_180076EB0`, the serialiser, walks `param_1 + 0xB0` as an intrusive list
+   of entries. One of those readings is wrong, or the two functions have differently-based
+   `this`.
+
+UNVERIFIED: which. Settling it needs the type of the object `FUN_18008A510()` returns.
+Recorded rather than resolved by assumption, because picking the convenient reading would
+have produced a confident and wrong struct layout.
+
+### What `FUN_18008A510` actually returns
+
+While checking the above:
+
+```
+FUN_1800a2f90(longlong param_1) { return param_1 + 0xd8; }
+```
+
+and `FUN_18008A510()` is `FUN_1800A2F90(FUN_1800A2720())`. So the "config accessor" every
+exported API uses returns **a fixed offset, `+0xD8`, into the object `FUN_1800A2720`
+returns**. That is more specific than "the global registry", and it is why an offset read
+off one accessor cannot be compared against an offset read off another without knowing the
+base — which is exactly the mistake above.
+
+## The six-tag group is a string-prefix dispatch
+
+`FUN_1801904F0`, VA `0x1801904F0`, RVA `0x1904F0`, 708 bytes, one caller, reads tags
+`0x353`, `0x355`, `0x356`, `0x354`, `0x357`, `0x358` in that order and returns a two-field
+result `{int code; bool matched;}`.
+
+It is **not** a settings block that reads six related values. It is a cascade: for each
+tag, `FUN_18002EE40` yields a `std::string`, and the code compares the **first four bytes**
+of that string against `param_2`, returning the first match's single-character code:
+
+| Tag | Code returned | As a character |
+| --- | ------------: | --------------- |
+| `0x353` | `0x57` | `W` |
+| `0x355` | `0x41` | `A` |
+| `0x356` | `0x44` | `D` |
+| `0x354` | `0x25` | `%` |
+| `0x357` | `0x26` | `&` |
+| `0x358` | `0x27` | `'` |
+
+Six string-valued settings whose values are compared as 4-byte prefixes against an `int`
+argument, resolving to one of six single-character codes. What that vocabulary is — a
+command grammar, a key binding table, a text-mode dispatch — is not established, and the
+codes are recorded as the integers plus the characters they happen to spell rather than as a
+claimed alphabet.
+
+The guard is also notable:
+
+```
+lVar3 = FUN_1801acdb0();                                  // 50 callers, the current level
+if ((lVar3 == 0) || (*(char *)(lVar3 + 0x39ef) == '\x01')) {
+    *(undefined1 *)(param_1 + 1) = 0;
+    return param_1;
+}
+```
+
+**`<level>+0x39EF` is a second one-byte field**, alongside the `PlayLayer+0x3230`
+re-entrancy flag from [hook-dispatch.md](hook-dispatch.md). `FUN_1801ACDB0` returning the
+current level is now the third confirmed use of it.
+
+The "sibling settings mean one feature" reading of a tag group was therefore wrong here: it
+is a dispatch table, not a feature's settings. Worth recording, because the rule was stated
+confidently in the previous draft of this file.
+
+UNVERIFIED: what the six `hackpro::Bytes` values contain and what vocabulary the six
+characters belong to. The values live in `hackpro.json`, which this repo does not read.
 
 ## Known limitation: tag names are not in the image
 

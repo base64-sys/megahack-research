@@ -43,10 +43,15 @@ the **level lifecycle**, not to rendering. `resetLevel`, `postUpdate` and `init`
 account for 46 of 350 references.
 
 Note that four entries are not GD at all — `hackpro::Bool`, `hackpro::Decimal`,
-`hackpro::Int`, `hackpro::String` (plus `hackpro::Bytes`) are Mega Hack's **own** value
-types, named through the same resolver. They appear here because `classify_strings.py`
+`hackpro::Int`, `hackpro::String` (plus `hackpro::Bytes`) are Mega Hack's **own value
+types**, named through the same resolver. They appear here because `classify_strings.py`
 recognises them as `Class::method` shapes. That is worth knowing: the resolver is generic,
 and the category is not a claim that the method is GD's.
+
+This was later confirmed rather than assumed. `FUN_18002EE40` — the accessor for
+`hackpro::Bytes` — turns out to emit that literal on a miss, which is how it was identified
+among the accessors at all. See
+[settings-registry.md](settings-registry.md#corrected-fun_18002ee40-is-getconfigvarhackprobytes-not-a-second-registry).
 
 ## Corroborating two of the patch's hook-site labels
 

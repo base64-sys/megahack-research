@@ -84,14 +84,14 @@ Exit criteria:
       folder, loaded by `FUN_18008B780` and interned by `FUN_18007C700`, whose schema is
       now documented. That is also the answer to the string-inventory gap — the join
       between UI widget names and numeric tags is `tagFor` at the exported API boundary.
-      Outstanding: `FUN_18002EE40` is a **second registry's accessor**, and the index now
-      recognises it. That required making the accessor table record *argument position*
-      explicitly, because the three known accessors take the tag second and this one takes it
-      third behind an out-parameter — the guessed-position matcher had been missing it with
-      no error. Tags went **134 → 149** (reads 177 → 192, range 4..881 → 3..881), and the
-      284 → 292 gap is closed. Still open: what the second registry is, and whether it has a
-      name file of its own. The criterion stays open because the *contents* are data, and
-      that data is user data this repo deliberately does not commit.
+      Outstanding: the three RVAs other than the four confirmed are paired positionally from the
+      registration text and are flagged UNVERIFIED per row in `_hook_sites.tsv`. One
+      structural question is genuinely open: `+0xB0` is read as a bucket-array pointer by
+      `FUN_18002EE40` and as an intrusive list head by the serialiser `FUN_180076EB0`, so the
+      registry's map layout cannot be written down until that is settled — see
+      [settings-registry.md](../notes/settings-registry.md). The criterion stays open
+      because the *contents* are data, and that data is user data this repo deliberately
+      does not commit.
 - [ ] Save/load file formats mapped. **The three stores the release uses are now
       separated**, which was ambiguous before: `hackpro.json` in the mod directory (read
       `0x1800BF190`, written `0x1800BF400`, both dispatched indirectly so both have zero
