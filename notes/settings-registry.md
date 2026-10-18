@@ -334,11 +334,10 @@ So the object is at least **`0x4A8` = 1192 bytes**.
 
 ### The `+0xB0` conflict resolved: the two readers use different bases
 
-`scripts/hook_dispatch` and `FUN_180076EB0` are reached through **virtual dispatch**, and
-that changes the base. `FUN_18008A530` is `hackpro::Config::vtable[0]`, so its `this` is
-`object + 0x128` — not the `object + 0xD8` the accessors receive.
-
-`pe_disasm.py` at `0x18008A530` settles what it forwards:
+`FUN_180076EB0` is `hackpro::BasicConfig::vtable[0]`, so it arrives by **virtual dispatch**
+and its `this` is `object + 0x128`. The accessors receive `object + 0xD8` from
+`FUN_18008A510()`. `pe_disasm.py` at `0x18008A530` shows the serialiser is handed the
+unmodified `rcx`:
 
 ```
 000000018008a557  48 89 d6             mov    rsi, rdx
@@ -346,44 +345,54 @@ that changes the base. `FUN_18008A530` is `hackpro::Config::vtable[0]`, so its `
 000000018008a55d  e8 4e c9 fe ff       call   0x180076eb0
 ```
 
-`rcx` and `rdx` are **not** clobbered before the call; the `mov`s copy them to callee-saved
-registers for later use. So the serialiser receives the original `rcx`, i.e.
-`this = object + 0x128`.
+`rcx`/`rdx` are not clobbered; the `mov`s are for later use.
 
-Putting both readers on the one object at `0x180800F58`:
+### And `+0xB0` in the serialiser is provably a circular list
 
-| Reader | Base | Reads `+0xB0` as |
-| ------ | ---- | ---------------- |
-| `FUN_180076EB0` (serialiser) | `object + 0x128` | **object + `0x1D8`** |
-| `FUN_18002EE40` (`Bytes`) | `object + 0xD8` | **object + `0x188`** |
+Also from `pe_disasm.py` at `0x180076EB0`, the first accesses are:
 
-**They are different fields.** There is no conflict. What looked like one field claimed twice
-was the same offset number read through two bases, which is the same class of error as the
-"second registry" claim, one level down.
+```
+0000000180076edb  48 89 cf                    mov    rdi, rcx                    ; rdi = this
+0000000180076f29  48 8b b7 b0 00 00 00        mov    rsi, qword ptr [rdi + 0xb0]  ; list head
+0000000180076f40  49 89 f5                    mov    r13, rsi
+0000000180076f60  4d 8b 6d 00                 mov    r13, qword ptr [r13]         ; node = node->next
+0000000180076f64  49 39 f5                    cmp    r13, rsi                    ; until back to the head
+0000000180076f67  0f 84 e1 00 00 00           je     0x18007704e
+```
 
-One residual disagreement does survive, and it is worth stating precisely because it is now
-a question about a single known address rather than an ambiguous offset:
+`rsi = *(this + 0xB0)`, then `r13 = *r13` walking, terminating when `r13 == rsi`. That is
+the **circular intrusive-list sentinel**, unambiguously — `node->next == node` at the head.
+No interpretation is needed; the loop shape settles it.
 
-- the `Bytes` accessor's **mask** is object `+0x1B0`;
-- the serialiser's **list head** is object `+0x1D8`;
-- the constructor zeroes `+0x1B0`, `+0x1C0`, `+0x1D8` together.
+The same function reads `*(this + 0x98)` at `0x180076F71` and walks it as a **red-black tree**
+(`cmp byte ptr [rcx+0x19]`, `cmp qword ptr [rcx+0x20]`, `shl edx,4`), which is the tag set —
+consistent with `FUN_18007D1C0`'s `contains` walk in the same file.
 
-So the constructor-initialised group is exactly the `Bytes` accessor's map plus the
-serialiser's list, and the serialiser's list head sits at the third field of a
-`(sentinel, ?, mask)` triple — which is where an empty container's first bucket would be, not
-where an intrusive list head belongs.
+### Two different fields, and why there was no conflict
 
-UNVERIFIED: that residual. Two readings remain, not distinguished here:
+| Reader | Base | Field | Object offset | Shape |
+| ------ | ---- | ----- | ------------: | ----- |
+| `FUN_180076EB0` (serialiser) | `+0x128` | `+0xB0` | **`+0x1D8`** | circular list head |
+| `FUN_18002EE40` (`Bytes`) | `+0xD8` | `+0xB0` | **`+0x188`** | pointer to a bucket array |
 
-1. the serialiser walks a node reached through a *different pointer* than the one
-   `FUN_18002EE40` reads as a mask, and the three fields are unrelated; or
-2. one of the two decompilations has typed the same field as two things.
+**Different fields.** What looked like one field claimed twice was the same offset number read
+through two bases — the same class of error as the "second registry" claim, one level down.
 
-Settling it needs `pe_disasm.py` over the whole of `FUN_180076EB0`, checking whether its
-`+0xB0` value is dereferenced as `*(ptr)` and then `*node == node` — an intrusive-list
-sentinel test — or as `mask` in a bucket index. One function, one read. Not done.
+### What is still open, precisely
 
-Every other offset in this section is derived rather than assumed.
+The `Bytes` accessor's three reads translate to object `+0x188` / `+0x198` / `+0x1B0`, which
+are **not consecutive** — gaps at `+0x190`, `+0x1A0`, `+0x1A8`. An MSVC `std::unordered_map`
+is three consecutive pointers, so either Ghidra typed a wider struct or these are not one
+container.
+
+The constructor zeroes `+0x1B0`, `+0x1C0` and `+0x1D8` consecutively, and `+0x1D8` is now
+known to be the serialiser's list head — so that group is a `(list head, ?, ?)`-shaped
+structure, not the `Bytes` map's three fields.
+
+UNVERIFIED: the exact field grouping of the `Bytes` map at object `+0x188`/`+0x198`/`+0x1B0`,
+and whether `+0x1B0` is the mask of that map or something else. One function — a full
+`pe_disasm.py` read of `FUN_18002EE40` tracking which register each field is used in — would
+settle it. That has not been done, and nothing else in this section depends on it.
 
 ### A correction to my own reasoning
 
@@ -551,22 +560,17 @@ and getting it wrong is exactly what produced the two false claims this file has
 
 | Reader | Base | Field | Object offset |
 | ------ | ---- | ----- | ------------: |
-| `FUN_18002EE40` (`Bytes`) | `+0xD8` | sentinel | `+0x188` |
-| | | buckets | `+0x198` |
-| | | mask | **`+0x1B0`** |
-| `FUN_18008F420` (`bool`) | `+0xD8` | sentinel | `+0x210` |
-| | | buckets | `+0x220` |
-| | | mask | `+0x238` |
-| `FUN_180076EB0` (serialiser) | `+0x128` | list head | **`+0x1D8`** |
+| `FUN_18002EE40` (`Bytes`) | `+0xD8` | buckets | `+0x198` |
+| | | mask | `+0x1B0` |
+| | | `+0xB0` | `+0x188` |
+| `FUN_18008F420` (`bool`) | `+0xD8` | sentinel / buckets / mask | `+0x210` / `+0x220` / `+0x238` |
+| `FUN_180076EB0` (serialiser) | `+0x128` | `+0xB0` | **`+0x1D8`**, a circular list head |
 
-The constructor zeroes `+0x1B0`, `+0x1C0` and `+0x1D8` as a consecutive group. Two of the
-readers land on the ends of that group — the `Bytes` accessor's **mask** and the serialiser's
-**list head** — while the `bool` accessor's triple lands entirely outside it at
-`+0x210`/`+0x220`/`+0x238`, which the constructor does not touch at all.
-
-That is consistent rather than contradictory: an empty map needs no constructor write, so the
-untouched triple is simply a container that is still empty, and the initialised triple is the
-one the constructor prepared.
+Offsets above are relative to `FUN_18008A510()` for the accessors and to the virtual `this`
+for the serialiser. **They are not comparable as written** — translate onto the object
+before comparing, which is the mistake this file has made twice and corrected twice. On the
+object, `FUN_18008F420`'s triple lands entirely outside the constructor's initialised group at
+`+0x210`/`+0x220`/`+0x238`, which is consistent: an empty map needs no constructor write.
 
 ## `keyFor`: the tag → name direction exists and is exported
 

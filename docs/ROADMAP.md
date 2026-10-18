@@ -92,8 +92,9 @@ Exit criteria:
       confirms the `Config`-at-`+0x128` layout. The apparent "`+0xB0` is claimed twice"
       conflict is **resolved**: the two readers use different bases — the serialiser arrives
       by virtual dispatch at `+0x128`, the accessors at `+0xD8` — so they are different
-      fields. A residual disagreement over object `+0x1D8` remains and is marked UNVERIFIED;
-      it needs one function read, not a new line of attack. The criterion stays open
+      fields, and disassembly settles the serialiser's as a circular list head
+      (`mov rsi,[rdi+0xb0]`, then `r13 = *r13` until `r13 == rsi`). The field grouping of
+      the `Bytes` map remains UNVERIFIED and needs one function read. The criterion stays open
       because the *contents* are data, and that data is user data this repo deliberately
       does not commit.
 - [ ] Save/load file formats mapped. **The three stores the release uses are now

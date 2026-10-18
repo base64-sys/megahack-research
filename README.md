@@ -214,6 +214,15 @@ constructor writes `hackpro::Config::vftable` at both `+0x00` and `+0x128`, whic
 independently confirms the `Config`-at-`+0x128` layout that the `add rcx, -0x128` thunk in
 `FUN_1800917B0` implies — two unrelated functions agreeing on the same offset.
 
+One trap worth stating, because this repo walked into it twice: **struct offsets are only
+comparable once translated onto a common base.** The serialiser `FUN_180076EB0` arrives by
+virtual dispatch (`this = object + 0x128`) while the accessors get `object + 0xD8`, so their
+respective `+0xB0` fields are object `+0x1D8` and `+0x188` — **different fields**, not one
+claimed twice. Disassembly settles the serialiser's as a circular list head
+(`mov rsi,[rdi+0xb0]`, then `r13 = *r13` until `r13 == rsi`). Reading offsets without the
+base produced a false "second registry" and a false "`+0xB0` is claimed twice"; both are
+recorded as failure modes in [notes/settings-registry.md](notes/settings-registry.md).
+
 `FUN_18002EE40` is the typed accessor for **`hackpro::Bytes`** — it logs that literal on a
 miss — so all four accessors read the one registry with four different value types. It takes
 the tag as its *third* argument, which is why an index that guessed argument position had
