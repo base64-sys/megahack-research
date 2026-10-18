@@ -246,9 +246,12 @@ the vtable that references it. It recovers Mega Hack's namespaces (`hackpro`, `c
 [notes/rtti-classes.md](notes/rtti-classes.md). It also recovers 794 distinct inheritance
 edges — `numBases` sits at `+8` in the hierarchy descriptor, not `+0` as MSVC documents.
 
-`_settings.tsv` is 134 numeric ids plus 4 keyed lookups through `FUN_18007CB60`, which
-resolves a string key against a chained FNV-1a-64 hash map — see
-[notes/settings-registry.md](notes/settings-registry.md).
+`_settings.tsv` is 134 distinct tag values read through `FUN_18008F420`, `FUN_18002DE50`
+and `FUN_180003D80`, plus 4 keyed lookups through `FUN_18007CB60`. Those tags are
+**64-bit `hackpro::Tag` values**, not small integers — the registry lives on
+`hackpro::BasicConfig`, tag names exist only in a runtime map, and the exported
+`hackpro::extensions::keyFor(Tag)` is the handle-to-name direction. The save file is keyed
+by name, not by number. See [notes/settings-registry.md](notes/settings-registry.md).
 `build_xref_index.py` matches Ghidra's `DAT_` symbols, its inlined string literals, **and**
 strings MSVC built in an SSO buffer: 3,611 of the rows are VA-backed, 537 are stack-built
 and carry a `sso` marker with no VA, because those bytes only exist in a frame. Symbols

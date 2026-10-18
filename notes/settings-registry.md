@@ -167,50 +167,199 @@ absent** from that run, even though it had already been recorded by hand in
 An index built from a guessed list of accessors is not a registry, it is a sample of one.
 The accessors must be enumerated from the binary, not assumed.
 
-## Known limitation: key-based lookups are not recovered
+## Known limitation: tag names are not in the image
 
 The four `FUN_18007CB60` call sites are indexed, but their key arguments appear as
-`local_28`, `local_30`, `local_58` and `local_80` — Ghidra locals, not names.
+`local_28`, `local_30`, `local_58` and `local_80` — Ghidra locals, not names. That is now
+explained rather than merely noted: those sites walk a `std::set<std::string>` of keys read
+from a profile JSON object, so the text is user data that only exists at runtime.
 
-This is the same SSO problem as [definition-keys.md](definition-keys.md#evidence--how-a-row-is-built):
-Mega Hack builds key strings on the stack from immediates, so the name only exists as
-`0x4E4F4349`-style constants that have to be decoded by hand. `FUN_18011FFE0` yielded
-`ICONIC/DISABLE`, `ICONIC/GENERAL` and friends that way.
+`scripts/settings_index.py` deliberately reports the locals rather than guessing, and that
+is correct. `scripts/decode_sso.py` recovers SSO-built constants elsewhere;
+see [finding-code.md](finding-code.md).
 
-So `scripts/settings_index.py` deliberately reports the locals rather than guessing.
-`scripts/decode_sso.py` recovers most of them; see
-[finding-code.md](finding-code.md).
+## Removed: the superseded "it is only a hash" claim
 
-## Correction: FUN_18007CB60 is an FNV-1a hash
+An earlier draft of this file carried a section headed "Correction: FUN_18007CB60 is an
+FNV-1a hash", asserting the function does not look anything up. That claim was based on
+reading only the hashing half and has been **deleted**, because the disassembly table at
+the top of this note shows the bucket arithmetic and chain walk that follow it.
 
-Originally described here as the key-based lookup form. That was wrong, and the
-`decode_sso.py` pass is what exposed it — the apparent `'%#"'` format-string fragment was
-actually part of the FNV-1a constant. `FUN_18007CB60` takes `(owner, out, key)`, reads the
-key's size and capacity from the `std::string`, and returns FNV-1a-64. So those four sites
-are hashes of SSO-built strings, not registry lookups, and the setting names they appeared
-to hold are not recoverable from the call shape at all.
+What the four `FUN_18007CB60` sites actually do was settled later, from `FUN_18008ABC0`
+(below): they are keyed lookups over a `std::set<std::string>` of profile keys, and the
+`'\x01'` the caller tests is the found/not-found flag. The key text comes from the profile
+JSON, not from the settings registry, which is why `settings_index.py` reports a Ghidra
+local there and is right to.
 
-UNVERIFIED: what the first parameter is, and whether the hash result is used as a key
-lookup, a comparison, or only for change detection.
+## The registry class: `hackpro::BasicConfig` and `hackpro::Config`
+
+- **Date** — 2026-10-18.
+- **Method** — `scripts/rtti_index.py` → `_rtti.tsv`, then a raw vtable read with
+  `pefile`, cross-checked against `pe_disasm.py`.
+
+`scripts/rtti_index.py` already knew both types but nothing had followed up on them. Their
+vtables were read directly:
+
+| Class | TypeDescriptor / COL VA | Vtable slot 0 | slot 1 | slot 2 |
+| ----- | ---------------------- | ------------- | ------ | ------ |
+| `hackpro::BasicConfig` | `0x18053E8D8` | `0x180076EB0` | `0x1800788D0` | — (2 virtuals) |
+| `hackpro::Config` | `0x180544FD8` | `0x18008A530` | `0x18008ABC0` | `0x1800917B0` |
+
+`0x1800788D0` is the "full-map iterator" already listed above, which is consistent: it is
+`BasicConfig::vtable[1]`.
+
+### Config derives from BasicConfig at +0x128
+
+`pe_disasm.py` at `0x1800917B0` (RVA `0x917B0`, file `0x90BB0`) — `Config::vtable[2]`:
+
+```
+00000001800917b0  48 81 c1 d8 fe ff ff   add    rcx, -0x128
+00000001800917b7  48 8b 12              mov    rdx, qword ptr [rdx]
+00000001800917ba  e9 61 dc ff ff        jmp    0x18008f420
+```
+
+`rcx` entering a virtual is already adjusted to the subobject, so `-0x128` is exactly the
+offset of the `hackpro::Config` subobject within the most-derived object — which places
+the `hackpro::BasicConfig` base at offset 0 and its vtable at `+0x128`. `0x18008F420`,
+`getConfigVar<bool>`, is a **non-virtual** member of the base.
+
+Two independent angles agree: the RTTI walk says `Config` has its own vtable, and the
+adjustment `rcx - 0x128` is the only way `Config::vtable[2]` can reach a function that lives
+on a different subobject. Sizes of the base are not established; the first
+`BasicConfig`-derived field observed is the entry list at `+0xB0`.
+
+## The key is a 64-bit `hackpro::Tag`, not a small number
+
+This is the finding that reframes everything above it.
+
+`pe_disasm.py` at `0x18008F420`, file `0x8E820`, hashes **all eight bytes** of its second
+argument:
+
+```
+000000018008f45c  41 89 db              mov    r11d, ebx
+000000018008f45f  41 c1 eb 10           shr    r11d, 0x10
+...
+000000018008f486  0f b6 d3              movzx  edx, bl
+000000018008f489  48 bf 25 23 22 84 e4 9c f2 cb   movabs rdi, 0xcbf29ce484222325
+```
+
+eight `xor`/`imul` pairs, then:
+
+| Address | Instruction | Meaning |
+| ------- | ----------- | ------- |
+| `0x18008F4E8` | `and r8, qword ptr [rsi + 0x160]` | `hash & mask` |
+| `0x18008F4FD` | `shl r8, 4` | bucket stride 16 bytes |
+| `0x18008F4EF` | `mov rax, qword ptr [rsi + 0x138]` | end-of-chain sentinel |
+| `0x18008F4F6` | `mov rdx, qword ptr [rsi + 0x148]` | bucket array |
+| `0x18008F50B` | `cmp rbx, qword ptr [rcx + 0x10]` | compare the full `uint64` key |
+
+So the accessor signature is `(BasicConfig*, uint64_t Tag)`. The "numeric ids" in
+`_settings.tsv` are the *observed values* of those tags in this build; the type is 64 bits
+and the values happen to be small. Calling them "small integers" is a description of this
+build's data, not of the interface, and any reconstruction that types them as `int` would
+break on a tag above `0x7FFFFFFF`.
+
+### Two maps on the registry object
+
+| Field | Map | Node layout |
+| ----- | --- | ----------- |
+| `+0x20` sentinel, `+0x30` buckets, `+0x48` mask | `uint64_t Tag` → key name (`std::string`) | `+0x08` next, `+0x10` tag, `+0x18` buffer, `+0x28` size, `+0x30` capacity |
+| `+0x138` sentinel, `+0x148` buckets, `+0x160` mask | `uint64_t Tag` → value | `+0x08` next, `+0x10` tag, `+0x18` value |
+| `+0xB0` | `std::list` of entries | `+0x08` next, `+0x10` tag, `+0x18` value, `+0x38` type byte, `+0x20`/`+0x28` for type 4 |
+
+## `keyFor`: the tag → name direction exists and is exported
+
+- **VA** `0x180072E20`, RVA `0x72E20`, 41 bytes, 1 caller.
+- **Tool** — `recovered/functions/180072e20_keyFor.c`, Ghidra signature:
+
+```
+basic_string<char,...> __cdecl keyFor(Tag param_1)
+/* hackpro::extensions::keyFor(class hackpro::Tag) */
+?keyFor@extensions@hackpro@@YA?AV?$basic_string@...VTag@2@@Z
+```
+
+It calls `FUN_18008A510` for the global registry, then `FUN_18007CCF0`, which is the name-map
+lookup. On a miss `FUN_18007CCF0` logs `"CONFIG" … "{} not valid tag"`.
+
+This settles an open question from `hackpro-api.md`: the exported API's "interned `Tag`
+identity" is a 64-bit handle whose **name lives only in a runtime map**, and `keyFor` is the
+supported way back from handle to name. There is no image-resident table of tag names,
+which is the same negative result `notes/fnv-hash-probe.md` reached from the other
+direction, and the two agree.
+
+The named `hackpro::extensions` API block runs `0x180072DF0`–`0x180075530` and includes
+`keyFor` (`0x180072E20`), `setHackEnabled` (`0x180073070`), `registerHackListener`
+(`0x1800730F0`), the five `registerListener_<type>` overloads, and
+`setConfigVar<std::string>` / `setConfigVar<std::vector<unsigned int>>`.
+
+## The by-tag setter, and the five value types
+
+`FUN_18008B490(this, Tag, char)` at VA `0x18008B490`, RVA `0x8B490`, 14 callers including
+the exported `setHackEnabled` and `disableAllCheats` (`0x18019B450`). It is the
+"boolean setter that intercepts settings by tag" from `hackpro-api.md`, now located:
+
+| Call | Message |
+| ---- | ------- |
+| `FUN_18008DD20` | change notification |
+| failure when the tag has a rule | `"Hack {} locked by rule"` |
+| failure when the tag is absent | `"Invalid tag {} for mod setter"` |
+
+The value types are the five group keys the whole-registry serialiser
+`FUN_180076EB0` (`BasicConfig::vtable[0]`, 3,391 bytes, 1 caller `0x18008A530`) writes.
+It walks the entry list at `this+0xB0`, calls `FUN_18007CCF0` per entry to recover the
+name, and groups the output under one key per type:
+
+| Type byte | Group key | Immediate in `FUN_180076EB0` |
+| --------- | --------- | ----------------------------- |
+| `\0` | `V_BOOL` | `0x4c4f4f425f56`, len 6 |
+| `\1` | `V_INT` | `0x544e495f56`, len 5 |
+| `\2` | `V_DECIMA…` | `&DAT_414d494345445f56`, len 9 |
+| `\3` | `V_STRING` | `0x474e495254535f56`, len 8 |
+| `\4` | `V_BYTES` | `0x53455459425f56`, len 7 |
+
+Each decodes cleanly from its little-endian immediate (`0x4c4f4f425f56` = `"V_BOOL"`). The
+type-2 key is a VA-backed literal of 9 bytes whose first 8 are `V_DECIMA`.
+
+UNVERIFIED: the 9th byte of the type-2 group key. `scripts/decode_sso.py --grep V_`
+returns **nothing** for these five literals despite decoding 677 elsewhere, so the tool's
+scan does not cover this function's stack-SSO form. Reading the 9th byte at the
+VA Ghidra labelled, or extending `decode_sso.py` to this pattern, would confirm whether it
+is `V_DECIMAL`, `V_DECIMAL64` truncated, or something else. The five types otherwise agree
+with the five value types named independently in `hackpro-api.md`.
+
+Consequence for M1: **the on-disk settings file is keyed by tag name, not by number.**
+Any reconstruction of save/load has to reproduce the `keyFor` name map, not just the
+values, or the file it writes will not be the file v9.1.3 reads.
 
 ## Conclusion
 
-1. The registry has at least 134 read numeric ids spanning 4–881, through three accessors,
-   plus a key-based form.
-2. All seven ids previously listed as unknown are located and their roles partly identified.
-3. Ids 501/502 and 445/446/447 are read as groups, which is where a session/global switch
+1. The registry lives on `hackpro::BasicConfig`; `hackpro::Config` derives from it at
+   `+0x128` and its `vtable[2]` is a `getConfigVar<bool>` forwarder.
+2. Settings are keyed by **`hackpro::Tag`, a 64-bit value**, not by a small number. The
+   134 values in `_settings.tsv` are what this build uses, not the interface's type.
+3. Tag names exist only in a runtime `Tag` → `std::string` map on the registry
+   (`+0x20`/`+0x30`/`+0x48`). The exported `hackpro::extensions::keyFor(Tag)`
+   (`0x180072E20`) is the only supported handle → name direction.
+4. Five value types, written as `V_BOOL`, `V_INT`, `V_DECIMA…`, `V_STRING`, `V_BYTES`
+   groups by `FUN_180076EB0`, agreeing with `hackpro-api.md`'s five.
+5. The save file is keyed by **name**, so save/load parity requires reproducing the name
+   map.
+6. All seven ids previously listed as unknown are located and their roles partly identified.
+7. Ids 501/502 and 445/446/447 are read as groups, which is where a session/global switch
    would most plausibly sit.
-4. Any index built from an assumed accessor list undercounts. Enumerate, do not assume.
+8. Any index built from an assumed accessor list undercounts. Enumerate, do not assume.
 
 ## Open questions
 
-- Decode the SSO immediates at the four `FUN_18007CB60` sites to recover their key names.
-- Find a fourth accessor, if one exists, and re-run to get a true count.
-- Identify the registry's own name table. Ids are numeric in code, so names must live in a
-  data structure or the language file; neither has been located.
+- **Where a name becomes a tag.** No insertion site is found yet, so the full tag list is
+  still unknown; the four `FUN_18007CB60` sites are settled (profile-key lookups) and are
+  *not* the answer. A registration function taking a name and returning a `Tag` would close
+  this.
+- Confirm the 9th byte of the type-2 group key in `FUN_180076EB0`.
+- Find a fourth accessor, if one exists, and re-run to get a true tag count.
 - Confirm whether the ICONIC row ids (`445`, `446`, `447`, seen as `0x1BD`, `0x1BE`, `0x1BF`
-  in `FUN_18011FFE0`) share a namespace with settings ids or are a separate sequence that
-  happens to overlap. The overlap is suspicious and unverified.
+  in `FUN_18011FFE0`) share a namespace with tags or are a separate sequence that happens
+  to overlap. The overlap is suspicious and unverified.
 
 ## Failure modes recorded
 

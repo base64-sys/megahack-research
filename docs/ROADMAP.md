@@ -75,6 +75,12 @@ Exit criteria:
       descriptors at all. Caveat: template argument scoping is not tracked in the demangler,
       so a minority of base names are approximations — the `mangled` column is authoritative.
 - [ ] Settings registry map: every key, its type, default, and the function that applies it.
+      **Partly done.** The registry class, its `+0x128` `Config` base layout, the 64-bit
+      `hackpro::Tag` key type, the tag→name map, `keyFor` (`0x180072E20`), the by-tag
+      setter (`0x18008B490`) and the five value types are now mapped in
+      [settings-registry.md](../notes/settings-registry.md). Still missing: the insertion
+      site where a name becomes a tag, so **defaults and the complete key list are not
+      recovered** - which is why the criterion stays open.
 - [ ] Save/load file formats mapped, including the sidecar `best_runs.bin` header and
       record layout.
 - [x] Entry and lifecycle order, partially: `geodeImplicitEntry` at `0x180072B60` is the
