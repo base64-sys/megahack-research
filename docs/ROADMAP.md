@@ -100,6 +100,11 @@ Exit criteria:
       `early-load` ordering and the shutdown path still outstanding.
 - [ ] Geometry Dash structures Mega Hack touches documented with verified offsets
       (`GJGameLevel+0x148`, `+0x14C`, `+0x158`, `+0x198`, `+0x1B8`, `+0x2C4`, `+0x35C`).
+      **The handle now exists.** Because Mega Hack imports zero GD gameplay symbols,
+      `scripts/host_methods.py` indexes the 214 method-name strings it resolves at
+      runtime, and 350 functions reference them — the only way to reach the host ABI from
+      the image. See [host-methods.md](../notes/host-methods.md). The offsets themselves are
+      still unverified.
 - [ ] Output: `notes/` map files, one per subsystem, each fact cited by VA. Four written
       (`provenance`, `hackpro-api`, `host-abi`, `tab-registration`).
 
