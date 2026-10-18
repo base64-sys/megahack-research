@@ -75,16 +75,20 @@ Exit criteria:
       descriptors at all. Caveat: template argument scoping is not tracked in the demangler,
       so a minority of base names are approximations — the `mangled` column is authoritative.
 - [ ] Settings registry map: every key, its type, default, and the function that applies it.
-      **Mechanism mapped, contents relocated.** The registry class, its `+0x128` `Config`
-      base layout, the 64-bit `hackpro::Tag` key type, the tag↔name bijection, `tagFor`
-      (`0x180072DF0`), `keyFor` (`0x180072E20`), the by-tag setter (`0x18008B490`) and the
-      five value types are all mapped in [settings-registry.md](../notes/settings-registry.md).
-      The full key list is **not recoverable from the binary**: it is `hackpro.json` in the
-      installed mod folder, loaded by `FUN_18008B780` and interned by `FUN_18007C700`, whose
-      schema is now documented. That is also the answer to the string-inventory gap - the
-      join between UI widget names and numeric tags is `tagFor` at the exported API boundary.
-      The criterion stays open because the *contents* (every key, type, default) are data,
-      and that data is user data this repo deliberately does not commit.
+      **Mechanism mapped, contents relocated, one accessor still missing.** The registry
+      class, its `+0x128` `Config` base layout, the 64-bit `hackpro::Tag` key type, the
+      tag↔name bijection, `tagFor` (`0x180072DF0`), `keyFor` (`0x180072E20`), the by-tag
+      setter (`0x18008B490`) and the five value types are all mapped in
+      [settings-registry.md](../notes/settings-registry.md). The full key list is
+      **not recoverable from the binary**: it is `hackpro.json` in the installed mod
+      folder, loaded by `FUN_18008B780` and interned by `FUN_18007C700`, whose schema is
+      now documented. That is also the answer to the string-inventory gap — the join
+      between UI widget names and numeric tags is `tagFor` at the exported API boundary.
+      Outstanding: `FUN_18002EE40` is a **second registry's accessor** the index does not
+      recognise, and tag 285 is consequently absent from `_settings.tsv`. Adding it is the
+      first change to make to `scripts/settings_index.py`. The criterion stays open
+      because the *contents* are data, and that data is user data this repo deliberately
+      does not commit.
 - [ ] Save/load file formats mapped. **The three stores the release uses are now
       separated**, which was ambiguous before: `hackpro.json` in the mod directory (read
       `0x1800BF190`, written `0x1800BF400`, both dispatched indirectly so both have zero
@@ -148,9 +152,11 @@ Exit criteria:
       `(resolver, targetFromGDBase(rva), callback, name, -32, 1)`; calling an original is
       `createWrapper(GetModuleHandleA(NULL) + rva)`. Three GD function RVAs and one GD
       field offset (`PlayLayer+0x3230`) are verified from two angles each. See
-      [hook-dispatch.md](../notes/hook-dispatch.md). A reconstruction should reproduce the
-      mechanism, not copy the RVAs — they are absolute into the host image and change on
-      any GD re-baseline.
+      [hook-dispatch.md](../notes/hook-dispatch.md). **The surface is now enumerated** by
+      `scripts/hook_sites.py`: 43 registrations over 12 distinct GD methods, each method
+      mapping to exactly one host RVA, and four of those RVAs confirmed from two angles.
+      A reconstruction should reproduce the mechanism, not copy the RVAs — they are
+      absolute into the host image and change on any GD re-baseline.
 - [ ] Save lifecycle reconstructed: `postUpdate`, `resetLevel`, `PlayLayer::onQuit` and
       shutdown-destructor flush points.
 - [ ] A minimal Geode-compatible skeleton loads under the loader with core behaviour intact.

@@ -174,6 +174,32 @@ absent** from that run, even though it had already been recorded by hand in
 An index built from a guessed list of accessors is not a registry, it is a sample of one.
 The accessors must be enumerated from the binary, not assumed.
 
+### Found again, in a new place: `FUN_18002EE40`
+
+The warning above has now been confirmed a second time, with a concrete casualty.
+
+`FUN_18002EE40(registry, out, uint64_t Tag)`, VA `0x18002EE40`, RVA `0x2EE40`, folds all
+eight bytes of its third argument through FNV-1a-64 and probes a map at `registry + 0xC0`
+with the mask at `+0xD8`:
+
+```
+lVar5 = ((... FNV-1a-64 ...) * 0x100000001b3 & *(ulonglong *)(param_1 + 0xd8)) * 0x10;
+lVar4 = *(longlong *)(*(longlong *)(param_1 + 0xc0) + 8 + lVar5);
+```
+
+Same shape as `getConfigVar<bool>`, but over a **different map layout** — not the
+`BasicConfig` maps at `+0x20`/`+0x30`/`+0x48` or `+0x138`/`+0x148`/`+0x160`. So this is a
+second registry, not a fourth accessor on the first.
+
+`scripts/settings_index.py` does not recognise it, and **tag `0x11D` (285) is therefore
+missing from `_settings.tsv`** — the index jumps from 284 to 292 across the gap. It is read
+from the `PlayLayer::onQuit` hook body; see
+[hook-dispatch.md](hook-dispatch.md#a-settings-accessor-this-repos-index-misses).
+
+This is the second time the same lesson has cost a specific setting: the first was tag 501
+missing from the original two-accessor sweep. The rule stands — enumerate, don't assume —
+and the remaining unknown is how many further accessors exist.
+
 ## Known limitation: tag names are not in the image
 
 The four `FUN_18007CB60` call sites are indexed, but their key arguments appear as

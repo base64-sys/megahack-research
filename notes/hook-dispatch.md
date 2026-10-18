@@ -206,6 +206,90 @@ yields `1.0` both when the denominator is zero and when the numerator equals it,
 two different states collapse onto the same value and the comparison is disambiguating
 between them by exclusion.
 
+## The complete hook surface
+
+`scripts/hook_sites.py` → `recovered/functions/_hook_sites.tsv`. Sweeping the recovered tree
+for the two registration calls gives **43 sites**, and pairing each with the host RVA on the
+preceding `FUN_18010a370(…, rva)` line yields:
+
+| GD method | Sites | Host RVA |
+| --------- | ----: | -------: |
+| `PlayLayer::resetLevel` | 25 | `0x3B8EB0` |
+| `PlayLayer::setupHasCompleted` | 5 | `0x3A66D0` |
+| `PlayLayer::updateProgressbar` | 2 | `0x3B23C0` |
+| `PlayLayer::startGame` | 2 | `0x3A7A20` |
+| `PlayLayer::levelComplete` | 2 | `0x3A7A80` |
+| `PlayLayer::updateAttempts` | 1 | `0x3B9BA0` |
+| `PlayLayer::showCompleteEffect` | 1 | `0x3A8F30` |
+| `PlayLayer::onQuit` | 1 | `0x3AABB0` |
+| `PlayLayer::updateTestModeLabel` | 1 | `0x3A7990` |
+| `PlayLayer::toggleProgressbar` | 1 | `0x3B2760` |
+| `PlayLayer::showEndLayer` | 1 | `0x3AC700` |
+| `GJGameLevel::savePercentage` | 1 | `0x16C8B0` |
+
+**Every method maps to exactly one RVA, with no method carrying two.** That is the check
+that the positional RVA pairing is sound: 25 registrations of `resetLevel` all landing on
+`0x3B8EB0` cannot be produced by a misaligned pairing. And the three RVAs already confirmed
+by the registration-plus-thunk route above — `0x3B8EB0`, `0x3A7A80`, `0x16C8B0` — all
+reproduce exactly, so this is a third independent angle on the same three values.
+
+The ninth row is confirmed the same way as the first three. `FUN_1801A5260`, the thunk the
+`onQuit` hook calls, reads `lVar1 + 0x3BABB0` — matching the registration's RVA. That makes
+**four** doubly-confirmed RVAs.
+
+Eleven of the twelve hooked methods are `PlayLayer`. Mega Hack hooks almost nothing outside
+the level lifecycle, which is the cleanest single statement of what the mod is.
+
+### `0x180174DE4` is the `onQuit` hook's call to the original
+
+`FUN_180174DE0`, the `PlayLayer::onQuit` callback, is 20 bytes. `pe_disasm.py` on
+`_original.dll`:
+
+```
+0000000180174de0  48 83 ec 28      sub    rsp, 0x28
+0000000180174de4  e8 77 04 03 00  call   0x1801a5260     <-- the address in the README
+0000000180174de9  31 c9           xor    ecx, ecx
+0000000180174deb  48 83 c4 28      add    rsp, 0x28
+0000000180174def  e9 0c 00 00 00  jmp    0x180174e00      <-- tail into Mega Hack's body
+0000000180174df4  cc              int3
+```
+
+So `0x180174DE4` is precisely the call to the original `PlayLayer::onQuit`, and the hook
+**tail-jumps** rather than calls its own follow-up. The README's description of that
+address moved from the patch's label to a disassembly-backed fact.
+
+Two of the 43 callbacks are Ghidra `LAB_` labels (`LAB_180158F00`, `LAB_18015A220`) rather
+than functions, so they have no recovered `.c` to read. Recorded as `callback_kind=label`
+rather than dropped.
+
+## A settings accessor this repo's index misses
+
+The body after the `onQuit` hook's tail jump calls `FUN_18002EE40(config, &local, 0x11d)`.
+`FUN_18002EE40` is a settings accessor — it folds all eight bytes of the third argument
+through FNV-1a-64 and probes a map at `param_1 + 0xC0` with the mask at `+0xD8`:
+
+```
+lVar5 = ((... FNV-1a-64 of param_3 ...) * 0x100000001b3 & *(ulonglong *)(param_1 + 0xd8)) * 0x10;
+lVar4 = *(longlong *)(*(longlong *)(param_1 + 0xc0) + 8 + lVar5);
+```
+
+That is the same shape as `getConfigVar<bool>`, but over a **different map layout** — not
+the `BasicConfig` maps at `+0x20`/`+0x138` — so it is a second registry rather than another
+accessor on the first.
+
+`scripts/settings_index.py` recognises only `FUN_18008F420`, `FUN_18002DE50` and
+`FUN_180003D80`, so **tag `0x11D` (285) is read by the release and missing from
+`_settings.tsv`** — the index jumps 284 → 292 across that gap.
+
+This is the failure mode
+[settings-registry.md](settings-registry.md#completeness-the-accessor-list-matters) warns
+about, found again in a new place, and it is concrete rather than hypothetical: one named
+tag is absent. Adding `FUN_18002EE40` to the index should be the first change to
+`settings_index.py`; how many further accessors exist is unknown, which is exactly the point.
+
+UNVERIFIED: what the second registry is and whether tag 285 is a game-mod setting or a
+hackpro-internal one.
+
 ## What this means for the milestones
 
 - **M1, "verified GD offsets"**: three GD function RVAs and one GD field offset are now
