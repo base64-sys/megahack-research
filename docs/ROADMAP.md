@@ -86,7 +86,13 @@ Exit criteria:
       The criterion stays open because the *contents* (every key, type, default) are data,
       and that data is user data this repo deliberately does not commit.
 - [ ] Save/load file formats mapped, including the sidecar `best_runs.bin` header and
-      record layout.
+      record layout. **The two JSON stores are now separated**, which was ambiguous before:
+      hackpro's own `hackpro.json` in the mod directory (read `0x1800BF190`, written
+      `0x1800BF400`, dispatched indirectly so both have zero direct callers) and GD's own
+      `data.json` / `save.json` under `%LOCALAPPDATA%\<sub>\Octavus\` (read by `0x180042FB0`;
+      `%LOCALAPPDATA%` confirmed from the `FOLDERID` GUID at `0x1805820E0`, the `<sub>`
+      segment still unverified). Both are name-keyed JSON via nlohmann/json. Still
+      outstanding: the `<sub>` segment, and the `best_runs.bin` sidecar itself.
 - [x] Entry and lifecycle order, partially: `geodeImplicitEntry` at `0x180072B60` is the
       root, and the load-time sequence registering Mega Hack's two tabs plus resolving the
       `Import .dt` action tag is mapped in `notes/tab-registration.md`. TLS callbacks,

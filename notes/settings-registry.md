@@ -476,6 +476,52 @@ repository. Its schema is recorded; its contents are not.
 writes each entry out under `FUN_18007CCF0`'s recovered name, so save and load agree on
 names and the `"nosave"` flag is what keeps an entry out of the file.
 
+### Two separate on-disk stores, not one
+
+Worth stating plainly, because "Mega Hack's save file" is ambiguous and the two are easy to
+conflate.
+
+**hackpro's own store** is `hackpro.json` in the mod directory. Read by `FUN_1800BF190`
+(VA `0x1800BF190`, `std::ifstream`, refcount object `0x120` bytes) and written by
+`FUN_1800BF400` (VA `0x1800BF400`, `std::ofstream`, refcount object `0x118` bytes). The two
+are near-identical (302 bytes each) and differ in the open mode: the reader calls
+`FUN_1800423F0(…, 1, 0x40, 1)` and the writer `FUN_180036B20(…, 2, 0x40, 1)`. Both build
+the path with `FUN_1800BEA70`/`FUN_1800BEAA0` and append via `FUN_1800BF320`. Both have
+**zero direct callers** — dispatched indirectly, so `_callers.tsv` cannot see them.
+
+**Geometry Dash's own save files** are read separately, by `FUN_180042FB0` (VA
+`0x180042FB0`, RVA `0x42FB0`, 1,587 bytes, 1 caller). It:
+
+1. calls `FUN_1800C5210` to obtain a base directory;
+2. bails with the language key `ERROR/HOME/NO_APPDATA` (VA `0x18053FB8F`) if it is empty;
+3. otherwise appends the literal `Octavus` (VA `0x18053FBA5`) via `FUN_180044C60`;
+4. reads `data.json` into its second argument and `save.json` into its third — both via
+   `FUN_1800423F0(…, 1, 0x40, 1)`, i.e. the same reader shape as `hackpro.json`.
+
+`FUN_1800C5210` (VA `0x1800C5210`, 98 bytes) is the base-directory resolver, and it is
+unambiguous:
+
+```
+iVar1 = SHGetKnownFolderPath(&DAT_1805820e0, 0, 0, &local_10);
+```
+
+The 16 bytes at VA `0x1805820E0` (RVA `0x5820E0`, file `0x5814E0`) read back as
+`f1b32785-6fba-4fcf-9d55-7b8e7f157091`, which is **`FOLDERID_LocalAppData`** —
+`%LOCALAPPDATA%`. So Mega Hack reads GD's `data.json` and `save.json` from a subdirectory of
+the user's local app data.
+
+`Octavus` is Absolllute's own directory name, so the chain is
+`%LOCALAPPDATA%\<sub>\Octavus\{data.json,save.json}`.
+
+UNVERIFIED: what `<sub>` is. `FUN_180044C60` calls `FUN_18003FFD0` to join the path, and
+`_xrefs.tsv` contains **no** reference to the literal `GeometryDash` anywhere, so the
+`GeometryDash` directory is not hard-coded as a string in this binary — it is either
+supplied by Geode's directory abstraction or derived at runtime. Confirming it needs the
+Geode host contract for save-data paths; see [references/](references/).
+
+These two stores are the reason M4's `best_runs.bin` work is a third, separate mechanism
+rather than an extension of either.
+
 ## Conclusion
 
 1. The registry lives on `hackpro::BasicConfig`; `hackpro::Config` derives from it at
@@ -500,10 +546,14 @@ names and the `"nosave"` flag is what keeps an entry out of the file.
    confirmed independently by the `movsd` that loads its value.
 7. The save file is keyed by **name**, so save/load parity requires reproducing the name
    map and honouring `"nosave"`.
-8. All seven ids previously listed as unknown are located and their roles partly identified.
-9. Ids 501/502 and 445/446/447 are read as groups, which is where a session/global switch
-   would most plausibly sit.
-10. Any index built from an assumed accessor list undercounts. Enumerate, do not assume.
+8. There are **two** on-disk stores, not one: hackpro's `hackpro.json` in the mod directory
+   (read `0x1800BF190`, written `0x1800BF400`), and GD's own `data.json` / `save.json` under
+   `%LOCALAPPDATA%\<sub>\Octavus\` (read by `0x180042FB0`; `%LOCALAPPDATA%` confirmed from
+   the `FOLDERID` GUID at `0x1805820E0`). M4's `best_runs.bin` is a third mechanism.
+9. All seven ids previously listed as unknown are located and their roles partly identified.
+10. Ids 501/502 and 445/446/447 are read as groups, which is where a session/global switch
+    would most plausibly sit.
+11. Any index built from an assumed accessor list undercounts. Enumerate, do not assume.
 
 ## Open questions
 
