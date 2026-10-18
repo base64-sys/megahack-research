@@ -12,6 +12,10 @@ Two accessors are recognised:
 There is also a key-based form, FUN_18007cb60(this, out, "KEY"), which indexes
 string keys rather than numeric ids; both are emitted.
 
+The ids are 64-bit hackpro::Tag values, not small numbers; see
+notes/settings-registry.md for why that matters and why a fourth accessor over a
+second registry was invisible here until its argument position was made explicit.
+
     python scripts/settings_index.py
     python scripts/settings_index.py --grep 245
 """
@@ -27,15 +31,70 @@ import sys
 REPO = pathlib.Path(__file__).resolve().parent.parent
 FUNCTIONS = REPO / "recovered" / "functions"
 
-# accessor name -> what it means
+# accessor name -> (index of the tag argument, what it means)
+#
+# The index is explicit because the accessors do NOT share a shape, and guessing
+# is what hid two tags from this table twice. `FUN_18008f420(this, id)` and
+# `FUN_18002de50(this, id)` take the tag second; `FUN_18002ee40(registry, out,
+# tag)` takes it third, behind an out-parameter. A single regex that took
+# "the first comma-separated argument that looks numeric" happened to match the
+# three-argument form by accident and did not match it reliably, so tag 285 was
+# absent from the table with no error anywhere.
+#
+# The lesson this file already records, hit a second time: an index built from a
+# guessed accessor list is a sample of one, not a registry. Enumerate, do not
+# assume.
 ACCESSORS = {
-    "FUN_18008f420": "getConfigVar<bool>",
-    "FUN_18002de50": "getFlag",
-    "FUN_180003d80": "getConfigVar<scalar>",
+    "FUN_18008f420": (1, "getConfigVar<bool>"),
+    "FUN_18002de50": (1, "getFlag"),
+    "FUN_180003d80": (1, "getConfigVar<scalar>"),
+    "FUN_18002ee40": (2, "second-registry accessor"),
 }
-NUMERIC_RE = re.compile(
-    r"\b(" + "|".join(sorted(ACCESSORS)) + r")\s*\([^;]*?,\s*(0x[0-9a-f]+|\d+)\s*\)"
-)
+
+
+def accessor_regex(name: str, index: int) -> re.Pattern[str]:
+    """Match `name(...)` and capture the numeric literal in argument `index`.
+
+    Arguments are split on top-level commas so a nested call in an earlier
+    argument does not shift the index, and the captured argument must be a bare
+    literal rather than anything containing a name.
+    """
+    return re.compile(
+        name + r"\s*\(([^;]*?)\)",
+    )
+
+
+ARG_SPLIT = re.compile(r",")
+
+
+def numeric_args(call_args: str) -> list[int | None]:
+    """Return one entry per top-level argument: its int value, or None."""
+    # Nested calls and pointer casts can contain commas, so track depth.
+    depth = 0
+    parts: list[str] = []
+    buf: list[str] = []
+    for ch in call_args:
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        if ch == "," and depth == 0:
+            parts.append("".join(buf))
+            buf = []
+        else:
+            buf.append(ch)
+    parts.append("".join(buf))
+
+    out: list[int | None] = []
+    for part in parts:
+        part = part.strip()
+        if re.fullmatch(r"0x[0-9a-fA-F]+|\d+", part):
+            out.append(int(part, 0))
+        else:
+            out.append(None)
+    return out
+
+
 KEYED_RE = re.compile(r"\bFUN_18007cb60\s*\([^;]*?,\s*&([A-Za-z_0-9]+)\s*\)")
 
 
@@ -59,10 +118,16 @@ def main(argv: list[str] | None = None) -> int:
 
     for path in files:
         text = path.read_text(encoding="utf-8", errors="replace")
-        for name, raw in NUMERIC_RE.findall(text):
-            value = int(raw, 0)
-            ids[value].add(path.stem)
-            which[value].add(ACCESSORS[name])
+        for name, (index, label) in ACCESSORS.items():
+            for call_args in accessor_regex(name, index).findall(text):
+                parsed = numeric_args(call_args)
+                if len(parsed) <= index:
+                    continue
+                value = parsed[index]
+                if value is None:
+                    continue
+                ids[value].add(path.stem)
+                which[value].add(label)
         for symbol in KEYED_RE.findall(text):
             keyed[symbol].add(path.stem)
 

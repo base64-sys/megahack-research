@@ -120,9 +120,10 @@ configuration namespace is a real, named concept in the registry.
 
 ```
 recovered functions    : 18825
-distinct numeric ids   : 134
-total id reads         : 177
-id range               : 4..881
+distinct tags          : 149
+total tag reads        : 192
+tag range              : 3..881
+accessors recognised   : 4  (FUN_18008F420, FUN_18002DE50, FUN_180003D80, FUN_18002EE40)
 ```
 
 Most-read ids:
@@ -191,14 +192,46 @@ Same shape as `getConfigVar<bool>`, but over a **different map layout** — not 
 `BasicConfig` maps at `+0x20`/`+0x30`/`+0x48` or `+0x138`/`+0x148`/`+0x160`. So this is a
 second registry, not a fourth accessor on the first.
 
-`scripts/settings_index.py` does not recognise it, and **tag `0x11D` (285) is therefore
-missing from `_settings.tsv`** — the index jumps from 284 to 292 across the gap. It is read
+`scripts/settings_index.py` did not recognise it, and **tag `0x11D` (285) was therefore
+missing from `_settings.tsv`** — the index jumped from 284 to 292 across the gap. It is read
 from the `PlayLayer::onQuit` hook body; see
 [hook-dispatch.md](hook-dispatch.md#a-settings-accessor-this-repos-index-misses).
 
 This is the second time the same lesson has cost a specific setting: the first was tag 501
-missing from the original two-accessor sweep. The rule stands — enumerate, don't assume —
-and the remaining unknown is how many further accessors exist.
+missing from the original two-accessor sweep.
+
+### Fixed, and the fix changed the shape of the matcher
+
+`scripts/settings_index.py` previously used one regex for every accessor, taking "the first
+comma-separated argument that looks numeric". That is a **guess about argument position**,
+and it is exactly the kind of guess this file keeps warning against. The three known
+accessors take the tag second; `FUN_18002EE40` takes it **third**, behind an
+out-parameter. The old pattern happened to match some of those calls by accident and missed
+others, with no error anywhere.
+
+The accessor table now records the argument index explicitly, arguments are split on
+top-level commas with nesting tracked (a call like
+`FUN_18002ee40(param_1,(vector<unsigned_int,…> *)…)` has a comma inside a cast, which a naive
+split would mis-count), and the captured argument must be a bare literal.
+
+Result:
+
+| | Before | After |
+| --- | ---: | ---: |
+| distinct tags | 134 | **149** |
+| total reads | 177 | 192 |
+| id range | 4..881 | **3..881** |
+
+The 15 recovered tags are `3`, `131`, `132`, `285`, `303`, `304`, `305`, `321`, `403`, and
+`851`–`856`. Every one was verified by reading its call site, not by trusting the count.
+
+**`FUN_1801904F0` reads six consecutive tags — `0x353` to `0x358`** — each into its own
+local. That is the "read as a group" shape already noted for `445`/`446`/`447` and
+`487`/`500`/`501`/`502`, now found in the second registry too, and it is a lead worth
+following: six related settings resolved together in one function usually means one feature.
+
+UNVERIFIED: what the second registry is, whether it has a name file of its own like
+`hackpro.json`, and whether tag 285 is a game-mod setting or a hackpro-internal one.
 
 ## Known limitation: tag names are not in the image
 

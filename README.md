@@ -161,7 +161,7 @@ These live in `scripts/`, so they exist on a fresh clone. Neither needs `samples
 | `ghidra_scripts/ExportAllFunctions.java` | Decompiles every function, one `.c` per function                   |
 | `resolve_wrappers.py`         | Map Mega Hack's 277 runtime hook sites to their real targets                |
 | `build_xref_index.py`         | Index every code-referenced string to the functions that name it            |
-| `settings_index.py`           | Index the settings registry: 134 read tag values and how often each is read  |
+| `settings_index.py`           | Index the settings registry: 149 read tags over four accessors               |
 | `build_callgraph.py`          | Build the call graph: 42,701 static edges over 16,204 functions              |
 | `rtti_index.py`               | Walk MSVC RTTI: 497 polymorphic classes, each anchored to its vtable VA       |
 | `decode_sso.py`               | Recover MSVC small-string literals the decompiler renders as typed locals    |
@@ -203,8 +203,11 @@ The deeper consequence: **the registry itself is `hackpro.json`, not the binary.
 key as the setting name and its `"tag"` number as the `Tag`, plus optional `"default"`,
 `"action"` and `"nosave"` keys, and interns the pair via `FUN_18007C700`. Tag ↔ name is
 maintained as a bijection in two runtime maps on `hackpro::BasicConfig`. So no static
-analysis of `_original.dll` can enumerate the full key list — which is why the 134 tags in
-`_settings.tsv` are a sample of what code happens to read, not a count of what exists. See
+analysis of `_original.dll` can enumerate the full key list — which is why the tags in
+`_settings.tsv` are a sample of what code happens to read, not a count of what exists.
+`FUN_18002EE40` reads a **second registry**, distinguished by its own map layout (`+0xC0`
+with the mask at `+0xD8`), and takes the tag as its *third* argument — which is why an index
+that guessed argument position had missed it entirely. See
 [notes/settings-registry.md](notes/settings-registry.md).
 
 ```powershell
@@ -233,7 +236,7 @@ Finding code by feature name is the practical bottleneck, so ten indexes exist:
 | ----- | ---: | ------- |
 | `_wrappers.tsv` | 277 | which function does this thunk actually call? |
 | `_xrefs.tsv` | 4,178 | which functions name this string? |
-| `_settings.tsv` | 138 | which tags are read, and by whom? |
+| `_settings.tsv` | 153 | which tags are read, and by which accessor? |
 | `_calls.tsv` / `_callers.tsv` | 42,701 | who calls what? |
 | `_rtti.tsv` | 497 | which classes exist, and where is each vtable? |
 | `_rtti_hierarchy.tsv` | 794 | what does each class derive from? |
@@ -276,8 +279,8 @@ RVAs confirmed above all reproduce.
 
 Two costs worth knowing about this index: two of the 43 callbacks are Ghidra `LAB_` labels
 with no recovered `.c`, and the `onQuit` hook body calls `FUN_18002EE40`, a **settings
-accessor over a second registry that `settings_index.py` does not recognise** — which is
-why tag 285 is missing from `_settings.tsv`.
+accessor over a second registry** — which is why tag 285 was missing from
+`_settings.tsv` until the index recorded argument position explicitly.
 
 `_xrefs.tsv` (4,178) and `_strings.tsv` (4,175) differ by **three, and that is correct**: the
 classifier drops rows whose text is whitespace only, and there are exactly three — two
@@ -308,8 +311,9 @@ the vtable that references it. It recovers Mega Hack's namespaces (`hackpro`, `c
 [notes/rtti-classes.md](notes/rtti-classes.md). It also recovers 794 distinct inheritance
 edges — `numBases` sits at `+8` in the hierarchy descriptor, not `+0` as MSVC documents.
 
-`_settings.tsv` is 134 distinct tag values read through `FUN_18008F420`, `FUN_18002DE50`
-and `FUN_180003D80`, plus 4 keyed lookups through `FUN_18007CB60`. Those tags are
+`_settings.tsv` is 149 distinct tag values read through four accessors — `FUN_18008F420`,
+`FUN_18002DE50`, `FUN_180003D80` and `FUN_18002EE40` — plus 4 keyed lookups through
+`FUN_18007CB60`. Those tags are
 **64-bit `hackpro::Tag` values**, not small integers — the registry lives on
 `hackpro::BasicConfig`, tag names exist only in a runtime map, and the exported
 `hackpro::extensions::keyFor(Tag)` is the handle-to-name direction. The save file is keyed

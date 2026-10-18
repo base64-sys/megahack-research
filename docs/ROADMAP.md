@@ -84,11 +84,14 @@ Exit criteria:
       folder, loaded by `FUN_18008B780` and interned by `FUN_18007C700`, whose schema is
       now documented. That is also the answer to the string-inventory gap — the join
       between UI widget names and numeric tags is `tagFor` at the exported API boundary.
-      Outstanding: `FUN_18002EE40` is a **second registry's accessor** the index does not
-      recognise, and tag 285 is consequently absent from `_settings.tsv`. Adding it is the
-      first change to make to `scripts/settings_index.py`. The criterion stays open
-      because the *contents* are data, and that data is user data this repo deliberately
-      does not commit.
+      Outstanding: `FUN_18002EE40` is a **second registry's accessor**, and the index now
+      recognises it. That required making the accessor table record *argument position*
+      explicitly, because the three known accessors take the tag second and this one takes it
+      third behind an out-parameter — the guessed-position matcher had been missing it with
+      no error. Tags went **134 → 149** (reads 177 → 192, range 4..881 → 3..881), and the
+      284 → 292 gap is closed. Still open: what the second registry is, and whether it has a
+      name file of its own. The criterion stays open because the *contents* are data, and
+      that data is user data this repo deliberately does not commit.
 - [ ] Save/load file formats mapped. **The three stores the release uses are now
       separated**, which was ambiguous before: `hackpro.json` in the mod directory (read
       `0x1800BF190`, written `0x1800BF400`, both dispatched indirectly so both have zero
