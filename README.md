@@ -178,7 +178,7 @@ These live in `scripts/`, so they exist on a fresh clone. Neither needs `samples
 | `init_table.py`              | Recover the CRT `_initterm` tables and the functions they call indirectly   |
 | `test_init_table.py`         | Pin those tables and the zero-caller counts; skips without a sample set       |
 
-`_strings.tsv` splits 4,175 code-referenced strings into 17 categories — 974 of them Mega Hack's
+`_strings.tsv` splits 4,175 code-referenced strings into 17 categories — 980 of them Mega Hack's
 own snake_case identifiers, 77 its own UI widget names. Largest bucket is still `other` at **26%**
 (down from 33%), so M1's criterion is not yet met. See [notes/string-inventory.md](notes/string-inventory.md).
 
@@ -279,8 +279,9 @@ Mega Hack's format.** A byte scan of all four Windows images finds `best_runs` a
 and `_xrefs.tsv` gives them zero references. The release's own stores are `hackpro.json`
 and GD's `data.json` / `save.json` under `%LOCALAPPDATA%\…\Octavus\`. See
 [notes/persistence.md](notes/persistence.md).
+
 `build_xref_index.py` matches Ghidra's `DAT_` symbols, its inlined string literals, **and**
-strings MSVC built in an SSO buffer: 3,611 of the rows are VA-backed, 537 are stack-built
+strings MSVC built in an SSO buffer: 3,609 of the rows are VA-backed, 566 are stack-built
 and carry a `sso` marker with no VA, because those bytes only exist in a frame. Symbols
 alone find only 4% of referenced strings, because Ghidra names only the references it fails
 to decode.
