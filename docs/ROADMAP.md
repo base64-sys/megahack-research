@@ -75,12 +75,16 @@ Exit criteria:
       descriptors at all. Caveat: template argument scoping is not tracked in the demangler,
       so a minority of base names are approximations — the `mangled` column is authoritative.
 - [ ] Settings registry map: every key, its type, default, and the function that applies it.
-      **Partly done.** The registry class, its `+0x128` `Config` base layout, the 64-bit
-      `hackpro::Tag` key type, the tag→name map, `keyFor` (`0x180072E20`), the by-tag
-      setter (`0x18008B490`) and the five value types are now mapped in
-      [settings-registry.md](../notes/settings-registry.md). Still missing: the insertion
-      site where a name becomes a tag, so **defaults and the complete key list are not
-      recovered** - which is why the criterion stays open.
+      **Mechanism mapped, contents relocated.** The registry class, its `+0x128` `Config`
+      base layout, the 64-bit `hackpro::Tag` key type, the tag↔name bijection, `tagFor`
+      (`0x180072DF0`), `keyFor` (`0x180072E20`), the by-tag setter (`0x18008B490`) and the
+      five value types are all mapped in [settings-registry.md](../notes/settings-registry.md).
+      The full key list is **not recoverable from the binary**: it is `hackpro.json` in the
+      installed mod folder, loaded by `FUN_18008B780` and interned by `FUN_18007C700`, whose
+      schema is now documented. That is also the answer to the string-inventory gap - the
+      join between UI widget names and numeric tags is `tagFor` at the exported API boundary.
+      The criterion stays open because the *contents* (every key, type, default) are data,
+      and that data is user data this repo deliberately does not commit.
 - [ ] Save/load file formats mapped, including the sidecar `best_runs.bin` header and
       record layout.
 - [x] Entry and lifecycle order, partially: `geodeImplicitEntry` at `0x180072B60` is the

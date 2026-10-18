@@ -161,7 +161,7 @@ These live in `scripts/`, so they exist on a fresh clone. Neither needs `samples
 | `ghidra_scripts/ExportAllFunctions.java` | Decompiles every function, one `.c` per function                   |
 | `resolve_wrappers.py`         | Map Mega Hack's 277 runtime hook sites to their real targets                |
 | `build_xref_index.py`         | Index every code-referenced string to the functions that name it            |
-| `settings_index.py`           | Index the settings registry: 134 numeric ids and how often each is read      |
+| `settings_index.py`           | Index the settings registry: 134 read tag values and how often each is read  |
 | `build_callgraph.py`          | Build the call graph: 42,701 static edges over 16,204 functions              |
 | `rtti_index.py`               | Walk MSVC RTTI: 497 polymorphic classes, each anchored to its vtable VA       |
 | `decode_sso.py`               | Recover MSVC small-string literals the decompiler renders as typed locals    |
@@ -189,8 +189,21 @@ are named as open work rather than being swept into a category by a broad rule �
 generic snake_case rule put 78% of its bucket in the wrong place, which is worse than a small
 honest bucket.
 
-Those UI names and the 138 numeric settings share **no** decompiled function, so Mega Hack has at least
-two key spaces bridged somewhere not yet found - which is the specific gap M1's settings criterion names.
+Those UI names and the numeric settings share **no** decompiled function, and that is now
+explained rather than open: the join happens at the **exported API boundary**.
+`hackpro::extensions::tagFor(std::string) -> std::optional<hackpro::Tag>` (`0x180072DF0`)
+resolves a name to a 64-bit `Tag`, and every exported `getConfigVar<T>`/`setConfigVar<T>`
+takes a `std::string` and calls it. A per-function string xref cannot see that join because
+the names arrive as caller arguments, not literals.
+
+The deeper consequence: **the registry itself is `hackpro.json`, not the binary.**
+`FUN_18008B780` (VA `0x18008B780`) parses it with nlohmann/json, reading each member's JSON
+key as the setting name and its `"tag"` number as the `Tag`, plus optional `"default"`,
+`"action"` and `"nosave"` keys, and interns the pair via `FUN_18007C700`. Tag ↔ name is
+maintained as a bijection in two runtime maps on `hackpro::BasicConfig`. So no static
+analysis of `_original.dll` can enumerate the full key list — which is why the 134 tags in
+`_settings.tsv` are a sample of what code happens to read, not a count of what exists. See
+[notes/settings-registry.md](notes/settings-registry.md).
 
 ```powershell
 python scripts/pe_rva.py <image.dll> <rva-or-va> ... [--sections]

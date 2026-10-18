@@ -72,15 +72,17 @@ reproduce the same bucket arithmetic `(hash & mask) * 0x10` and chain walk via `
 
 | Address | Size | Role | Callers |
 | ------- | ---: | ---- | ------: |
-| `0x18007CB60` | 365 | lookup by key; writes the value to `*param_2` | 40 |
-| `0x18007C700` | 957 | reader; walks the chain, tests `+0x28 < 0x10` for SSO | 5 |
+| `0x18007CB60` | 365 | **`tagFor`: name → `Tag`**, the universal name resolver | 40 |
+| `0x18007C700` | 957 | **`internTag`: insert a `Tag`↔name pair into both maps** | 5 |
 | `0x1800788D0` | 11,901 | full-map iterator, `callers: 1` | 1 |
 
 `FUN_1800788D0` is large enough to be walking every entry, which is the kind of function that
 serialises or compares the whole registry.
 
-**The insert was not found**, which is the one that would name every key directly. What was
-tried, and ruled out:
+**The insert has since been found**, and so has the answer to "where are the names". Both
+were settled from the call graph rather than by pattern-grepping; the section
+[The insert, and where names come from](#the-insert-and-where-names-come-from) below
+supersedes this one. What was tried first, and why it failed:
 
 - grep for a write of `0x10` into a `+0x28` capacity slot — one hit, `FUN_1804EA750`, which
   is `FindFirstFile`/`WIN32_FIND_DATAW` file enumeration. The pattern was too loose; the
@@ -88,9 +90,12 @@ tried, and ruled out:
 - The two co-located candidates beside the lookup (`0x1800788D0`, `0x18007C700`) both turned
   out to be readers.
 
-UNVERIFIED: where entries are inserted, and therefore the complete key list. The 40 lookup call
-sites remain the practical route, with `scripts/decode_sso.py` recovering the key text from
-each site's immediates.
+Both failures share a cause worth recording: the search looked for **writes** to the map,
+but the insert's distinguishing feature is that it writes to **two** maps and hashes a
+`std::string` on the way (`0x100000001b3` appears in a 4-bytes-per-iteration loop plus a
+tail, not a straight-line 8-byte unroll). Grepping for the hash constant finds 163
+functions, which is too many to be useful; reading the callers of the already-known lookup
+found it in one step.
 
 ## Consequence for key names
 
@@ -99,7 +104,9 @@ The key names are recoverable, and two routes exist:
 - `scripts/decode_sso.py` rebuilds them from the immediates at the 40 call sites.
 - Insertion sites reveal them directly, since a chained map keeps the key in the node.
 
-What is *not* recoverable from the call shape alone is the meaning of `param_1`. It is used
+The second route is the real one, and it terminates in a file rather than in the binary: see
+[The insert, and where names come from](#the-insert-and-where-names-come-from). What is
+*not* recoverable from the call shape alone is the meaning of `param_1`. It is used
 only as the map owner (`rcx`), never dereferenced for a name in this function.
 
 This also matters beyond labelling: **Mega Hack hashes strings with FNV-1a-64**, which is the
@@ -331,32 +338,163 @@ Consequence for M1: **the on-disk settings file is keyed by tag name, not by num
 Any reconstruction of save/load has to reproduce the `keyFor` name map, not just the
 values, or the file it writes will not be the file v9.1.3 reads.
 
+## The insert, and where names come from
+
+- **Date** — 2026-10-18.
+- **Method** — `pe_exports.py`, then `_callers.tsv` walked from the exported `tagFor`, then
+  the recovered `.c` for each link. No pattern-grepping; each step is a named edge in
+  `_callers.tsv`.
+
+### `tagFor` is the bridge M1 was looking for
+
+`pe_exports.py` lists 30 named exports. One of them closes the gap the string inventory
+named:
+
+```
+0x0000000180072df0  ?tagFor@extensions@hackpro@@YA?AV?$optional@VTag@hackpro@@@std@@AEBVbasic_string@@@Z
+0x0000000180072e20  ?keyFor@extensions@hackpro@@YA?AVbasic_string@@AEBVTag@2@@Z
+```
+
+`hackpro::extensions::tagFor(std::string const&) -> std::optional<hackpro::Tag>`,
+VA `0x180072DF0`, RVA `0x72DF0`, 41 bytes. It calls `FUN_18008A510` for the registry then
+`FUN_18007CB60` — so `FUN_18007CB60` is `tagFor`'s worker, i.e. **the name → `Tag`
+lookup**, returning a `std::optional` that is empty when the name is unknown.
+
+`_callers.tsv` then settles what `FUN_18007CB60` is for. Its 40 callers include **every
+exported config API**:
+
+| Exported API | VA |
+| ------------ | -- |
+| `tagFor` | `0x180072DF0` |
+| `registerActionListener` | `0x180072E80` |
+| `isHackEnabled` | `0x180072FF0` |
+| `setHackEnabled` | `0x180073070` |
+| `registerHackListener` | `0x1800730F0` |
+| `registerListener<bool>` … `registerListener<std::vector<unsigned>>` | `0x180073260`–`0x180074D70` |
+| `setConfigVar<bool>` … `setConfigVar<std::vector<unsigned>>` | `0x180073800`–`0x180075310` |
+| `getConfigVar<bool>` … `getConfigVar<std::vector<unsigned>>` | `0x180073880`–`0x180075430` |
+
+So the public surface is **string-in, `Tag`-internally**: every `getConfigVar<T>(name)` and
+`setConfigVar<T>(name, value)` resolves its `std::string` to a `Tag` first, then calls the
+numeric accessors. This is the specific gap `notes/string-inventory.md` records — the UI
+widget names and the numeric settings sharing no decompiled function. They are joined at the
+**exported API boundary**, by `tagFor`, and the join is invisible to a per-function string
+xref because the name arrives as a caller-supplied `std::string`, not a literal.
+
+`FUN_18008A510` (VA `0x18008A510`, 21 bytes, **208 callers**) is the global registry accessor
+they all share, calling `FUN_1800A2720` then `FUN_1800A2F90`.
+
+### `internTag`: `FUN_18007C700`
+
+`FUN_18007C700(registry, uint64_t Tag, const std::string* name)`, VA `0x18007C700`, RVA
+`0x7C700`, 957 bytes, 5 callers. Read from `recovered/functions/18007c700_FUN_18007c700.c`:
+
+1. Look up `Tag` in the tag→name map (`+0x20` sentinel, `+0x30` buckets, `+0x48` mask).
+   If already present → log `"Key exists for tag {}"`.
+2. Otherwise hash the **name** with FNV-1a-64 — a 4-bytes-per-iteration `imul` loop plus a
+   `& 3` tail, unlike the straight 8-byte unroll used for `Tag` keys — then look up the name
+   in the name→tag map (`+0x60`, `+0x70`, `+0x88`). If present → log `"Tag exists for key {}"`.
+3. Otherwise insert into **both**, via `FUN_1800810F0(param_1 + 0x18, …)` keyed by tag and
+   `FUN_180081720(param_1 + 0x58, …)` keyed by name.
+
+Duplicate detection in both directions means tag ↔ name is a **bijection**. That is the
+structural fact a reconstruction depends on: no two names share a tag, and no two tags
+share a name.
+
+So the two maps sit at `+0x18` and `+0x58`; the note's `+0x20`/`+0x30`/`+0x48` and
+`+0x60`/`+0x70`/`+0x88` are the inner fields of those map objects, 8 bytes in.
+
+### The names are data, not code: `hackpro.json`
+
+`FUN_18007C700`'s five callers are `FUN_180003E340`, `FUN_180085DE0`, `FUN_18008B780`,
+`FUN_18008DF30` and `FUN_1800B8B40`. `FUN_18008B780` is the one that matters:
+
+- VA `0x18008B780`, RVA `0x8B780`, 4,763 bytes, 1 caller.
+- It is a **nlohmann/json loader**. Messages recovered verbatim from its literals:
+  `"stream pointer null"`, `"config json null"`, `"config json not object"`,
+  `"object {} doesn't contain valid 'tag' key"`, `"tag {} already exists in config"`,
+  `"object {} doesn't contain 'default' key"`, `"OPTION {} has invalid type for key
+  'default'"`, `"type must be boolean, but is "`.
+- It iterates the parsed JSON object; for each member it reads the **`"tag"`** key, requires
+  it to be a JSON number (`*pcVar7 - 5 <= 1`, i.e. nlohmann `number_integer`/`number_unsigned`),
+  converts it to a `uint64`, and calls `FUN_18007C700(registry, tag, member_key)`. The
+  member's **JSON key is the setting's name**; the `"tag"` value is the number.
+- Optional per-setting keys: `"action"` (bool) and **`"nosave"` (bool)**, the latter routing
+  to `FUN_18007D090(registry, tag)`.
+- Defaults are applied through the per-type setters, dispatching on the default's JSON type:
+  `FUN_180041D60`, `FUN_180040FC0`, `FUN_180042060`, `FUN_180086AD0`, `FUN_1800867B0`.
+
+Where the stream comes from: `_xrefs.tsv` has `hackpro.json` at VA `0x180547868` with exactly
+two referencing functions, `FUN_1800BF190` and `FUN_1800BF400`. `FUN_1800BF190` (VA
+`0x1800BF190`) builds the mod directory with `FUN_1800BEAA0`, appends `"hackpro.json"`, and
+constructs a `std::ifstream` (shared_ptr, `0x120` bytes, refcount `0x100000001`). Both have
+**zero direct callers** — reached through a pointer, so the direct-call graph cannot see
+them.
+
+The chain, every link a row in `_callers.tsv`:
+
+```
+FUN_180002320   mod bootstrap: the two tabs (registerTab x2) + hackpro singleton init
+  └─ FUN_1800A2FB0   open and parse the config
+       └─ FUN_1800BF190   open hackpro.json
+       └─ FUN_18008B780   parse, validate, intern each tag
+            └─ FUN_18007C700   internTag
+```
+
+`FUN_180002320` (VA `0x180002320`, 537 bytes, 3 callers) is the same function that
+[tab-registration.md](tab-registration.md) identifies as registering Mega Hack's two tabs,
+which independently corroborates that note.
+
+**This is the answer to the biggest open question in this file.** The complete registry —
+every key, its numeric tag, its type, its default and whether it is saved — is **not in the
+binary at all**. It lives in `hackpro.json` in the installed Geode mod folder. A static
+analysis of `_original.dll` cannot enumerate it, which is why the registry looked
+unrecoverable and why `_settings.tsv`'s 134 tags are a sample of what code happens to read
+rather than a count of what exists.
+
+Per `AGENTS.md`, that file is user data and is **not** read into or committed from this
+repository. Its schema is recorded; its contents are not.
+
+`FUN_180076EB0` (the serialiser) is the inverse: it walks the entry list at `this+0xB0` and
+writes each entry out under `FUN_18007CCF0`'s recovered name, so save and load agree on
+names and the `"nosave"` flag is what keeps an entry out of the file.
+
 ## Conclusion
 
 1. The registry lives on `hackpro::BasicConfig`; `hackpro::Config` derives from it at
    `+0x128` and its `vtable[2]` is a `getConfigVar<bool>` forwarder.
 2. Settings are keyed by **`hackpro::Tag`, a 64-bit value**, not by a small number. The
    134 values in `_settings.tsv` are what this build uses, not the interface's type.
-3. Tag names exist only in a runtime `Tag` → `std::string` map on the registry
-   (`+0x20`/`+0x30`/`+0x48`). The exported `hackpro::extensions::keyFor(Tag)`
-   (`0x180072E20`) is the only supported handle → name direction.
-4. Five value types, written as `V_BOOL`, `V_INT`, `V_DECIMA…`, `V_STRING`, `V_BYTES`
+3. Tag names exist only in a runtime map on the registry, and tag ↔ name is a **bijection**
+   maintained by `FUN_18007C700`.
+4. **The whole registry is `hackpro.json`, not the binary.** `FUN_18008B780` reads each
+   member's JSON key as the name and its `"tag"` number as the `Tag`, then interns the pair.
+   No static analysis of `_original.dll` can enumerate it. This closes M1's "where are the
+   names" question by relocating it: the answer is in the shipped data, which is
+   deliberately not committed.
+5. The public API is **string-in**: every exported `getConfigVar<T>`/`setConfigVar<T>` takes a
+   `std::string`, resolves it with `tagFor` (`0x180072DF0`) to a `Tag`, then uses the
+   numeric accessors. That is the bridge between the UI widget names and the numeric
+   settings, and it is invisible to per-function string xrefs because the names arrive as
+   caller arguments rather than literals.
+6. Five value types, written as `V_BOOL`, `V_INT`, `V_DECIMA…`, `V_STRING`, `V_BYTES`
    groups by `FUN_180076EB0`, agreeing with `hackpro-api.md`'s five.
-5. The save file is keyed by **name**, so save/load parity requires reproducing the name
-   map.
-6. All seven ids previously listed as unknown are located and their roles partly identified.
-7. Ids 501/502 and 445/446/447 are read as groups, which is where a session/global switch
+7. The save file is keyed by **name**, so save/load parity requires reproducing the name
+   map and honouring `"nosave"`.
+8. All seven ids previously listed as unknown are located and their roles partly identified.
+9. Ids 501/502 and 445/446/447 are read as groups, which is where a session/global switch
    would most plausibly sit.
-8. Any index built from an assumed accessor list undercounts. Enumerate, do not assume.
+10. Any index built from an assumed accessor list undercounts. Enumerate, do not assume.
 
 ## Open questions
 
-- **Where a name becomes a tag.** No insertion site is found yet, so the full tag list is
-  still unknown; the four `FUN_18007CB60` sites are settled (profile-key lookups) and are
-  *not* the answer. A registration function taking a name and returning a `Tag` would close
-  this.
+- The per-setting `"action"` flag is read but its effect on `FUN_18008B780`'s dispatch is not
+  fully traced; it plausibly gates whether the entry lands in the hack list or the
+  action list.
 - Confirm the 9th byte of the type-2 group key in `FUN_180076EB0`.
-- Find a fourth accessor, if one exists, and re-run to get a true tag count.
+- `FUN_18008A510`'s 208 callers all take the same registry, so nothing in the binary bounds
+  the tag space. Whether `hackpro.json` and the mod's UI agree on the full list is a
+  question about the data, not the binary.
 - Confirm whether the ICONIC row ids (`445`, `446`, `447`, seen as `0x1BD`, `0x1BE`, `0x1BF`
   in `FUN_18011FFE0`) share a namespace with tags or are a separate sequence that happens
   to overlap. The overlap is suspicious and unverified.
