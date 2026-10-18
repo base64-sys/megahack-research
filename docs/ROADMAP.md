@@ -14,7 +14,7 @@ A milestone is `done` only when its exit criteria are met. Scope changes go in
 | M1 | Binary inventory and host ABI surface  | in progress | M0         |
 | M2 | Core infrastructure reconstruction     | not started | M1         |
 | M3 | Feature module mapping                | not started | M2         |
-| M4 | Sidecar format and importer parity     | not started | M2         |
+| M4 | Persistence and the `.dt` importer      | not started | M2         |
 | M5 | Android ARM64 parity                   | not started | M4         |
 
 ### M0 — Environment, provenance and tooling (done)
@@ -85,14 +85,15 @@ Exit criteria:
       join between UI widget names and numeric tags is `tagFor` at the exported API boundary.
       The criterion stays open because the *contents* (every key, type, default) are data,
       and that data is user data this repo deliberately does not commit.
-- [ ] Save/load file formats mapped, including the sidecar `best_runs.bin` header and
-      record layout. **The two JSON stores are now separated**, which was ambiguous before:
-      hackpro's own `hackpro.json` in the mod directory (read `0x1800BF190`, written
-      `0x1800BF400`, dispatched indirectly so both have zero direct callers) and GD's own
-      `data.json` / `save.json` under `%LOCALAPPDATA%\<sub>\Octavus\` (read by `0x180042FB0`;
-      `%LOCALAPPDATA%` confirmed from the `FOLDERID` GUID at `0x1805820E0`, the `<sub>`
-      segment still unverified). Both are name-keyed JSON via nlohmann/json. Still
-      outstanding: the `<sub>` segment, and the `best_runs.bin` sidecar itself.
+- [ ] Save/load file formats mapped. **The three stores the release uses are now
+      separated**, which was ambiguous before: `hackpro.json` in the mod directory (read
+      `0x1800BF190`, written `0x1800BF400`, both dispatched indirectly so both have zero
+      direct callers) and GD's `data.json` / `save.json` under `%LOCALAPPDATA%\…\Octavus\`
+      (read by `0x180042FB0`; `%LOCALAPPDATA%` confirmed from the `FOLDERID` GUID at
+      `0x1805820E0`). **Correction:** this criterion previously named "the sidecar
+      `best_runs.bin` header and record layout", which is the local patch's format and not
+      the release's — see [persistence.md](../notes/persistence.md). The path segment and
+      the native Best Run field mapping are still outstanding.
 - [x] Entry and lifecycle order, partially: `geodeImplicitEntry` at `0x180072B60` is the
       root, and the load-time sequence registering Mega Hack's two tabs plus resolving the
       `Import .dt` action tag is mapped in `notes/tab-registration.md`. TLS callbacks,
@@ -148,24 +149,35 @@ Exit criteria:
       hooks, render hooks, gameplay rewrites, UI add-ons, save-data features.
 - [ ] Reconstructed modules validated against release behaviour for the sampled clusters.
 
-### M4 — Sidecar format and importer parity (not started)
+### M4 — Mega Hack persistence and the `.dt` importer (not started)
 
-Own the `best_runs.bin` format and the Death Tracker import path end to end.
+Map what the release binary actually stores and how it loads it, plus the native
+Death Tracker import path.
+
+> **Corrected 2026-10-18.** This milestone previously read "Own the `best_runs.bin` format
+> and the Death Tracker import path end to end", with exit criteria for a 32-byte header,
+> `MHBRDB1` magic and 24-byte records. **That format is not Mega Hack's** — it is the local
+> persistence patch's own invention. A byte scan of all four Windows images finds
+> `best_runs`/`MHBRDB1` only in binaries produced by `build_persistence_patch.py`, and
+> `_xrefs.tsv` gives them zero referencing functions. See
+> [persistence.md](../notes/persistence.md). The sidecar criteria have been removed rather
+> than kept as aspirational, because implementing them would build a format the release
+> never had. The sample patch's own tooling still lives in `samples/` and stays out of
+> scope for the reconstruction.
 
 Exit criteria:
 
-- [ ] Format spec complete: 32-byte header, 24-byte records, `FNV1aChecksumOfRecords`, and
-      every rejection rule (magic/version/size, >65,536 records, truncation, trailing data,
-      checksum, zero key, NaN/infinite, `0 <= start <= end <= 100`).
-- [ ] Level-key scheme documented as three non-overlapping namespaces: decoded `m_levelID`
-      for online levels, stable editor ID with bit 62 for local levels, FNV-1a content hash
-      with bit 63 as fallback.
-- [ ] Ambiguous legacy records are skipped rather than mis-attributed.
-- [ ] Atomic write lifecycle reproduced: `.tmp` → rotate → install, `.bak` rollback rules,
-      and the recovery flag that protects a known-good backup.
-- [ ] Native `Import .dt` action reproduced end to end: `GetOpenFileW` wrapper, flush, import,
-      reload, cancel-is-a-no-op.
-- [ ] Validation suite green: `validate_persistence_patch.py` plus the 12 DB/import tests.
+- [ ] Mega Hack's native Best Run storage located and documented: which of GD's `data.json`
+      fields carry `(level, startPercent) -> bestEndPercent`, and on which flush points it
+      is written.
+- [ ] `hackpro.json` read/write lifecycle mapped: which of `FUN_1800BF190` /
+      `FUN_1800BF400` are called from where, given both have zero direct callers.
+- [ ] The `%LOCALAPPDATA%` → `Octavus` path segment resolved.
+- [ ] Native `Import .dt` action reproduced end to end: `GetOpenFileNameW` wrapper,
+      importer dispatch at `0x180027C30`, tag resolution at `0x1800023DC`, label
+      substitution at `0x180098868`, cancel-is-a-no-op.
+- [ ] Reconstructed persistence code validated against release behaviour on the sampled
+      stores.
 
 ### M5 — Android ARM64 parity (not started)
 
