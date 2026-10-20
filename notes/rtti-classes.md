@@ -202,7 +202,10 @@ is worse than one that gives up, so the regression test asserts both.
 
 ## Open questions
 
-- Template argument scoping in the demangler, which would fix the `PopupImpl` cases.
+- (Unchanged 2026-10-20.) Template argument scoping in the demangler is a tooling
+  limitation, not a binary question: the `mangled` column stays authoritative and the
+  `PopupImpl` cases remain approximations. UNVERIFIED: fixing it requires rewriting the
+  demangler, which is M1-adjacent tooling work.
 - (Located 2026-10-20.) `mega::utils::CompressedBuffer` has a type descriptor at
   `0x180547A98` and vtable at `0x180547B10` (0 virtuals listed in `_rtti.tsv`, so it is not
   polymorphic-by-vtable in the recovered inventory). UNVERIFIED: its members, compression
