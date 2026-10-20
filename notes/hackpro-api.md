@@ -220,7 +220,13 @@ callers of `0x18019B350` and string references to ranked/safe-mode terminology v
 - Find the *internal* (non-exported) counterpart APIs. Exports are the public face; the
   160+ feature toggles call something. `define` at `0x1800A3C40` sits outside the main
   block and may be that counterpart.
-- Callers of all three `safe_mode` functions, to establish the ranked-play gate concretely.
+- (Resolved 2026-10-20.) Callers of the three `safe_mode` functions: `areCheatsEnabled`
+  (`0x18019B350`) is called by `FUN_180090BC0`, `FUN_1801789C0` and the shared gate
+  `FUN_18019B5F0`; `disableAllCheats` (`0x18019B450`) is called by `FUN_180090BC0` and
+  `FUN_180027C30`. UNVERIFIED: which of these callers is the ranked-play gate, and what
+  `FUN_180090BC0`/`FUN_1801789C0` represent. `FUN_18019B450` inside `FUN_180027C30`
+  (a settings setter) suggests cheat-disable is triggered by a config write, not by
+  gameplay.
 
 ## Tooling note
 
