@@ -203,5 +203,8 @@ is worse than one that gives up, so the regression test asserts both.
 ## Open questions
 
 - Template argument scoping in the demangler, which would fix the `PopupImpl` cases.
-- `mega::utils::CompressedBuffer` is unexamined and in scope; the encrypted sibling is not.
+- (Located 2026-10-20.) `mega::utils::CompressedBuffer` has a type descriptor at
+  `0x180547A98` and vtable at `0x180547B10` (0 virtuals listed in `_rtti.tsv`, so it is not
+  polymorphic-by-vtable in the recovered inventory). UNVERIFIED: its members, compression
+  algorithm and whether the encrypted sibling is a separate class or a flag on this one.
 - Check whether the Android `.so` carries the same class set, which is the M5 question.
