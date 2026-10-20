@@ -221,8 +221,10 @@ target (operand only) or by replacing the instruction outright (opcode included)
   `PRISTINE_MEGAHACK.geode` supplied, cross-check passed.
 - Does `_original.dll` match the Android `.so` builds? Both are nominally v9.1.3, but the
   ARM builds were not diffed and no shared-code check was run.
-- Resolve the opcode/operand question above so the README's hook table can state instruction
-  starts rather than patch starts.
+- (Resolved 2026-10-20.) The opcode/operand question is resolved: some patched ranges start
+  on the opcode byte, others one byte later on the operand, depending on whether the hook is
+  installed by replacing the whole instruction or by rewriting a call target. See the
+  disassembly in the section above.
 - The `.geode` also contains `tools/best_runs_db.py` etc. Establish which of `samples/.../tools/`
   are Absolllute's and which are original to this project. `build_persistence_patch.py`,
   `validate_persistence_patch.py`, `inspect_interface_map.py`, `pe_*.py` and the three Ghidra
