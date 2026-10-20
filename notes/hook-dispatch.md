@@ -311,10 +311,11 @@ hackpro-internal one.
   `FUN_180199D10` for its three hooks; `FUN_1800AB850` is the more common variant. The
   caller-count asymmetry reflects how many registration sites use each signature, not a
   behavioural difference.
-- The lazy-thunk family is large and mechanical: 338 registration sites imply at least that
-  many thunks, but only 27 callers of `FUN_1801A4300` and 2 of `FUN_1801A5190` were
-  counted. No index enumerates the family, so the true size of the GD surface reached
-  through `GetModuleHandleA(NULL) + rva` is not yet counted.
+- (Unchanged 2026-10-20.) The lazy-thunk family is large and mechanical: 338 registration
+  sites imply at least that many thunks, but only 27 callers of `FUN_1801A4300` and 2 of
+  `FUN_1801A5190` were counted. No index enumerates the family. UNVERIFIED: the true size of
+  the GD surface reached through `GetModuleHandleA(NULL) + rva`; deferred to a future thunk
+  index.
 
 ## Failure modes recorded
 
