@@ -173,8 +173,11 @@ which value is compared against which.
   `FUN_18008f420`, so a sweep over `mov edx, <id>` before that call enumerates the registry.
 - Establish how `hackpro::define` misses are handled, and whether a missing key yields empty
   text or the key itself.
-- The second tab registered at `0x180002372` has never been identified; `FUN_18011FFE0` is
-  presumably the ICONIC one, so the other is still unnamed.
+- (Resolved 2026-10-20.) The second tab registered in `FUN_180002320` uses the
+  `core::Keybinds` delegate (`FUN_18003D220`), while the first uses `core::HomeWin`
+  (`FUN_180039360`), so the second tab is the Keybinds tab. `FUN_18011FFE0` (ICONIC) is one
+  of the two tab bodies fed by the compressed blobs. UNVERIFIED: which blob belongs to which
+  tab.
 
 ## Note on tooling
 
