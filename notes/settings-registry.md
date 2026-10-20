@@ -866,9 +866,12 @@ rather than an extension of either.
 - `FUN_18008A510`'s 208 callers all take the same registry, so nothing in the binary bounds
   the tag space. Whether `hackpro.json` and the mod's UI agree on the full list is a
   question about the data, not the binary.
-- Confirm whether the ICONIC row ids (`445`, `446`, `447`, seen as `0x1BD`, `0x1BE`, `0x1BF`
-  in `FUN_18011FFE0`) share a namespace with tags or are a separate sequence that happens
-  to overlap. The overlap is suspicious and unverified.
+- (Resolved 2026-10-20.) The ICONIC row ids (`445`, `446`, `447`, `0x1BD`-`0x1BF` in
+  `FUN_18011FFE0`) are **UI definition ids**, not settings tags: they are passed to the
+  UI-row helpers `FUN_180120A40`/`FUN_180120B70` in the same function, never to
+  `FUN_18008F420`/`FUN_18002DE50`/`FUN_180003D80`/`FUN_18002EE40`. They share only the
+  numeric range by coincidence; no tag in `_settings.tsv` is `0x1BD`-`0x1BF`. UNVERIFIED:
+  whether the UI id sequence is dense or has gaps beyond these three.
 
 ## Failure modes recorded
 
