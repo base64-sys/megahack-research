@@ -99,29 +99,13 @@ result: **the three above are every store this pass found**, not an exhaustive p
 This was the file's biggest open question. It now has an answer, and the answer is a
 negative — reached by enumeration rather than by inference.
 
-**Every hook Mega Hack installs.** Hook registration has a fixed call shape
-(`FUN_18019A0C0` / `FUN_1800AB850`, see [hook-dispatch.md](hook-dispatch.md)), and the
-method name is a literal argument at every site. Sweeping the recovered tree for those two
-calls yields **43 registration sites naming 12 distinct methods**:
-
-| Method | Sites |
-| ------ | ----: |
-| `PlayLayer::resetLevel` | 25 |
-| `PlayLayer::setupHasCompleted` | 5 |
-| `PlayLayer::updateProgressbar` | 2 |
-| `PlayLayer::startGame` | 2 |
-| `PlayLayer::levelComplete` | 2 |
-| `PlayLayer::updateAttempts` | 1 |
-| `PlayLayer::showCompleteEffect` | 1 |
-| `PlayLayer::onQuit` | 1 |
-| `PlayLayer::updateTestModeLabel` | 1 |
-| `PlayLayer::toggleProgressbar` | 1 |
-| `PlayLayer::showEndLayer` | 1 |
-| `GJGameLevel::savePercentage` | 1 |
-
-Eleven of the twelve are `PlayLayer`. **The twelfth is the only storage-side hook in the
-entire mod**, and its callback `FUN_180199DF0` cannot write anything — it either vetoes the
-call or forwards it:
+**Every hook Mega Hack installs.** Hook registration has a fixed call shape, but the
+registration helper varies by callback signature -- 143 distinct helpers, all calling
+`geode::hook::createConvention` -- so the full sweep in `scripts/hook_sites.py` now yields
+**338 registration sites over 215 distinct GD methods** (see
+[hook-dispatch.md](hook-dispatch.md#the-complete-hook-surface)). Of those 215, the only
+storage-side method is `GJGameLevel::savePercentage`, and its callback `FUN_180199DF0`
+cannot write anything -- it either vetoes the call or forwards it:
 
 ```
 cVar1 = FUN_18019b5f0();
@@ -137,17 +121,18 @@ table.
 
 Two independent supports:
 
-1. **No write path.** A per-level `(level, startPercent) → bestEndPercent` table would need
+1. **No write path.** A per-level `(level, startPercent) -> bestEndPercent` table would need
    a hook that writes it, or a serializer that emits it. The complete hook list above has
    neither, and `FUN_180076EB0`, the only registry serialiser, writes the five
-   `V_*` type groups — no per-level structure.
-2. **No room in the schema.** `hackpro.json` is a flat name → typed-value map
+   `V_*` type groups -- no per-level structure.
+2. **No room in the schema.** `hackpro.json` is a flat name -> typed-value map
    (bool / int / double / string / bytes), and the single value slot per name cannot hold a
    map.
 
-UNVERIFIED: the completeness of the 43-site sweep. It is a textual sweep of the recovered
-tree for two known call shapes, so a registration whose call Ghidra split, inlined or
-rendered differently would be missed. The 12 names are what this pass found, not a proof
+UNVERIFIED: the completeness of the 338-site sweep. It is a textual sweep of the recovered
+tree for one call shape (a quoted `Class::method` plus a trailing `, <order>, 1)`), so a
+registration whose call Ghidra split, inlined or rendered differently would be missed. The
+215 method names are what this pass found, not a proof
 that no thirteenth exists. Reading the registration helper's own parameters would make it
 rigorous.
 

@@ -1,19 +1,26 @@
 #!/usr/bin/env python3
-"""Index every hook Mega Hack installs: the GD method, the RVA, and the callback.
+"""Index every hook Mega Hack installs: the GD method, the target, and the callback.
 
 Mega Hack reaches Geometry Dash through `GetModuleHandleA(NULL)` plus hard-coded
-RVAs into the host image, and registers each one through Geode under a convention
-its debug types call `TulipConvention` — see notes/hook-dispatch.md. That gives a
-fixed, greppable call shape:
+RVAs into the host image, and through name resolution against the host's mangled
+symbols. It registers each one through Geode under a convention its debug types
+call `TulipConvention` -- see notes/hook-dispatch.md. That gives a fixed,
+greppable call shape:
 
-    FUN_1800ab850(FUN_180108960(), uVar2, CALLBACK, "PlayLayer::resetLevel", 0xffffffe0, 1)
+    FUN_1800ab850(FUN_180108960(), uVar2, CALLBACK, "PlayLayer::resetLevel",
+                  0xffffffe0, 1)
 
-with `uVar2` assigned just above from
+with `uVar2` assigned just above from either
 
-    uVar2 = FUN_18010a370(uVar2, 0x3b8eb0);
+    uVar2 = FUN_18010a370(uVar2, 0x3b8eb0);          # hard-coded RVA
+or
+    uVar2 = FUN_18010a5a0(uVar2, &mangled, &module);  # resolved by name
 
-so the method name, the callback and the host RVA all sit together in the recovered
-text. That makes the hook surface enumerable, which is what M3 needs to get in.
+so the method name, the callback and (where applicable) the host RVA all sit
+together in the recovered text. The registration helper itself varies by
+callback signature -- there are over a hundred of them, all calling
+`geode::hook::createConvention` -- but the call shape is the same, so the hook
+surface is enumerable without naming the helpers individually.
 
 This writes `_hook_sites.tsv`: one row per registration site.
 
@@ -33,32 +40,23 @@ REPO = pathlib.Path(__file__).resolve().parent.parent
 FUNCTIONS = REPO / "recovered" / "functions"
 OUT = FUNCTIONS / "_hook_sites.tsv"
 
-# The two registration helpers, and the helper that computes the host-side target.
-REGISTER_RE = re.compile(r"FUN_180(?:0ab850|19a0c0)\(([^;]*?)\);", re.S)
-NAME_RE = re.compile(r'"([^"]+)"')
-# A callback is either a recovered function or a Ghidra label. Two of the 43
-# sites pass `&LAB_…`, meaning the callback is code Ghidra did not split into
-# its own function, so it has no `.c` of its own. Both forms are recorded, and
-# the label form is flagged in `callback_kind` rather than being dropped.
-CALLBACK_RE = re.compile(
-    r"&?(LAB_[0-9a-f]+|thunk_FUN_180[0-9a-f]{6}|FUN_180[0-9a-f]{6})\b"
+REGISTER_RE = re.compile(
+    r'(FUN_180[0-9a-f]{6})\s*\(([^)]*"[^"]+::[^"]+"[^)]*)\)\s*;', re.S
 )
-TARGET_RE = re.compile(r"FUN_18010a370\s*\([^,]+,\s*(0x[0-9a-fA-F]+)\s*\)")
-HELPER_RE = re.compile(r"FUN_180(?:0ab850|19a0c0)")
-ORDER_RE = re.compile(r"(0x[0-9a-fA-F]+|-?\d+)\s*,\s*1\s*\)\s*;?\s*$")
+NAME_RE = re.compile(r'"([^"]+)"')
+CALLBACK_RE = re.compile(
+    r"&?(LAB_[0-9a-f]+|thunk_FUN_180[0-9a-f]{6}|FUN_180[0-9a-f]{6}|DAT_180[0-9a-f]{6})\b"
+)
+RVA_RE = re.compile(r"FUN_18010a370\s*\([^,]+,\s*(0x[0-9a-fA-F]+)\s*\)")
+NAME_RESOLVER_RE = re.compile(r"FUN_18010a5a0\s*\(")
+ORDER_RE = re.compile(r"(0x[0-9a-fA-F]+|-?\d+)\s*,\s*1\s*$")
 
 
 def func_va(filename: str) -> str:
-    """Recover a function's VA from its recovered-tree filename.
-
-    Files are `<va>_<name>.c`, so `180199d10_FUN_180199d10.c` -> `0x180199D10`.
-    Preferring the filename over the body means a function is identified the same
-    way `_callers.tsv` and `_strings.tsv` identify it.
-    """
     stem = filename.split("_", 1)[0]
     try:
         return "0x" + stem.upper()
-    except ValueError:  # pragma: no cover - filenames are machine-generated
+    except ValueError:  # pragma: no cover
         return "?"
 
 
@@ -67,35 +65,47 @@ def scan(path: pathlib.Path) -> list[dict[str, str]]:
     if not REGISTER_RE.search(text):
         return []
 
-    # Walk the text in order, so registration i picks up the i-th
-    # `FUN_18010a370(..., rva)` assignment. Ordering matters: one function can
-    # register several hooks, each carrying its own host RVA on the line above it.
     rows: list[dict[str, str]] = []
     pending_rva = "?"
+    pending_kind = "unknown"
     cursor = 0
     for match in REGISTER_RE.finditer(text):
         between = text[cursor : match.start()]
-        targets = TARGET_RE.findall(between)
-        if targets:
-            pending_rva = targets[-1]
+        rvas = RVA_RE.findall(between)
+        if rvas:
+            pending_rva = rvas[-1]
+            pending_kind = "rva"
+        elif NAME_RESOLVER_RE.search(between):
+            pending_rva = "name-resolved"
+            pending_kind = "name"
 
-        call = match.group(1)
-        name = NAME_RE.search(call)
-        if not name:
+        args = match.group(2)
+        name = NAME_RE.search(args)
+        if not name or "::" not in name.group(1):
+            cursor = match.end()
             continue
-        callback = CALLBACK_RE.search(call)
-        helper = HELPER_RE.search(match.group(0))
-        order = ORDER_RE.search(call)
+        order = ORDER_RE.search(args.strip())
+        if not order:
+            cursor = match.end()
+            continue
+        callback = CALLBACK_RE.search(args)
         cb_text = callback.group(1) if callback else "?"
+        if cb_text.startswith("LAB_"):
+            kind = "label"
+        elif cb_text.startswith("DAT_"):
+            kind = "data"
+        else:
+            kind = "function"
         rows.append(
             {
                 "registrar_va": func_va(path.name),
                 "gd_method": name.group(1),
                 "gd_rva": pending_rva,
+                "target_kind": pending_kind,
                 "callback": cb_text,
-                "callback_kind": "label" if cb_text.startswith("LAB_") else "function",
-                "helper": helper.group(0) if helper else "?",
-                "order": order.group(1) if order else "?",
+                "callback_kind": kind,
+                "helper": match.group(1),
+                "order": order.group(1),
             }
         )
         cursor = match.end()
@@ -128,18 +138,18 @@ def main(argv: list[str] | None = None) -> int:
     by_method: dict[str, int] = {}
     for row in all_rows:
         by_method[row["gd_method"]] = by_method.get(row["gd_method"], 0) + 1
-    for name, count in sorted(by_method.items(), key=lambda kv: (-kv[1], kv[0])):
+    for name, count in sorted(by_method.items(), key=lambda kv: (-kv[1], kv[0]))[:20]:
         print(f"    {count:>3}  {name}")
+    name_resolved = sum(1 for r in all_rows if r["target_kind"] == "name")
+    print(f"  name-resolved targets: {name_resolved}")
 
-    # A query must not write the index it queried, or an unmatched filter would
-    # silently truncate it. Same rule as scripts/host_methods.py.
     if args.method:
         hits = [r for r in all_rows if args.method in r["gd_method"]]
         print(f"\n{len(hits)} matching sites (index at {args.out} left untouched)")
         for row in hits:
             print(
                 f"  {row['registrar_va']}  {row['gd_method']:32} "
-                f"rva={row['gd_rva']:10} {row['callback']}"
+                f"rva={row['gd_rva']:16} {row['callback']}"
             )
         return 0
 
@@ -152,6 +162,7 @@ def main(argv: list[str] | None = None) -> int:
         "registrar_va",
         "gd_method",
         "gd_rva",
+        "target_kind",
         "callback",
         "callback_kind",
         "helper",
@@ -160,19 +171,21 @@ def main(argv: list[str] | None = None) -> int:
     with args.out.open("w", encoding="utf8", newline="") as handle:
         handle.write("# " + "\t".join(fields) + "\n")
         handle.write("#\n")
-        handle.write("# Every hook Mega Hack registers. The method name and host RVA come from\n")
-        handle.write("# the registration call; see notes/hook-dispatch.md. The RVA is a positional\n")
-        handle.write("# pairing with FUN_18010a370(..., rva) in the same function, so it is\n")
-        handle.write("# UNVERIFIED per row until checked against the callback's own thunk.\n")
-        handle.write("# callback_kind=label means Ghidra did not split that callback into its\n")
-        handle.write("# own function, so it has no recovered .c to read.\n")
+        handle.write("# Every hook Mega Hack registers. The method name and host target come from\n")
+        handle.write("# the registration call; see notes/hook-dispatch.md. `target_kind=rva` means\n")
+        handle.write("# the target is a hard-coded host RVA (positional pairing with\n")
+        handle.write("# FUN_18010a370(..., rva) in the same function); `name` means it is\n")
+        handle.write("# resolved at runtime from a mangled host symbol (FUN_18010a5a0).\n")
+        handle.write("# callback_kind=label/data means Ghidra did not split that callback into\n")
+        handle.write("# its own function, so it has no recovered .c to read.\n")
         writer = csv.DictWriter(handle, fieldnames=fields, delimiter="\t", lineterminator="\n")
         writer.writerows(rows)
 
     print(f"\nwrote {len(rows)} rows to {args.out}")
     labels = sum(1 for r in rows if r["callback_kind"] == "label")
-    if labels:
-        print(f"  {labels} callbacks are Ghidra labels with no recovered .c")
+    data = sum(1 for r in rows if r["callback_kind"] == "data")
+    if labels or data:
+        print(f"  {labels} callbacks are Ghidra labels, {data} are data slots")
     return 0
 
 

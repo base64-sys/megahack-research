@@ -84,8 +84,9 @@ Exit criteria:
       folder, loaded by `FUN_18008B780` and interned by `FUN_18007C700`, whose schema is
       now documented. That is also the answer to the string-inventory gap — the join
       between UI widget names and numeric tags is `tagFor` at the exported API boundary.
-      Outstanding: three of the twelve hook RVAs are paired positionally from the registration
-      text and are flagged UNVERIFIED per row in `_hook_sites.tsv`. The registry object is
+      Outstanding: positional hook-target pairings are now derived from the registration text
+      for all 338 sites; 30 of them are name-resolved rather than RVA-based. The RVAs flagged
+      UNVERIFIED per row in `_hook_sites.tsv` are those not yet checked against a thunk. The registry object is
       now identified — the global at `0x180800F58`, at least `0x4A8` bytes, in `.data`'s
       zero-fill tail with no file backing, and every accessor receives it `+0xD8`. Its
       constructor writing `hackpro::Config::vftable` at `+0x00` and `+0x128` independently
@@ -161,8 +162,9 @@ Exit criteria:
       `createWrapper(GetModuleHandleA(NULL) + rva)`. Three GD function RVAs and one GD
       field offset (`PlayLayer+0x3230`) are verified from two angles each. See
       [hook-dispatch.md](../notes/hook-dispatch.md). **The surface is now enumerated** by
-      `scripts/hook_sites.py`: 43 registrations over 12 distinct GD methods, each method
-      mapping to exactly one host RVA, and four of those RVAs confirmed from two angles.
+      `scripts/hook_sites.py`: 338 registrations over 215 distinct GD methods, each method
+      mapping to exactly one host target (RVA or name-resolved), and four of those RVAs
+      confirmed from two angles.
       A reconstruction should reproduce the mechanism, not copy the RVAs — they are
       absolute into the host image and change on any GD re-baseline.
 - [ ] Save lifecycle reconstructed: `postUpdate`, `resetLevel`, `PlayLayer::onQuit` and
@@ -204,8 +206,8 @@ Exit criteria:
       fields carry `(level, startPercent) -> bestEndPercent`, and on which flush points it
       is written.
       **Answered, negatively: Mega Hack stores no Best Run data.** Sweeping every hook
-      registration site yields 43 sites naming only 12 distinct GD methods, eleven of them
-      `PlayLayer`. The single storage-side hook is `GJGameLevel::savePercentage`, whose
+      registration site yields 338 sites over 215 distinct GD methods. The only
+      storage-side hook is `GJGameLevel::savePercentage`, whose
       callback can only *veto* the call, never write. Best Run is GD's own saved percentage,
       and Mega Hack's role is to stop a cheated run from being persisted. See
       [persistence.md](../notes/persistence.md). Residual work: the exact

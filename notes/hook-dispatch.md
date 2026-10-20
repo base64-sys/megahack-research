@@ -208,37 +208,26 @@ between them by exclusion.
 
 ## The complete hook surface
 
-`scripts/hook_sites.py` → `recovered/functions/_hook_sites.tsv`. Sweeping the recovered tree
-for the two registration calls gives **43 sites**, and pairing each with the host RVA on the
-preceding `FUN_18010a370(…, rva)` line yields:
+`scripts/hook_sites.py` + `recovered/functions/_hook_sites.tsv`. The earlier version of this
+script restricted the registration helper to two names (`FUN_1800AB850` and
+`FUN_18019A0C0`) and reported 43 sites. The helper actually varies by callback signature
+-- 143 distinct helpers, all calling `geode::hook::createConvention` -- so the full sweep
+now yields **338 registration sites over 215 distinct GD methods**. The method name, the
+callback and the host target all come from the registration call; the target is either a
+hard-coded host RVA (317 sites) or a name resolved at runtime from a mangled host symbol
+(30 sites over 26 methods).
 
-| GD method | Sites | Host RVA |
-| --------- | ----: | -------: |
-| `PlayLayer::resetLevel` | 25 | `0x3B8EB0` |
-| `PlayLayer::setupHasCompleted` | 5 | `0x3A66D0` |
-| `PlayLayer::updateProgressbar` | 2 | `0x3B23C0` |
-| `PlayLayer::startGame` | 2 | `0x3A7A20` |
-| `PlayLayer::levelComplete` | 2 | `0x3A7A80` |
-| `PlayLayer::updateAttempts` | 1 | `0x3B9BA0` |
-| `PlayLayer::showCompleteEffect` | 1 | `0x3A8F30` |
-| `PlayLayer::onQuit` | 1 | `0x3AABB0` |
-| `PlayLayer::updateTestModeLabel` | 1 | `0x3A7990` |
-| `PlayLayer::toggleProgressbar` | 1 | `0x3B2760` |
-| `PlayLayer::showEndLayer` | 1 | `0x3AC700` |
-| `GJGameLevel::savePercentage` | 1 | `0x16C8B0` |
+Every method maps to exactly one target, with no method carrying two. That is the check
+that the positional pairing is sound: 25 registrations of `resetLevel` all landing on
+`0x3B8EB0` cannot be produced by a misaligned pairing. The three RVAs already confirmed by
+the registration-plus-thunk route above -- `0x3B8EB0`, `0x3A7A80`, `0x16C8B0` -- all
+reproduce exactly, so this is a third independent angle on the same three values; the
+`onQuit` thunk at `FUN_1801A5260` reads `lVar1 + 0x3BABB0`, making **four**
+doubly-confirmed RVAs.
 
-**Every method maps to exactly one RVA, with no method carrying two.** That is the check
-that the positional RVA pairing is sound: 25 registrations of `resetLevel` all landing on
-`0x3B8EB0` cannot be produced by a misaligned pairing. And the three RVAs already confirmed
-by the registration-plus-thunk route above — `0x3B8EB0`, `0x3A7A80`, `0x16C8B0` — all
-reproduce exactly, so this is a third independent angle on the same three values.
-
-The ninth row is confirmed the same way as the first three. `FUN_1801A5260`, the thunk the
-`onQuit` hook calls, reads `lVar1 + 0x3BABB0` — matching the registration's RVA. That makes
-**four** doubly-confirmed RVAs.
-
-Eleven of the twelve hooked methods are `PlayLayer`. Mega Hack hooks almost nothing outside
-the level lifecycle, which is the cleanest single statement of what the mod is.
+`PlayLayer` accounts for 27 of the 215 methods and 92 of the 338 registrations, so the
+level lifecycle is still the largest single cluster, but the surface also spans rendering,
+input, audio, UI, editor and FMOD paths. Mega Hack hooks far more than the level lifecycle.
 
 ### `0x180174DE4` is the `onQuit` hook's call to the original
 
@@ -258,9 +247,8 @@ So `0x180174DE4` is precisely the call to the original `PlayLayer::onQuit`, and 
 **tail-jumps** rather than calls its own follow-up. The README's description of that
 address moved from the patch's label to a disassembly-backed fact.
 
-Two of the 43 callbacks are Ghidra `LAB_` labels (`LAB_180158F00`, `LAB_18015A220`) rather
-than functions, so they have no recovered `.c` to read. Recorded as `callback_kind=label`
-rather than dropped.
+43 of the 338 callbacks are Ghidra `LAB_` labels and 19 are data slots, so neither has a
+recovered `.c` to read. Recorded as `callback_kind=label` / `data` rather than dropped.
 
 ## A settings accessor this repo's index misses
 
@@ -313,7 +301,7 @@ hackpro-internal one.
   they are distinct functions with very different caller counts — 33 versus 1. The single
   caller of `FUN_18019A0C0` is `FUN_180199D10`, which registers all three of the hooks in
   this note. That asymmetry is unexplained.
-- The lazy-thunk family is large and mechanical: 43 registration sites imply at least that
+- The lazy-thunk family is large and mechanical: 338 registration sites imply at least that
   many thunks, but only 27 callers of `FUN_1801A4300` and 2 of `FUN_1801A5190` were
   counted. No index enumerates the family, so the true size of the GD surface reached
   through `GetModuleHandleA(NULL) + rva` is not yet counted.
