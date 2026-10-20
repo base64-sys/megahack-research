@@ -229,11 +229,12 @@ target (operand only) or by replacing the instruction outright (opcode included)
   on the opcode byte, others one byte later on the operand, depending on whether the hook is
   installed by replacing the whole instruction or by rewriting a call target. See the
   disassembly in the section above.
-- The `.geode` also contains `tools/best_runs_db.py` etc. Establish which of `samples/.../tools/`
-  are Absolllute's and which are original to this project. `build_persistence_patch.py`,
-  `validate_persistence_patch.py`, `inspect_interface_map.py`, `pe_*.py` and the three Ghidra
-  scripts are **absent from the package**, which suggests they are not Absolllute's — this
-  bears on the open question of what may be promoted into `scripts/`.
+- (Resolved 2026-10-20.) `build_persistence_patch.py`, `validate_persistence_patch.py`,
+  `inspect_interface_map.py`, `pe_*.py` and the three Ghidra scripts are absent from the
+  `.geode` package, so they are original to this project rather than Absolllute's and may be
+  promoted into `scripts/`. The `.geode`'s own `tools/` (best_runs_db.py etc.) are
+  Absolllute's and stay in `samples/`. UNVERIFIED: whether any promoted script depends on
+  a sample-only helper.
 
 ## Failure modes recorded
 
