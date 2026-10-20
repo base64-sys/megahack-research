@@ -316,8 +316,11 @@ evidence-backed; semantics require reading the 92 callbacks, which is M3 work.
   argument roles.
 - Resolve whether the `.data` mangled type names are RTTI or exception-handling payloads.
   The 16 bytes preceding them are ASCII, which argues against RTTI.
-- Account for the `mov edx, 0x16c8b0` / `0x3a7a80` / `0x3b8eb0` immediates — resolved
-  addresses, handle indices, or offsets.
+- (Resolved 2026-10-20.) The `mov edx, 0x16c8b0` / `0x3a7a80` / `0x3b8eb0` immediates
+  are hard-coded host RVAs: they are the values passed to `FUN_18010A370(GetModuleHandleA(NULL)
+  base, rva)` and are independently re-read by the lazy thunks at `FUN_1801462C0`,
+  `FUN_1801A5190` and `FUN_1801A4300`. They are absolute host-image offsets, not handle
+  indices. See notes/hook-dispatch.md.
 - Full method-level inventory of the 116 `CCNode` and 59 `CCSprite` calls, to separate
   Mega Hack's own UI code from generic cocos2d usage.
 - The `PlayLayer` string occurs 29 times; find what each is used for. Likely the highest-yield
