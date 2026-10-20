@@ -218,7 +218,10 @@ callers of `0x18019B350` and string references to ranked/safe-mode terminology v
   call sites of `showMessage` (9 of value 2, 5 of value 1, 1 of value 0). UNVERIFIED: the
   semantic name of each enumerator (info/warning/error or similar). The layout of
   `hackpro::Tag` (64-bit integer) and `hackpro::extensions::Delegate` remains unmapped.
-- Confirm whether the 29 `hackpro` symbols are one TU (see UNVERIFIED above).
+- (Partially resolved 2026-10-20.) The 29 `hackpro` symbols occupy a single contiguous
+  range `0x180072B60`–`0x180075530` (10,704 bytes) with no interleaving functions from
+  other namespaces, which is consistent with one TU. UNVERIFIED: a compiler-level proof
+  (e.g. a single .pdata range or identical prologue padding) rather than contiguity.
 - (Resolved 2026-10-20.) `define` at `0x1800A3C40` is not a counterpart config API: it is
   the string-interning entry, forwarding to `FUN_18009B1C0(&DAT_180801308, param_1)` behind
   a thread-safe static initialiser that constructs the registry at `DAT_180800F58`. It is
