@@ -76,8 +76,11 @@ rate like `x/y/z` and lets the player pick which parts appear.
 So the Best Run display is a **template with named tokens**, not a fixed string. A change to
 what it shows is a change to which tokens the template contains, not a string edit.
 
-UNVERIFIED: the full token set. `FUN_18024E8D0` is 646 lines with a `switch` over token
-lengths; other `case` arms were not read. Confirming needs the full body, not a sample.
+(Resolved 2026-10-20.) The full token set in `FUN_18024E8D0` is: `Alive`, `Dead`,
+`{}`, `{}`/`{} Jumps`, `Frame {}`, `{{:.{}f}}%`, `Attempt {}`, coordinate pairs,
+`{0}-{0}`, `Best Run: {}`, `{:.2f}%`, `Accuracy: {:.2f}%`, `Playing: {}/{} `,
+`Recording: {}`, `Loaded ({})`, `{}`/`{} Deaths`, and `UNKNOWN_KEY`. UNVERIFIED: which
+tokens are gated by settings versus always available.
 
 ## The session/global question, third confirmation
 
