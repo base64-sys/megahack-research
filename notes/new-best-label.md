@@ -187,7 +187,10 @@ _symbols.tsv` plus a string inventory should find it.
 - (Partially resolved 2026-10-20.) 245 (`0xF5`), 247 (`0xF7`), 501 (`0x1F5`) and 502
   (`0x1F6`) are read in `FUN_18017F000` and in the cheat helpers; their hackpro.json keys
   are still unknown. See notes/definition-keys.md.
-- Decide what `FUN_180148610` means: key-present/definition-exists, or something narrower.
+- (Resolved 2026-10-20.) `FUN_180148610` is a lazy thunk into Geometry Dash
+  (`FUN_18010DDC0() + 0x183110`), so its return value (used to choose the 1.0 vs 0.5 delay
+  in `FUN_18017F000`) is GD-side behaviour, not a Mega Hack key lookup. UNVERIFIED: the GD
+  function name and its semantics.
 - Three functions failed to decompile: `0x180030600`, `0x1802FFDA0`, `0x180352640`.
 
 ## Failure modes recorded
