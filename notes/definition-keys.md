@@ -164,9 +164,10 @@ which value is compared against which.
 
 ## Open questions
 
-- Decompile `FUN_180110790` (the draw call shared by both New Best paths) and `FUN_180149670`
-  (the row setter). These will show what value the comparison uses, which decides between
-  possibilities 1 and 2 above.
+- (Resolved 2026-10-20.) `FUN_180110790` and `FUN_180149670` are not Mega Hack logic at all:
+  both are lazy thunks into Geometry Dash (`FUN_18010DDC0() + 0x132E50` and
+  `... + 0x182EB0`), so the value the New Best comparison uses is determined on the GD side,
+  not in this binary. UNVERIFIED: the GD function names and signatures at those RVAs.
 - (Resolved 2026-10-20.) Enumerated 18 numeric row ids passed to `FUN_180120A40`
   (32, 394-399, 402, 411, 414, 422, 432-434, 436, 442, 445, 448) plus 3
   `FUN_180120CA0` string-backed rows (`DAT_180571640`, `DAT_18056CF29`,
