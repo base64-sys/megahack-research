@@ -278,8 +278,10 @@ confirmation of the documented mode, not a new finding.
   the library's.
 - Give the 181 SSO artefacts a shape-based flag tied to the decoder's documented error modes,
   rather than leaving them in `other` to distort the percentage.
-- Confirm whether every `ui-element` name maps to a live control, and extend that group into
-  the M3 feature map.
+- (Resolved 2026-10-20.) All 77 `ui-element` names are registered by the CRT static
+  initializer `FUN_180062940` (entry 11 of the 281-entry `_initterm` table), so they are
+  live controls in the shipped build, not dead strings. UNVERIFIED: which names correspond to
+  controls visible in the default UI versus gated by settings, and their M3 feature mapping.
 - Separately: `/api/mega_hack/...` and the licence strings are **out of scope** — see
   [not-investigated-licence-path.md](not-investigated-licence-path.md). They appear here only
   because they are strings in the binary, and nothing in this note maps their behaviour.
