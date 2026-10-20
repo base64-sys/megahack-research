@@ -305,8 +305,9 @@ the approach that should work; recovering capacity 15 vs 31 to tell a 16-byte bu
 - (Resolved 2026-10-20.) FNV-1a-64 is used for **lookup** in both directions: `tagFor`
   (`FUN_18007CB60`) hashes the name to find a `Tag`, and `keyFor` (`FUN_18007CCF0`) hashes
   the `Tag` to find the name, each probing a chained map. See settings-registry.md.
-- Decode the SSO immediates for the other 40+ `FUN_18007CB60` callers, which is where most of
-  the remaining unknown key names are.
+- (Deferred 2026-10-20.) Decoding the SSO immediates for the remaining `FUN_18007CB60`
+  callers is M3 work; the decoder itself is documented and works case by case. UNVERIFIED:
+  the key names in those callers.
 - (Resolved 2026-10-20.) `FUN_1801BA8A0` builds an HTTP request to `/api/mega_hack/v9/login`
   via Geode's web utility (`FUN_1800C08D0`), with a callback (`session::Login::onLogin`).
   This is an online licence/login path and stays a static reading only; it is not exercised.
