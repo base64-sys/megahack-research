@@ -217,9 +217,12 @@ callers of `0x18019B350` and string references to ranked/safe-mode terminology v
 - Determine the enumerators of `hackpro::MessageType`, and the layout of `hackpro::Tag` and
   `hackpro::extensions::Delegate`.
 - Confirm whether the 29 `hackpro` symbols are one TU (see UNVERIFIED above).
-- Find the *internal* (non-exported) counterpart APIs. Exports are the public face; the
-  160+ feature toggles call something. `define` at `0x1800A3C40` sits outside the main
-  block and may be that counterpart.
+- (Resolved 2026-10-20.) `define` at `0x1800A3C40` is not a counterpart config API: it is
+  the string-interning entry, forwarding to `FUN_18009B1C0(&DAT_180801308, param_1)` behind
+  a thread-safe static initialiser that constructs the registry at `DAT_180800F58`. It is
+  the mechanism behind UI widget name interning, not a settings accessor. UNVERIFIED: where
+  the 160+ feature toggles' internal calls land; they are not in the export table and are not
+  this function.
 - (Resolved 2026-10-20.) Callers of the three `safe_mode` functions: `areCheatsEnabled`
   (`0x18019B350`) is called by `FUN_180090BC0`, `FUN_1801789C0` and the shared gate
   `FUN_18019B5F0`; `disableAllCheats` (`0x18019B450`) is called by `FUN_180090BC0` and
