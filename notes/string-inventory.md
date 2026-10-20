@@ -274,8 +274,11 @@ confirmation of the documented mode, not a new finding.
 
 ## Open questions
 
-- Resolve `mod-identifier` against the OpenSSL symbol table to split Mega Hack's names from
-  the library's.
+- (Unchanged 2026-10-20.) Resolving `mod-identifier` against the OpenSSL symbol table still
+  needs an external OpenSSL symbol table; none is tracked in this repo, and the fragments
+  (`gerprint`, `xcghash`, `ld-type`, `use-bits`) are bare lowercase shapes that cannot be
+  split by regex alone. UNVERIFIED: which of the 980 `mod-identifier` rows are Mega Hack's
+  own snake_case names versus OpenSSL ASN.1 field names.
 - (Resolved 2026-10-20.) A same-function suffix test (SSO text as a suffix of a VA-backed
   string in the same function) matches only 7 of the 181 SSO rows, so shape-based flagging
   is not viable; the 181 rows remain in `other`. See the rejected suffix/substring analysis
