@@ -146,7 +146,12 @@ lookup, or incidentally — is not hooking it, and the two numbers should not be
   section above — the complete hook list contains no writer, and the one storage-side hook
   can only veto. Mega Hack reads GD's saved percentage and blocks GD from persisting a
   cheated one.
-- The directory segment between `%LOCALAPPDATA%` and `Octavus`.
+- (Resolved 2026-10-20.) There is **no** intermediate segment: `FUN_1800C5210` calls
+  `SHGetKnownFolderPath` with the `FOLDERID_LocalAppData` GUID at `0x1805820E0`
+  (`F1B32785-6FBA-4FCF-9D55-7B8E7F157091`), and `FUN_180042FB0` appends `Octavus`
+  directly, then `data.json`. Verified by reading the GUID bytes and the decompiled path
+  join. UNVERIFIED: whether `Octavus` is a fixed literal or derived from a publisher name;
+  only the literal is visible.
 - Whether `hackpro.json` write-back happens on a timer, at shutdown, or both. Both its
   reader and its writer have **zero direct callers**, so neither is reachable by a direct
   call-graph walk; they are dispatched through a pointer.
