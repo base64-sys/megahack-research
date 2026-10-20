@@ -182,8 +182,11 @@ _symbols.tsv` plus a string inventory should find it.
 
 ## Open questions
 
-- Locate the session-vs-global definition keys. Start from a full `.rdata` string inventory
-  grouped by the `STATUS/…` key shape.
+- (Resolved 2026-10-20.) No `STATUS/...` session/global definition keys exist in
+  `_xrefs.tsv` (only `ERROR/STATUS/MAX_FIELDS`). The session-vs-global New Best distinction
+  is not a text/keyed distinction in this binary; it is the value-comparison change noted
+  above. UNVERIFIED: the exact comparison value, which is GD-side (see the thunk resolution
+  above).
 - (Partially resolved 2026-10-20.) 245 (`0xF5`), 247 (`0xF7`), 501 (`0x1F5`) and 502
   (`0x1F6`) are read in `FUN_18017F000` and in the cheat helpers; their hackpro.json keys
   are still unknown. See notes/definition-keys.md.
