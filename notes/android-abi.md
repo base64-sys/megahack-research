@@ -469,5 +469,6 @@ trustworthy than it was three commits ago.
   `_xrefs.tsv` or the recovered tree, so they are Android-only on this baseline; the
   windowed-mode relation is unverified but moot for the Windows build. UNVERIFIED: whether
   Android's windowed mode maps to a Windows equivalent at all.
-- Filter the residual artefacts out of the key shapes so future counts are exact rather than
-  approximate.
+- (Unchanged 2026-10-20.) Filtering residual artefacts out of the key shapes needs the
+  Android side to be re-counted after the same artefact removal; deferred to M5. UNVERIFIED:
+  the exact Android key count.
