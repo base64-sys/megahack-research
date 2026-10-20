@@ -276,8 +276,11 @@ confirmation of the documented mode, not a new finding.
 
 - Resolve `mod-identifier` against the OpenSSL symbol table to split Mega Hack's names from
   the library's.
-- Give the 181 SSO artefacts a shape-based flag tied to the decoder's documented error modes,
-  rather than leaving them in `other` to distort the percentage.
+- (Resolved 2026-10-20.) A same-function suffix test (SSO text as a suffix of a VA-backed
+  string in the same function) matches only 7 of the 181 SSO rows, so shape-based flagging
+  is not viable; the 181 rows remain in `other`. See the rejected suffix/substring analysis
+  above. UNVERIFIED: the decoder precision needed to separate them, which requires
+  disassembly rather than text shape.
 - (Resolved 2026-10-20.) All 77 `ui-element` names are registered by the CRT static
   initializer `FUN_180062940` (entry 11 of the 281-entry `_initterm` table), so they are
   live controls in the shipped build, not dead strings. UNVERIFIED: which names correspond to
