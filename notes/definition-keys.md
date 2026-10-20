@@ -167,8 +167,11 @@ which value is compared against which.
 - Decompile `FUN_180110790` (the draw call shared by both New Best paths) and `FUN_180149670`
   (the row setter). These will show what value the comparison uses, which decides between
   possibilities 1 and 2 above.
-- Enumerate every `FUN_180120A40` / `FUN_180120CA0` call site to build the full row-id table
-  and its owning tab. That table is the map any UI change needs.
+- (Resolved 2026-10-20.) Enumerated 18 numeric row ids passed to `FUN_180120A40`
+  (32, 394-399, 402, 411, 414, 422, 432-434, 436, 442, 445, 448) plus 3
+  `FUN_180120CA0` string-backed rows (`DAT_180571640`, `DAT_18056CF29`,
+  `DAT_180571645`, `DAT_18057164A`). UNVERIFIED: the owning tab for each id and the
+  label text behind the string-backed rows.
 - (Partially resolved 2026-10-20.) 245 (`0xF5`) gates whether `FUN_18017F000` uses a
   1.0 or 0.5 delay (via `FUN_180148610`); 247 (`0xF7`) enables the delay scaling inside
   `FUN_18017F000`; 501 (`0x1F5`) and 502 (`0x1F6`) are read in `FUN_18017F000` and in
