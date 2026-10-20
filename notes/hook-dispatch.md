@@ -304,8 +304,11 @@ hackpro-internal one.
   and `FUN_180199560` multiplies the same expression by `100.0`. The gate therefore fires
   when the cheat-attributed share of total progress reaches 100%. `param_2` is the float
   delta passed to the `PlayLayer::postUpdate` hook, i.e. frame time, so the globals
-  accumulate time spent in cheat-attributed frames. UNVERIFIED: what `DAT_18080CB68` being
-  set means beyond "safe mode was active on the previous frame".
+  accumulate time spent in cheat-attributed frames. `DAT_18080CB68` is cleared every frame in
+  `FUN_1801992B0` and is a one-frame-delayed copy of `DAT_18080CB69`; no assignment to
+  `1` appears in the recovered tree, so its setter is not in the recovered set (or is
+  reached through a pointer). UNVERIFIED: what sets `DAT_18080CB68` and whether it is the
+  safe-mode-active flag.
 - (Resolved 2026-10-20.) `FUN_1800AB850` versus `FUN_18019A0C0`: both call
   `createConvention` then register, but they are different helper variants distinguished by
   callback signature/arity, not by semantics. `FUN_18019A0C0` is the variant used by
