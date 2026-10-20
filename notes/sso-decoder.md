@@ -307,8 +307,9 @@ the approach that should work; recovering capacity 15 vs 31 to tell a 16-byte bu
   the `Tag` to find the name, each probing a chained map. See settings-registry.md.
 - Decode the SSO immediates for the other 40+ `FUN_18007CB60` callers, which is where most of
   the remaining unknown key names are.
-- Establish what `FUN_1801BA8A0` does with the login path — offline by assumption, so this
-  stays a static reading and is not to be exercised against a live service.
+- (Resolved 2026-10-20.) `FUN_1801BA8A0` builds an HTTP request to `/api/mega_hack/v9/login`
+  via Geode's web utility (`FUN_1800C08D0`), with a callback (`session::Login::onLogin`).
+  This is an online licence/login path and stays a static reading only; it is not exercised.
 - Group SSO stores **by buffer** using the size/capacity pair rather than by offset
   contiguity, then order within a buffer by descending offset. The data needed is present and
   measured above; the rejected contiguity approach is documented so it is not retried.
