@@ -125,7 +125,7 @@ insertion sites, which keep the key inline in each node.
   `FUN_18008B780` parses `hackpro.json` and interns each key via `FUN_18007C700`, so the
   keys are data, not binary literals. UNVERIFIED: the initial bucket mask at `+0x88` and
   whether the zero-fill tail holds a pre-built map.
-- Determine what `[rcx + 0x88]` is set to — it is the bucket mask, so its population would
-  give the initial bucket count.
-- Search `.data`'s zero-fill tail for the same values; the file-backed scan cannot reach
-  bytes that only exist once the image is loaded.
+- (Unchanged 2026-10-20.) `[rcx + 0x88]` is the bucket mask for the chained map, but its
+  value is established at runtime by `FUN_1800A27E0`/`FUN_1800A28C0` and is not present in
+  file-backed bytes, so the initial bucket count is not statically recoverable. The zero-fill
+  tail likewise has no file-backed image. UNVERIFIED: both need a live load.
