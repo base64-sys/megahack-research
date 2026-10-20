@@ -219,8 +219,12 @@ target (operand only) or by replacing the instruction outright (opcode included)
 
 - ~~Obtain a pristine v9.1.3 `.geode` and re-run the cross-check.~~ **Done 2026-10-17** —
   `PRISTINE_MEGAHACK.geode` supplied, cross-check passed.
-- Does `_original.dll` match the Android `.so` builds? Both are nominally v9.1.3, but the
-  ARM builds were not diffed and no shared-code check was run.
+- (Resolved 2026-10-20.) `compare_platform_classes.py` extracts 474 MSVC class names from
+  `_original.dll` and 1,108/1,110 Itanium names from the Android `.so` files, with zero
+  overlap by naive name extraction because the ABIs encode type names differently (MSVC
+  `.?AVName@@` vs Itanium `_ZN...`). The Android builds carry no MSVC RTTI, so a shared-
+  code check needs M5's separate pass, not this script. UNVERIFIED: whether the two
+  platforms ship identical feature code.
 - (Resolved 2026-10-20.) The opcode/operand question is resolved: some patched ranges start
   on the opcode byte, others one byte later on the operand, depending on whether the hook is
   installed by replacing the whole instruction or by rewriting a call target. See the
