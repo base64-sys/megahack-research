@@ -31,7 +31,13 @@ FUNCTIONS = REPO / "recovered" / "functions"
 INDEX = FUNCTIONS / "_xrefs.tsv"
 
 # Ordered rules. First match wins.
-SETTING_KEY = re.compile(r"^[A-Z][A-Z0-9_]*(?:/[A-Z0-9_{}]+)+$")
+SETTING_KEY = re.compile(
+    r"^(?:[A-Z][A-Z0-9_]*(?:/[A-Z0-9_{}]+)+|"
+    r"SHORTCUT_[A-Z0-9_]+|OPTIONS_[A-Z0-9_]+|"
+    r"CURRENT_PROFILE|ALL_PROFILES|CHEAT_SAFETY|UNKNOWN_KEY|"
+    r"V_(?:BOOL|BYTES|INT|STRING|DECIMAL)|"
+    r"(?:tag|action|nosave|default|dropdown|radio|decimal|rules|elements|single|dual|live))$"
+)
 API_PATH = re.compile(r"^/(?:api|v\d)/")
 LANG_KEY = re.compile(r"^[a-z]{2,3}(?:\.[A-Za-z_]+)+$")
 # `{}`, `:` and `,` are allowed inside the stem because Mega Hack names assets with
@@ -39,7 +45,7 @@ LANG_KEY = re.compile(r"^[a-z]{2,3}(?:\.[A-Za-z_]+)+$")
 # through to `other`. `.dll`/`.so` are here because host and engine names such as
 # `libcocos2d.dll` are paths by the same reasoning.
 FILE_PATH = re.compile(
-    r"^[A-Za-z0-9_{}:,.\\/-]*\.(?:png|json|dt|bin|dat|txt|xml|zip|plist|dll|so)$"
+    r"^[A-Za-z0-9_{}:,.\\/-]*\.(?:png|json|dt|bin|dat|txt|xml|zip|plist|dll|so|ttc)$"
 )
 # fmtlib braces, e.g. `{:02}`, `{:g}`. The old form only matched `{word}`, so
 # every numeric placeholder was missed. `*` is in the flag class because OpenSSL
@@ -69,19 +75,19 @@ UI_ELEMENT = re.compile(
 # `includedir`, `prime-field`).
 OPENSSL_PREFIX = re.compile(
     r"^(?:OSSL_|EVP_|X509_|PKCS|DH_|DSA_|RSA_|ASN1_|EC_|BN_|BIO_|SSL_|i2[od]_|o2[i]_[A-Za-z]"
-    r"|d2i_|i2d_|CRYPTO_|ENGINE_|HMAC_|CMAC_|OCSP_|TS[A-Z]|CMS_|SRP_|CTX_)"
+    r"|d2i_|i2d_|CRYPTO_|ENGINE_|HMAC_|CMAC_|OCSP_|TS[A-Z]|CMS_|SRP_|CTX_"
+    r"|OPENSSL_|DIR_|LIST_|PKEY_|SO_PATH|EXTRACT_|EXPAND_|ssl3-ms|xoflen)"
 )
 SNAKE = re.compile(r"^[a-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+)+$")
 FLAG = re.compile(r"^(?:HACK_[A-Z0-9_]+[+]?)$")
-ERROR_TEXT = re.compile(r"^[a-z].*\s.*[.:]$")
-# Lowercase diagnostic prose with a space. 305 of the 1,359 rows in `other` are
-# this shape, and sampling them shows they are library diagnostics, not unknown
-# text: libc++ (`bad array new length`, `iterator out of range`), BoringSSL
-# (`m_cost must be greater or equal than 8 times the number of lanes`), libpng
-# (`malformed sPLT chunk`), nlohmann/json (`syntax error while parsing`).
-# Mega Hack's own labels are capitalised and already matched by NATURAL_LABEL, so
-# this rule takes the library text without taking MH's.
-LIBRARY_TEXT = re.compile(r"^[a-z][a-z0-9_ ,'()\[\]/&.:+-]*\s[a-z0-9_ ,'()\[\]/&.:+-]+$")
+ERROR_TEXT = re.compile(
+    r"^(?:\[json\.exception|invalid|unexpected|expected|assertion failed|failed to|cannot|error:|missing |malformed |syntax error).*|"
+    r".*(?:too long|subscript|presentation type)$|"
+    r"^[a-z].*\s.*[.:]$",
+    re.I,
+)
+# Lowercase diagnostic prose with a space.
+LIBRARY_TEXT = re.compile(r"^[a-z][a-z0-9_ ,'()<>[\]/&.:+-]*\s[a-z0-9_ ,'()<>[\]/&.:+-]+$")
 
 CATEGORIES = [
     ("setting-key", SETTING_KEY),
@@ -101,8 +107,8 @@ CATEGORIES = [
     ("mod-identifier", SNAKE),
     ("flag", FLAG),
     ("format-string", FORMAT_STR),
-    ("error-text", ERROR_TEXT),
     ("library-text", LIBRARY_TEXT),
+    ("error-text", ERROR_TEXT),
     ("user-label", NATURAL_LABEL),
 ]
 

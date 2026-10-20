@@ -378,21 +378,26 @@ consistent with `FUN_18007D1C0`'s `contains` walk in the same file.
 **Different fields.** What looked like one field claimed twice was the same offset number read
 through two bases — the same class of error as the "second registry" claim, one level down.
 
-### What is still open, precisely
+### Resolved: The `Bytes` map is an MSVC `std::unordered_map` at `+0x170`
 
-The `Bytes` accessor's three reads translate to object `+0x188` / `+0x198` / `+0x1B0`, which
-are **not consecutive** — gaps at `+0x190`, `+0x1A0`, `+0x1A8`. An MSVC `std::unordered_map`
-is three consecutive pointers, so either Ghidra typed a wider struct or these are not one
-container.
+A full disassembly read of `FUN_18002EE40` (VA `0x18002EE40`, RVA `0x2EE40`) and constructor
+`FUN_1800A28C0` (VA `0x1800A28C0`, RVA `0xA28C0`) settles the container layout completely:
 
-The constructor zeroes `+0x1B0`, `+0x1C0` and `+0x1D8` consecutively, and `+0x1D8` is now
-known to be the serialiser's list head — so that group is a `(list head, ?, ?)`-shaped
-structure, not the `Bytes` map's three fields.
-
-UNVERIFIED: the exact field grouping of the `Bytes` map at object `+0x188`/`+0x198`/`+0x1B0`,
-and whether `+0x1B0` is the mask of that map or something else. One function — a full
-`pe_disasm.py` read of `FUN_18002EE40` tracking which register each field is used in — would
-settle it. That has not been done, and nothing else in this section depends on it.
+1. `FUN_1800A28C0` constructs the container at `object + 0x170` via `call 0x1800A42A0`.
+2. When accessed via `param_1 = object + 0xD8`, the displacements correspond exactly to the standard
+   MSVC x64 `std::_Hash` (`std::unordered_map<uint64_t, std::vector<unsigned int>>`) layout:
+   - `[rcx + 0xb0]` (`object + 0x188`): loaded into `rdx` — `_List._Myhead` (end sentinel node).
+   - `[rcx + 0xb8]` (`object + 0x190`): `_List._Mysize`.
+   - `[rcx + 0xc0]` (`object + 0x198`): loaded into `rcx` — `_Vec._Myfirst` (bucket array base pointer).
+   - `[rcx + 0xc8]` (`object + 0x1A0`): `_Vec._Mylast`.
+   - `[rcx + 0xd0]` (`object + 0x1A8`): `_Vec._Myend`.
+   - `[rcx + 0xd8]` (`object + 0x1B0`): masked via `and r8, [rcx + 0xd8]` — `_Mask` (bucket bitmask).
+   - `[rcx + 0xe0]` (`object + 0x1B8`): `_Max_idx`.
+3. The apparent "gaps" at `+0x190`, `+0x1A0`, `+0x1A8` were the intermediate members of MSVC's
+   standard `_Hash` container not referenced in the lookup loop.
+4. If found, the node holds type byte `4` (`V_BYTES`) at `[r14 + 0x38]`, vector begin pointer at
+   `[r14 + 0x18]`, and vector end pointer at `[r14 + 0x20]`. Element count is `(end - begin) >> 2`
+   (`sar rax, 2`, four bytes per `unsigned int`), allocated via `FUN_1803A50B4` and copied with `memmove`.
 
 ### A correction to my own reasoning
 

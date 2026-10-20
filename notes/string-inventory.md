@@ -18,19 +18,19 @@ promoted, since they inherit the split and merge error modes in [sso-decoder.md]
 
 | Category | Rows | Contains |
 | -------- | ---: | -------- |
-| `other` | 1,079 | see "what is still missing" below |
-| `mod-identifier` | 974 | Mega Hack's own snake_case names — `icons_0`, `override_cols`, `player_ball`, `no_bar`, `same_dual_col` |
-| `user-label` | 479 | UI text |
+| `mod-identifier` | 980 | Mega Hack's own snake_case names — `icons_0`, `override_cols`, `player_ball`, `no_bar`, `same_dual_col` |
+| `other` | 942 | see "what is still missing" below |
+| `user-label` | 407 | UI text |
 | `format-string` | 329 | printf (`%s`, `%*s`) and `{}` / `{:02}` templates |
-| `third-party` | 272 | statically linked OpenSSL/zlib, gated on a known prefix |
+| `third-party` | 292 | statically linked OpenSSL/zlib, gated on known prefixes and environment vars |
+| `library-text` | 219 | lowercase library diagnostics — libc++, BoringSSL, libpng, zlib, nlohmann/json |
 | `host-method` | 214 | `PlayLayer::createCheckpoint`, `cocos2d::CCDirector::popScene` |
-| `library-text` | 212 | lowercase library diagnostics — libc++, BoringSSL, libpng, zlib, nlohmann/json |
+| `error-text` | 178 | assertion and diagnostic strings, exception templates |
+| `setting-key` | 165 | `ICONIC/DISABLE`, `HOME/THEME/{}/COL`, `SHORTCUT_*`, `OPTIONS_*`, `V_*`, schema keywords |
 | `flag` | 153 | `HACK_COPY_HACK+` and similar |
-| `setting-key` | 126 | `ICONIC/DISABLE`, `HOME/THEME/{}/COL` |
+| `file-path` | 109 | asset and data filenames, including `.plist`, `.dll`, `.so`, `.ttc` |
 | `mangled-symbol` | 96 | MSVC `?f@ns@@` and `??1Class` forms |
-| `file-path` | 108 | asset and data filenames, including `.plist`, `.dll` and `{}` templates |
 | `ui-element` | 77 | Mega Hack's own widget names |
-| `error-text` | 12 | assertion and diagnostic strings |
 | `url` | 6 | including `https://absolllute.com/store/mega_hack` |
 | `api-path` | 4 | `/api/mega_hack/...` |
 | `language-key` | 4 | |

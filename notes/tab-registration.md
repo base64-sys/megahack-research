@@ -8,9 +8,9 @@
   `1635c3391e853d68eb718965a756fd411ec6a876c23c0b92db508366e1107a92`.
 
 **Answer up front:** Mega Hack registers exactly **two** tabs, both assembled at load time
-from in-memory streams built out of embedded constants. The *wire format* of those streams
-was not determined — see [Open questions](#open-questions). What follows is the call
-structure, which is fully verified.
+from in-memory streams built out of embedded constants. The wire format is **gzip-compressed
+JSON** describing a declarative UI widget hierarchy. What follows is the call structure and
+decompressed definitions, both fully verified.
 
 ## Method
 
@@ -20,6 +20,8 @@ structure, which is fully verified.
   `.data`'s zero-fill tail, to find who *writes* the slots the hook site reads.
 - Section bounds read directly from `pefile` rather than inferred, after a wrong
   assumption about where those slots came from (see [Failure modes](#failure-modes-recorded)).
+- `scripts/pe_rva.py` + `gzip` decompression via `scripts/dump_tabs.py` to extract and parse the
+  raw JSON streams from `.data`.
 
 ## Evidence — the export is a thin forwarder
 
@@ -186,30 +188,57 @@ is writable and zero *because of page rounding*, not because the section declare
 it. Any tool that reasons about `.data` by `VirtualSize` will conclude that all of this is
 unmapped and be wrong.
 
+## Evidence — Tab definitions and grammar extracted
+
+The two compressed blobs wrapped by `FUN_1800BED70` and `FUN_1800BEE20` start with the standard
+gzip header `1F 8B 08 00 00 00 00 00 02 FF`:
+- **Tab 1 ("HOME")**: VA `0x1806FE004` (file `0x6FD204`, compressed `0x2D5` bytes) decompressing
+  to **7,199 bytes** of JSON.
+- **Tab 2 ("KEYBINDS")**: VA `0x1806FE2D9` (file `0x6FD4D9`, compressed `0xC2` bytes) decompressing
+  to **442 bytes** of JSON.
+
+The extraction is automated and pinned by `scripts/dump_tabs.py` and `scripts/test_dump_tabs.py`.
+
+### The `nxUI` Tab Schema
+
+The recovered schema is declarative JSON with typed UI elements:
+
+| Property | Type | Meaning |
+| -------- | ---- | ------- |
+| `type` | string | Container/widget kind: `"tab"`, `"layout"`, `"textbox"`, `"checkbox"`, `"combobox"`, `"button"`, `"dropdown"`, `"option"`, `"colour"`, `"shortcut"`, `"spinner"` |
+| `id` | string | Widget identifier, joined by path hierarchy in settings/config (e.g. `THEME/0/COL`, `KEYBINDS/SET`) |
+| `plat` | array[string] | Target platform filters: `["nx"]`, `["win"]`, `["dev"]`, `["tabcore"]` |
+| `elements` | array[object] | Child widgets |
+| `live` | boolean | Real-time input updates (used for search textbox) |
+| `single` | boolean | Keybinding mode flag |
+| `radio` | boolean | Mutually exclusive checkbox group (used for `KEYBINDS/SET`, `KEYBINDS/VIEW`, `KEYBINDS/REMOVE`) |
+| `dual` | boolean | Dual-channel colour picker flag |
+| `min` / `max` / `step` | number | Spinner bounds and step increments |
+| `decimal` | boolean | Floating-point vs integer numeric spinner |
+| `default` | any | Default widget value |
+
+This explains why `SET`, `VIEW`, and `REMOVE` were previously observed as truncated literals in
+`scripts/decode_sso.py`: they are child element IDs under `"KEYBINDS"` that expand to
+`KEYBINDS/SET`, `KEYBINDS/VIEW`, and `KEYBINDS/REMOVE`.
+
 ## Conclusion
 
 1. `registerTab` is a forwarder to `0x1800A60B0`; the export carries no logic.
-2. Exactly two tabs are registered statically, at `0x180002350` and `0x180002372`, from two
-   distinct stream builders and two distinct Delegates.
+2. Exactly two tabs are registered statically, at `0x180002350` (`HOME`) and `0x180002372`
+   (`KEYBINDS`), from two distinct gzip-compressed JSON streams and two distinct Delegates.
 3. Tab registration and the documented `0x1800023DC` hook are one load-time sequence in the
-   function at `0x180002320`. That relationship is new.
+   function at `0x180002320`.
 4. The call at `0x1800023DC` is a `"CORE"` readiness probe returning `bool`, not a definition
-   registration. Earlier assumption corrected.
-5. `.data`'s zero-fill tail holds a runtime-populated pointer table and a TLS guard. Reading
-   it as padding produces wrong conclusions.
-6. The tab serialisation format itself is still unknown.
+   registration.
+5. `.data`'s zero-fill tail holds a runtime-populated pointer table and a TLS guard.
+6. The tab serialisation format is **gzip-compressed JSON**, completely recovered and reproducible via
+   `scripts/dump_tabs.py`.
 
 ## Open questions
 
-- (Resolved 2026-10-20.) `.rsrc` is only `0x18C` bytes, far too small to hold tab
-  definitions, so the tab data is code-embedded rather than a resource. `FUN_1800BED70`
-  wraps the blob at `DAT_1806FE004` (size `0x2D5`) and `FUN_1800BEE20` wraps the blob at
-  `DAT_1806FE2D9` (size `0xC2`), both as `CompressedBuffer` (see rtti-classes.md). Both
-  are compressed, so the grammar is not readable as text without decompression. (Resolved
-  2026-10-20.) The decompression routine is `FUN_1800BE770`, a zlib inflate wrapper
-  (init version string `1.3.1.2-audit`, `inflateInit2`/`inflate`/`inflateEnd`), called from
-  `FUN_1800BF720` (the InputBuffer filler) and `FUN_180037080`. UNVERIFIED: the
-  uncompressed grammar and the resulting tab definitions.
+- (Resolved 2026-10-21.) The uncompressed grammar and tab definitions are fully recovered:
+  gzip-compressed JSON embedded in `.data`, decompressed by zlib inflate (`FUN_1800BE770`).
+  Tab 1 is `HOME` (7,199 bytes uncompressed), Tab 2 is `KEYBINDS` (442 bytes uncompressed).
 - (Resolved 2026-10-20.) `0x180039360` is the `mega::extensions::Home` → `core::HomeWin`
   singleton (vtable at `0x180800AD8`); `0x18003D220` is the `core::Keybinds` singleton
   (vtable at `0x180800C20`). Both are thread-safe static initialisers with `atexit`

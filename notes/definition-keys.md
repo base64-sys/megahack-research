@@ -183,11 +183,11 @@ which value is compared against which.
   interns the string in `DAT_180801308`. UNVERIFIED: what a miss (valid name not present)
   returns at the call site — empty text or the key — since this function only handles
   validation and interning.
-- (Resolved 2026-10-20.) The second tab registered in `FUN_180002320` uses the
+- (Resolved 2026-10-21.) The second tab registered in `FUN_180002320` uses the
   `core::Keybinds` delegate (`FUN_18003D220`), while the first uses `core::HomeWin`
-  (`FUN_180039360`), so the second tab is the Keybinds tab. `FUN_18011FFE0` (ICONIC) is one
-  of the two tab bodies fed by the compressed blobs. UNVERIFIED: which blob belongs to which
-  tab.
+  (`FUN_180039360`). Decompression via `scripts/dump_tabs.py` settles the blob mapping:
+  Blob 1 at `DAT_1806FE004` (0x2D5 bytes gzip) is `HOME` (7,199 bytes JSON), and Blob 2 at
+  `DAT_1806FE2D9` (0xC2 bytes gzip) is `KEYBINDS` (442 bytes JSON).
 
 ## Note on tooling
 
