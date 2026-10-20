@@ -866,9 +866,10 @@ rather than an extension of either.
   single-byte tail stores (`mov byte ptr [rbp - 0x48], 0x4c`), so it recovers only three of
   the five `V_*` group keys. `pe_disasm.py` closes the gap case by case. UNVERIFIED: a
   general rule; deferred to a future decoder pass. See [sso-decoder.md](sso-decoder.md).
-- `FUN_18008A510`'s 208 callers all take the same registry, so nothing in the binary bounds
-  the tag space. Whether `hackpro.json` and the mod's UI agree on the full list is a
-  question about the data, not the binary.
+- (Unchanged 2026-10-20.) `FUN_18008A510`'s 208 callers all take the same registry, so
+  nothing in the binary bounds the tag space; whether `hackpro.json` and the mod's UI agree
+  on the full list is a question about the data, not the binary. UNVERIFIED: the full key
+  list (data, not binary).
 - (Resolved 2026-10-20.) The ICONIC row ids (`445`, `446`, `447`, `0x1BD`-`0x1BF` in
   `FUN_18011FFE0`) are **UI definition ids**, not settings tags: they are passed to the
   UI-row helpers `FUN_180120A40`/`FUN_180120B70` in the same function, never to
