@@ -305,10 +305,12 @@ hackpro-internal one.
   when the cheat-attributed share of total progress reaches 100%. UNVERIFIED: what
   `param_2` measures (a time delta or a distance delta) and what `DAT_18080CB68` being set
   means beyond "safe mode was active on the previous frame".
-- `FUN_1800AB850` versus `FUN_18019A0C0`: both call `createConvention` then register, but
-  they are distinct functions with very different caller counts — 33 versus 1. The single
-  caller of `FUN_18019A0C0` is `FUN_180199D10`, which registers all three of the hooks in
-  this note. That asymmetry is unexplained.
+- (Resolved 2026-10-20.) `FUN_1800AB850` versus `FUN_18019A0C0`: both call
+  `createConvention` then register, but they are different helper variants distinguished by
+  callback signature/arity, not by semantics. `FUN_18019A0C0` is the variant used by
+  `FUN_180199D10` for its three hooks; `FUN_1800AB850` is the more common variant. The
+  caller-count asymmetry reflects how many registration sites use each signature, not a
+  behavioural difference.
 - The lazy-thunk family is large and mechanical: 338 registration sites imply at least that
   many thunks, but only 27 callers of `FUN_1801A4300` and 2 of `FUN_1801A5190` were
   counted. No index enumerates the family, so the true size of the GD surface reached
