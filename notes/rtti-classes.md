@@ -208,8 +208,10 @@ is worse than one that gives up, so the regression test asserts both.
   demangler, which is M1-adjacent tooling work.
 - (Located 2026-10-20.) `mega::utils::CompressedBuffer` has a type descriptor at
   `0x180547A98` and vtable at `0x180547B10` (0 virtuals listed in `_rtti.tsv`, so it is not
-  polymorphic-by-vtable in the recovered inventory). UNVERIFIED: its members, compression
-  algorithm and whether the encrypted sibling is a separate class or a flag on this one.
+  polymorphic-by-vtable in the recovered inventory). (Resolved 2026-10-20.) Its compression
+  is zlib via `FUN_1800BE770` (init version `1.3.1.2-audit`), used by `FUN_1800BF720` for
+  the tab blobs. UNVERIFIED: its members and whether the encrypted sibling is a separate
+  class or a flag on this one.
 - (Resolved 2026-10-20.) `compare_platform_classes.py` extracts 474 MSVC class names from
   `_original.dll` and 1,108/1,110 Itanium names from the Android `.so` files with zero overlap
   by naive name extraction, because the ABIs encode type names differently. The Android builds
