@@ -206,9 +206,11 @@ unmapped and be wrong.
   the literal itself is the format and can be read straight out of `.rdata`.
 - `.rsrc` is only `0x18C` bytes, far too small to hold tab definitions, so the tab data is
   code-embedded rather than a resource. Confirm which literal feeds each stream.
-- Identify `0x180039360` and `0x18003D220` — the two Delegates. Their vtables are the real
-  interface a third-party tab has to satisfy, so they outrank the stream format for
-  reusability.
+- (Resolved 2026-10-20.) `0x180039360` is the `mega::extensions::Home` → `core::HomeWin`
+  singleton (vtable at `0x180800AD8`); `0x18003D220` is the `core::Keybinds` singleton
+  (vtable at `0x180800C20`). Both are thread-safe static initialisers with `atexit`
+  destructors, so they are long-lived service objects, not per-tab instances. UNVERIFIED:
+  which methods on those vtables a third-party tab must implement.
 - Prove two tabs is exhaustive by looking for indirect calls into `0x180072E50` /
   `0x1800A60B0`.
 - Confirm `0x1800A2720` / `0x1800A2F80` singleton identities.
