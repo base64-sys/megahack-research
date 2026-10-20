@@ -268,6 +268,48 @@ somebody establishes a legitimate need.
    manages node lifetime and attaches state.
 6. Mega Hack performs outbound HTTP via Geode's web utility. Recorded, not investigated.
 
+## PlayLayer method surface (enumerated 2026-10-20)
+
+`_xrefs.tsv` and `_hook_sites.tsv` agree on 26 of the 27 PlayLayer methods Mega Hack
+touches; the 27th (`PlayLayer::getCurrentPercent`) is hook-registered but its name
+string is not in `_xrefs.tsv` (a Ghidra symbol-coverage gap, not an absence). Counts:
+
+| PlayLayer method | string refs | hook sites |
+| ---------------- | ----------: | ---------: |
+| `addObject` | 5 | 5 |
+| `applyCustomEnterEffect` | 1 | 1 |
+| `applyEnterEffect` | 1 | 1 |
+| `createCheckpoint` | 1 | 1 |
+| `destroyPlayer` | 8 | 8 |
+| `getCurrentPercent` | 0 | 1 |
+| `init` | 10 | 10 |
+| `levelComplete` | 2 | 2 |
+| `onQuit` | 1 | 1 |
+| `pauseGame` | 2 | 2 |
+| `playEndAnimationToPos` | 2 | 2 |
+| `playPlatformerEndAnimationToPos` | 2 | 2 |
+| `postUpdate` | 11 | 11 |
+| `resetLevel` | 25 | 25 |
+| `resumeAndRestart` | 1 | 1 |
+| `setupHasCompleted` | 5 | 5 |
+| `showCompleteEffect` | 1 | 1 |
+| `showEndLayer` | 1 | 1 |
+| `showNewBest` | 1 | 1 |
+| `startGame` | 2 | 2 |
+| `storeCheckpoint` | 1 | 1 |
+| `toggleProgressbar` | 1 | 1 |
+| `updateAttempts` | 1 | 1 |
+| `updateProgressbar` | 2 | 2 |
+| `updateTestModeLabel` | 1 | 1 |
+| `updateTimeWarp` | 1 | 1 |
+| `updateVisibility` | 2 | 2 |
+
+Total: 27 methods, 91 string references, 92 hook registrations. Every method that
+appears in both indexes has matching counts, which is a cross-check on both.
+
+UNVERIFIED: what each method's callback does. Counts and registration are
+evidence-backed; semantics require reading the 92 callbacks, which is M3 work.
+
 ## Open questions
 
 - Decompile `0x18019A0C0` and `0x1800AB850` to pin down the registration call and confirm the
