@@ -205,8 +205,11 @@ unmapped and be wrong.
   definitions, so the tab data is code-embedded rather than a resource. `FUN_1800BED70`
   wraps the blob at `DAT_1806FE004` (size `0x2D5`) and `FUN_1800BEE20` wraps the blob at
   `DAT_1806FE2D9` (size `0xC2`), both as `CompressedBuffer` (see rtti-classes.md). Both
-  are compressed, so the grammar is not readable as text without decompression. UNVERIFIED:
-  the decompression routine and the uncompressed grammar.
+  are compressed, so the grammar is not readable as text without decompression. (Resolved
+  2026-10-20.) The decompression routine is `FUN_1800BE770`, a zlib inflate wrapper
+  (init version string `1.3.1.2-audit`, `inflateInit2`/`inflate`/`inflateEnd`), called from
+  `FUN_1800BF720` (the InputBuffer filler) and `FUN_180037080`. UNVERIFIED: the
+  uncompressed grammar and the resulting tab definitions.
 - (Resolved 2026-10-20.) `0x180039360` is the `mega::extensions::Home` → `core::HomeWin`
   singleton (vtable at `0x180800AD8`); `0x18003D220` is the `core::Keybinds` singleton
   (vtable at `0x180800C20`). Both are thread-safe static initialisers with `atexit`
