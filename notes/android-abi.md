@@ -462,7 +462,9 @@ trustworthy than it was three commits ago.
 
 - Check whether `ICONIC/PREVIEW/*` is reachable on Windows under a different key prefix, or
   genuinely absent. Its size makes it the most interesting asymmetry found.
-- Establish whether `HOME/WIDTH`/`HEIGHT` relate to the windowed-mode support the persistence
-  work already touches.
+- (Resolved 2026-10-20.) `HOME/WIDTH` and `HOME/HEIGHT` have no occurrence in
+  `_xrefs.tsv` or the recovered tree, so they are Android-only on this baseline; the
+  windowed-mode relation is unverified but moot for the Windows build. UNVERIFIED: whether
+  Android's windowed mode maps to a Windows equivalent at all.
 - Filter the residual artefacts out of the key shapes so future counts are exact rather than
   approximate.
