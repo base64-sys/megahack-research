@@ -296,7 +296,15 @@ hackpro-internal one.
 
 ## Open questions
 
-- The two progress globals in `FUN_18019B5F0` (see above).
+- The two progress globals in `FUN_18019B5F0`: `DAT_18080CB70` accumulates every
+  `param_2` delta passed to `FUN_1801992B0`, and `DAT_18080CB78` accumulates the same
+  delta only while `DAT_18080CB68 == 1` (safe-mode/cheat-active). `FUN_180199250`
+  (called from the `resetLevel` hook `FUN_180199E80`'s follow-up path) zeroes both at
+  level start. `FUN_180199520` returns `1.0 - cb78/cb70` when `cb70 > 0`, else `1.0`,
+  and `FUN_180199560` multiplies the same expression by `100.0`. The gate therefore fires
+  when the cheat-attributed share of total progress reaches 100%. UNVERIFIED: what
+  `param_2` measures (a time delta or a distance delta) and what `DAT_18080CB68` being set
+  means beyond "safe mode was active on the previous frame".
 - `FUN_1800AB850` versus `FUN_18019A0C0`: both call `createConvention` then register, but
   they are distinct functions with very different caller counts — 33 versus 1. The single
   caller of `FUN_18019A0C0` is `FUN_180199D10`, which registers all three of the hooks in
