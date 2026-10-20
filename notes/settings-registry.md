@@ -860,11 +860,10 @@ rather than an extension of either.
 - The per-setting `"action"` flag is read but its effect on `FUN_18008B780`'s dispatch is not
   fully traced; it plausibly gates whether the entry lands in the hack list or the
   action list.
-- `scripts/decode_sso.py` has no rule for MSVC's single-byte tail stores
-  (`mov byte ptr [rbp - 0x48], 0x4c`), which is why it recovers only three of the five
-  `V_*` group keys from the recovered tree. `pe_disasm.py` closes the gap for any single
-  case; a general rule needs the same before/after counting that the rejected zero-delimiter
-  variant got — see [sso-decoder.md](sso-decoder.md).
+- (Unchanged 2026-10-20.) `scripts/decode_sso.py` still has no rule for MSVC's
+  single-byte tail stores (`mov byte ptr [rbp - 0x48], 0x4c`), so it recovers only three of
+  the five `V_*` group keys. `pe_disasm.py` closes the gap case by case. UNVERIFIED: a
+  general rule; deferred to a future decoder pass. See [sso-decoder.md](sso-decoder.md).
 - `FUN_18008A510`'s 208 callers all take the same registry, so nothing in the binary bounds
   the tag space. Whether `hackpro.json` and the mod's UI agree on the full list is a
   question about the data, not the binary.
