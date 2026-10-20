@@ -811,11 +811,13 @@ the user's local app data.
 `Octavus` is Absolllute's own directory name, so the chain is
 `%LOCALAPPDATA%\<sub>\Octavus\{data.json,save.json}`.
 
-UNVERIFIED: what `<sub>` is. `FUN_180044C60` calls `FUN_18003FFD0` to join the path, and
-`_xrefs.tsv` contains **no** reference to the literal `GeometryDash` anywhere, so the
-`GeometryDash` directory is not hard-coded as a string in this binary — it is either
-supplied by Geode's directory abstraction or derived at runtime. Confirming it needs the
-Geode host contract for save-data paths; see [references/](references/).
+(Resolved 2026-10-20.) `<sub>` is empty: `FUN_1800C5210` calls `SHGetKnownFolderPath`
+with `FOLDERID_LocalAppData`, and `FUN_180042FB0` appends `Octavus` directly, so the path is
+`%LOCALAPPDATA%\Octavus\{data.json,save.json}`. See notes/persistence.md. `_xrefs.tsv`
+contains **no** reference to the literal `GeometryDash` anywhere, so the `GeometryDash`
+directory is not hard-coded as a string in this binary — it is either supplied by Geode's
+directory abstraction or derived at runtime. Confirming it needs the Geode host contract for
+save-data paths; see [references/](references/).
 
 These two stores are the reason M4's `best_runs.bin` work is a third, separate mechanism
 rather than an extension of either.
