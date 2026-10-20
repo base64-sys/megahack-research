@@ -108,11 +108,9 @@ The inventory contains the whole save path, which is where the search should sta
 `FUN_180199D10`. That is the place to read next: if Best Run rides on GD's save system
 rather than on Mega Hack's own `hackpro.json`, the write has to go through that function.
 
-UNVERIFIED: whether Best Run data is stored in GD's `data.json` or in `hackpro.json`.
-The reasoning that pushes toward `data.json` is that `hackpro.json` is a flat
-name → typed-value map (bool / int / double / string / bytes), which has no room for a
-per-level `(level, startPercent) -> bestEndPercent` table. That is an argument from the
-schema's shape, not a derivation, and `FUN_180199D10` has not been read yet.
+(Resolved 2026-10-20.) Best Run data is not stored by Mega Hack at all, so the
+`data.json` vs `hackpro.json` framing is moot. See notes/persistence.md. `FUN_180199D10`
+registers the three hooks and contains no storage code.
 
 ## Open questions
 
