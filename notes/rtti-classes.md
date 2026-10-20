@@ -210,4 +210,7 @@ is worse than one that gives up, so the regression test asserts both.
   `0x180547A98` and vtable at `0x180547B10` (0 virtuals listed in `_rtti.tsv`, so it is not
   polymorphic-by-vtable in the recovered inventory). UNVERIFIED: its members, compression
   algorithm and whether the encrypted sibling is a separate class or a flag on this one.
-- Check whether the Android `.so` carries the same class set, which is the M5 question.
+- (Resolved 2026-10-20.) `compare_platform_classes.py` extracts 474 MSVC class names from
+  `_original.dll` and 1,108/1,110 Itanium names from the Android `.so` files with zero overlap
+  by naive name extraction, because the ABIs encode type names differently. The Android builds
+  carry no MSVC RTTI, so M5 needs a separate pass; see notes/provenance.md and notes/android-abi.md.
