@@ -116,7 +116,10 @@ schema's shape, not a derivation, and `FUN_180199D10` has not been read yet.
 
 ## Open questions
 
-- Read `FUN_180199D10` and settle where Best Run is stored.
+- (Resolved 2026-10-20.) Best Run is not stored by Mega Hack: the full hook surface (338
+  sites) contains only `GJGameLevel::savePercentage`, which can veto but not write. See
+  notes/persistence.md. `FUN_180199D10` registers the three hooks (`savePercentage`,
+  `levelComplete`, `resetLevel`) and contains no storage code.
 - `FUN_180042FB0`'s legacy-save path is reachable from a UI key
   (`HOME/MISC/LOAD_LEGACY_SAVE`, `ERROR/HOME/LEGACY_SAVE_PARSE`,
   `ERROR/HOME/LEGACY_SAVE_KEYBINDS`), which implies Mega Hack can import an **older
