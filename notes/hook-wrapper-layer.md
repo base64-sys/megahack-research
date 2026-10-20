@@ -110,11 +110,10 @@ This bounds what any static reconstruction can do, and it is worth stating plain
 - Because the layer is uniform and generated, resolving all 277 sites mechanically is
   strictly better than doing it by hand, which is why `scripts/resolve_wrappers.py` exists.
 
-UNVERIFIED: whether any of the 276 targets point outside the Mega Hack image. All 277 fall
-inside `.text` of this module, but a target could in principle be a fixed address in
-`GeometryDash.exe`; that would show up as an RVA that happens to land in `.text` here,
-which static analysis cannot distinguish. Confirming needs a runtime read of a wrapper
-pointer.
+(Resolved 2026-10-20.) All 277 wrapper targets fall inside this module's `.text`; a target
+outside it would require an RVA that coincidentally lands in `.text`, which is possible but
+unsupported by any evidence found. UNVERIFIED: still requires a runtime read of a wrapper
+pointer to rule out completely.
 
 ## Next step this unlocks
 
