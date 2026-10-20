@@ -222,8 +222,10 @@ unmapped and be wrong.
   Geode-provided stream, which would not appear as a static call.
 - (Resolved 2026-10-20.) `0x1800A2720` is the registry singleton accessor (returns
   `DAT_180800F58`, constructing it via `FUN_1800A27E0` on first use); `0x1800A2F80` is a
-  trivial `param_1 + 8` helper, not a singleton. UNVERIFIED: why the second is passed as a
-  Delegate where the first is the registry.
+  trivial `param_1 + 8` helper, not a singleton. (Resolved 2026-10-20.) It is passed as the
+  Delegate because it returns the registry object's `+8` subobject, i.e. the Delegate view
+  of the registry; `FUN_1800A2720` returns the registry base. UNVERIFIED: the layout of
+  that `+8` subobject.
 
 ## Failure modes recorded
 
