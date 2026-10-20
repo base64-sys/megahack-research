@@ -120,7 +120,11 @@ insertion sites, which keep the key inline in each node.
 
 ## Open questions
 
-- Find the map's constructor and insertion sites, which should name every key directly.
+- (Resolved 2026-10-20.) The map's constructor/insertion sites are documented in
+  settings-registry.md: `FUN_1800A27E0` builds the registry object at `0x180800F58`, and
+  `FUN_18008B780` parses `hackpro.json` and interns each key via `FUN_18007C700`, so the
+  keys are data, not binary literals. UNVERIFIED: the initial bucket mask at `+0x88` and
+  whether the zero-fill tail holds a pre-built map.
 - Determine what `[rcx + 0x88]` is set to — it is the bucket mask, so its population would
   give the initial bucket count.
 - Search `.data`'s zero-fill tail for the same values; the file-backed scan cannot reach
