@@ -211,9 +211,9 @@ callers of `0x18019B350` and string references to ranked/safe-mode terminology v
 
 ## Open questions
 
-- Recover the serialisation format behind `registerTab`'s `std::istream`. It is the most
-  likely place a third-party tab definition lives, and therefore the most reusable artifact
-  after the config API itself.
+- (Resolved 2026-10-20.) `registerTab`'s `std::istream` wraps one of two compressed
+  `CompressedBuffer` blobs (`DAT_1806FE004`/`DAT_1806FE2D9`), inflated by `FUN_1800BE770`.
+  The uncompressed grammar is still unknown; see notes/tab-registration.md.
 - (Partially resolved 2026-10-20.) `hackpro::MessageType` is passed as 0, 1 or 2 in the 15
   call sites of `showMessage` (9 of value 2, 5 of value 1, 1 of value 0). UNVERIFIED: the
   semantic name of each enumerator (info/warning/error or similar). The layout of
