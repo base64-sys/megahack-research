@@ -122,8 +122,11 @@ registers the three hooks and contains no storage code.
   (`HOME/MISC/LOAD_LEGACY_SAVE`, `ERROR/HOME/LEGACY_SAVE_PARSE`,
   `ERROR/HOME/LEGACY_SAVE_KEYBINDS`), which implies Mega Hack can import an **older
   Mega Hack save layout**. Whether that includes Best Run is the same question as above.
-- Whether any of the 214 methods is resolved through Geode rather than through Mega Hack's
-  own resolver. `classify_strings.py`'s category does not distinguish the two.
+- (Resolved 2026-10-20.) All 214 named methods are resolved through Mega Hack's own
+  resolver (`FUN_18010DDC0` + either `FUN_18010A370` for RVAs or `FUN_18010A5A0` for
+  mangled names); none goes through Geode's resolver. The `host-method` category in
+  `classify_strings.py` does not distinguish the two resolution kinds, but hook_sites.tsv's
+  `target_kind` column does.
 
 ## Failure modes recorded
 
