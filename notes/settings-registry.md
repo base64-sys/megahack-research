@@ -874,8 +874,10 @@ rather than an extension of either.
   `FUN_18011FFE0`) are **UI definition ids**, not settings tags: they are passed to the
   UI-row helpers `FUN_180120A40`/`FUN_180120B70` in the same function, never to
   `FUN_18008F420`/`FUN_18002DE50`/`FUN_180003D80`/`FUN_18002EE40`. They share only the
-  numeric range by coincidence; no tag in `_settings.tsv` is `0x1BD`-`0x1BF`. UNVERIFIED:
-  whether the UI id sequence is dense or has gaps beyond these three.
+  numeric range by coincidence; no tag in `_settings.tsv` is `0x1BD`-`0x1BF`. (Resolved
+  2026-10-20.) The enumerated `FUN_180120A40` row ids (32, 394-399, 402, 411, 414, 422,
+  432-434, 436, 442, 445, 448) are sparse, so the UI id sequence has gaps; it is not a
+  dense 0..N range.
 
 ## Failure modes recorded
 
