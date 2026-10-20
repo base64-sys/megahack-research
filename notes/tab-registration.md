@@ -201,9 +201,6 @@ unmapped and be wrong.
 
 ## Open questions
 
-- **The format.** (Resolved 2026-10-20.) `FUN_1800BED70`/`FUN_1800BEE20` wrap two
-  compressed blobs (`DAT_1806FE004` / `DAT_1806FE2D9`), so the grammar is not readable as
-  text. UNVERIFIED: the decompression routine and the uncompressed grammar.
 - (Resolved 2026-10-20.) `.rsrc` is only `0x18C` bytes, far too small to hold tab
   definitions, so the tab data is code-embedded rather than a resource. `FUN_1800BED70`
   wraps the blob at `DAT_1806FE004` (size `0x2D5`) and `FUN_1800BEE20` wraps the blob at
