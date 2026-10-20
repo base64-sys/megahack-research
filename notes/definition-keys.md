@@ -174,8 +174,11 @@ which value is compared against which.
   `FUN_18017F000`; 501 (`0x1F5`) and 502 (`0x1F6`) are read in `FUN_18017F000` and in
   the cheat helpers `areCheatsEnabled`/`disableAllCheats`. UNVERIFIED: the human-readable
   setting names (hackpro.json keys) for all four.
-- Establish how `hackpro::define` misses are handled, and whether a missing key yields empty
-  text or the key itself.
+- (Resolved 2026-10-20.) `hackpro::define` first validates the input: if any character is
+  outside `[A-Za-z0-9/_]` it returns the input unchanged (the key itself). Otherwise it
+  interns the string in `DAT_180801308`. UNVERIFIED: what a miss (valid name not present)
+  returns at the call site — empty text or the key — since this function only handles
+  validation and interning.
 - (Resolved 2026-10-20.) The second tab registered in `FUN_180002320` uses the
   `core::Keybinds` delegate (`FUN_18003D220`), while the first uses `core::HomeWin`
   (`FUN_180039360`), so the second tab is the Keybinds tab. `FUN_18011FFE0` (ICONIC) is one
