@@ -212,8 +212,11 @@ unmapped and be wrong.
   (vtable at `0x180800C20`). Both are thread-safe static initialisers with `atexit`
   destructors, so they are long-lived service objects, not per-tab instances. UNVERIFIED:
   which methods on those vtables a third-party tab must implement.
-- Prove two tabs is exhaustive by looking for indirect calls into `0x180072E50` /
-  `0x1800A60B0`.
+- (Resolved 2026-10-20.) Two tabs is exhaustive in static code: `registerTab`
+  (`0x180072E50`) is called exactly twice, both in `FUN_180002320`, and `FUN_1800A60B0`
+  (the tab body) is called only from `registerTab`. No other call sites exist in the
+  recovered tree. UNVERIFIED: a tab registered through a runtime-loaded module or a
+  Geode-provided stream, which would not appear as a static call.
 - (Resolved 2026-10-20.) `0x1800A2720` is the registry singleton accessor (returns
   `DAT_180800F58`, constructing it via `FUN_1800A27E0` on first use); `0x1800A2F80` is a
   trivial `param_1 + 8` helper, not a singleton. UNVERIFIED: why the second is passed as a
