@@ -118,10 +118,10 @@ registers the three hooks and contains no storage code.
   sites) contains only `GJGameLevel::savePercentage`, which can veto but not write. See
   notes/persistence.md. `FUN_180199D10` registers the three hooks (`savePercentage`,
   `levelComplete`, `resetLevel`) and contains no storage code.
-- `FUN_180042FB0`'s legacy-save path is reachable from a UI key
-  (`HOME/MISC/LOAD_LEGACY_SAVE`, `ERROR/HOME/LEGACY_SAVE_PARSE`,
-  `ERROR/HOME/LEGACY_SAVE_KEYBINDS`), which implies Mega Hack can import an **older
-  Mega Hack save layout**. Whether that includes Best Run is the same question as above.
+- (Resolved 2026-10-20.) `FUN_180042FB0` can import an older Mega Hack save layout, but
+  it cannot include Best Run data because Mega Hack stores no Best Run data at all (see
+  notes/persistence.md). UNVERIFIED: which fields the legacy importer reads and whether it
+  is startup-only or also a migration path.
 - (Resolved 2026-10-20.) All 214 named methods are resolved through Mega Hack's own
   resolver (`FUN_18010DDC0` + either `FUN_18010A370` for RVAs or `FUN_18010A5A0` for
   mangled names); none goes through Geode's resolver. The `host-method` category in
