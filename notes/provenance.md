@@ -195,10 +195,12 @@ documented address (`0x1801552D6`→`…2D7`, `0x180155408`→`…409`, `0x18015
 byte is preserved and only the operand is rewritten. At four hooks (`0x180155155`,
 `0x1801553EC`, `0x180155419`, `0x180027C30`) the first byte does change.
 
-UNVERIFIED: why the two groups differ. Confirming it means disassembling both sites with
-`tools/pe_disasm.py` and checking whether the documented address is an instruction start or
-the start of the *operand*. The alternative reading is that the RE notes record instruction
-starts and the first group simply has an opcode byte that happens to match after the patch.
+(Resolved 2026-10-20.) At `0x1801552D6` the first instruction is `call 0x1801A4F30`
+(`e8 55 fc 04 00`); the patched range `0x1801552D7`–`0x1801552D9` rewrites only the
+rel32 operand, leaving the `e8` opcode. At `0x180155155` the first instruction is
+`mov rcx, [rip+...]` and the patched range starts at the same address, so the opcode byte
+is rewritten. The two groups differ by whether the hook is installed by patching a call's
+target (operand only) or by replacing the instruction outright (opcode included).
 
 ## Conclusion
 
