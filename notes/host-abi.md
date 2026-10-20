@@ -317,8 +317,11 @@ evidence-backed; semantics require reading the 92 callbacks, which is M3 work.
   `FUN_180108E70(resolver, target, callback, method, order, 1)`. The six arguments are
   resolver, target, callback, diagnostic method name, ordering, and a trailing 1. See
   notes/hook-dispatch.md.
-- Resolve whether the `.data` mangled type names are RTTI or exception-handling payloads.
-  The 16 bytes preceding them are ASCII, which argues against RTTI.
+- (Resolved 2026-10-20.) The `.data` mangled type names (`GJGameLevel@@...`) are not RTTI
+  TypeDescriptors: the 16 bytes preceding `0x1807F7D67` read as ASCII `VPlayLayer@@PEAV`,
+  not the two standard `TypeDescriptor` pointers. They are exception-handling type-match
+  strings (or compiler-emitted type_info names), not a vtable-backed RTTI object. UNVERIFIED:
+  which compiler/exception mechanism consumes them.
 - (Resolved 2026-10-20.) The `mov edx, 0x16c8b0` / `0x3a7a80` / `0x3b8eb0` immediates
   are hard-coded host RVAs: they are the values passed to `FUN_18010A370(GetModuleHandleA(NULL)
   base, rva)` and are independently re-read by the lazy thunks at `FUN_1801462C0`,
