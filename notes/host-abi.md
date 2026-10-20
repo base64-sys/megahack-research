@@ -329,8 +329,11 @@ evidence-backed; semantics require reading the 92 callbacks, which is M3 work.
   indices. See notes/hook-dispatch.md.
 - Full method-level inventory of the 116 `CCNode` and 59 `CCSprite` calls, to separate
   Mega Hack's own UI code from generic cocos2d usage.
-- The `PlayLayer` string occurs 29 times; find what each is used for. Likely the highest-yield
-  single investigation remaining in M1.
+- (Resolved 2026-10-20.) The 26 `PlayLayer::...` method strings that appear in
+  `_xrefs.tsv` (91 references) plus the one name-resolved method (`getCurrentPercent`)
+  are enumerated in the PlayLayer method surface table above; counts match between
+  `_xrefs.tsv` and `_hook_sites.tsv` for every shared method. UNVERIFIED: the semantics of
+  each callback, which is M3 work.
 
 ## Failure modes recorded
 
