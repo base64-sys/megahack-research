@@ -327,8 +327,10 @@ evidence-backed; semantics require reading the 92 callbacks, which is M3 work.
   base, rva)` and are independently re-read by the lazy thunks at `FUN_1801462C0`,
   `FUN_1801A5190` and `FUN_1801A4300`. They are absolute host-image offsets, not handle
   indices. See notes/hook-dispatch.md.
-- Full method-level inventory of the 116 `CCNode` and 59 `CCSprite` calls, to separate
-  Mega Hack's own UI code from generic cocos2d usage.
+- (Deferred 2026-10-20.) The 116 `CCNode` and 59 `CCSprite` call inventory is M3 work; it
+  is not needed to close M1's host-ABI criterion, which is satisfied by the method-name and
+  hook surfaces already enumerated. UNVERIFIED: which of those calls are Mega Hack's own UI
+  code versus generic cocos2d usage.
 - (Resolved 2026-10-20.) The 26 `PlayLayer::...` method strings that appear in
   `_xrefs.tsv` (91 references) plus the one name-resolved method (`getCurrentPercent`)
   are enumerated in the PlayLayer method surface table above; counts match between
