@@ -460,8 +460,11 @@ trustworthy than it was three commits ago.
 
 ## Open questions
 
-- Check whether `ICONIC/PREVIEW/*` is reachable on Windows under a different key prefix, or
-  genuinely absent. Its size makes it the most interesting asymmetry found.
+- (Resolved 2026-10-20.) Windows has only `ICONIC/PREVIEW/ICONS` and
+  `ICONIC/SPECIAL/PREVIEW` in `_xrefs.tsv`; no `ICONIC/PREVIEW/*` family is reachable under
+  another prefix on this baseline, so the Android-only preview family is genuinely absent on
+  Windows rather than renamed. UNVERIFIED: whether the Android preview features are disabled
+  or removed entirely.
 - (Resolved 2026-10-20.) `HOME/WIDTH` and `HOME/HEIGHT` have no occurrence in
   `_xrefs.tsv` or the recovered tree, so they are Android-only on this baseline; the
   windowed-mode relation is unverified but moot for the Windows build. UNVERIFIED: whether
