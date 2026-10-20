@@ -218,6 +218,8 @@ callers of `0x18019B350` and string references to ranked/safe-mode terminology v
   call sites of `showMessage` (9 of value 2, 5 of value 1, 1 of value 0). UNVERIFIED: the
   semantic name of each enumerator (info/warning/error or similar). The layout of
   `hackpro::Tag` (64-bit integer) and `hackpro::extensions::Delegate` remains unmapped.
+  (Resolved 2026-10-20: `hackpro::Tag` is a 64-bit integer passed by value and used as a
+  map key; no further fields are visible in this binary.)
 - (Partially resolved 2026-10-20.) The 29 `hackpro` symbols occupy a single contiguous
   range `0x180072B60`–`0x180075530` (10,704 bytes) with no interleaving functions from
   other namespaces, which is consistent with one TU. UNVERIFIED: a compiler-level proof
