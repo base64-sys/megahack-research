@@ -857,9 +857,11 @@ rather than an extension of either.
 
 ## Open questions
 
-- The per-setting `"action"` flag is read but its effect on `FUN_18008B780`'s dispatch is not
-  fully traced; it plausibly gates whether the entry lands in the hack list or the
-  action list.
+- (Partially resolved 2026-10-20.) The `"action"` flag is a boolean in the JSON entry; when
+  it is true, `FUN_18008B780` requires the entry to be an object and jumps to
+  `LAB_18008C1EC` (the action-registration path). When false, the entry follows the normal
+  typed-value path. UNVERIFIED: the exact consequence of the action path (whether it
+  registers a UI action instead of a config value).
 - (Unchanged 2026-10-20.) `scripts/decode_sso.py` still has no rule for MSVC's
   single-byte tail stores (`mov byte ptr [rbp - 0x48], 0x4c`), so it recovers only three of
   the five `V_*` group keys. `pe_disasm.py` closes the gap case by case. UNVERIFIED: a
