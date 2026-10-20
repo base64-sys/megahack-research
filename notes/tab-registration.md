@@ -213,7 +213,10 @@ unmapped and be wrong.
   which methods on those vtables a third-party tab must implement.
 - Prove two tabs is exhaustive by looking for indirect calls into `0x180072E50` /
   `0x1800A60B0`.
-- Confirm `0x1800A2720` / `0x1800A2F80` singleton identities.
+- (Resolved 2026-10-20.) `0x1800A2720` is the registry singleton accessor (returns
+  `DAT_180800F58`, constructing it via `FUN_1800A27E0` on first use); `0x1800A2F80` is a
+  trivial `param_1 + 8` helper, not a singleton. UNVERIFIED: why the second is passed as a
+  Delegate where the first is the registry.
 
 ## Failure modes recorded
 
