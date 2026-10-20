@@ -214,7 +214,8 @@ unmapped and be wrong.
   singleton (vtable at `0x180800AD8`); `0x18003D220` is the `core::Keybinds` singleton
   (vtable at `0x180800C20`). Both are thread-safe static initialisers with `atexit`
   destructors, so they are long-lived service objects, not per-tab instances. UNVERIFIED:
-  which methods on those vtables a third-party tab must implement.
+  which methods on those vtables a third-party tab must implement; the vtable contents are
+  runtime-populated and not statically recoverable from `_original.dll`.
 - (Resolved 2026-10-20.) Two tabs is exhaustive in static code: `registerTab`
   (`0x180072E50`) is called exactly twice, both in `FUN_180002320`, and `FUN_1800A60B0`
   (the tab body) is called only from `registerTab`. No other call sites exist in the
