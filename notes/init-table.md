@@ -157,7 +157,8 @@ unaligned substring search produces. The address arithmetic was re-checked with
 interpretation is wrong.
 
 Recorded as a rejected approach so the next investigation does not spend the hour again.
-UNVERIFIED: how the 267 hook-site functions are reached. It is not a RIP-relative reference, not
-a direct call, and not an aligned `.rdata` RVA table. A better route would start from
-`FUN_18010ddc0` and `createWrapper` and follow the registration data they consume, rather than
-guessing the storage format from the addresses.
+(Resolved 2026-10-20.) The 267 hook-site functions are reached through Geode's hook
+registration, not through a static table: `hook_sites.py` now enumerates 338 registrations
+across 143 helper functions, all calling `geode::hook::createConvention`, and the callback
+for each is the function passed as the third argument. UNVERIFIED: any remaining hook-site
+functions not captured by that call shape.
