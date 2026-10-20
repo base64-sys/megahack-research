@@ -226,7 +226,7 @@ unmapped and be wrong.
   trivial `param_1 + 8` helper, not a singleton. (Resolved 2026-10-20.) It is passed as the
   Delegate because it returns the registry object's `+8` subobject, i.e. the Delegate view
   of the registry; `FUN_1800A2720` returns the registry base. UNVERIFIED: the layout of
-  that `+8` subobject.
+  that `+8` subobject (runtime-populated, not statically recoverable).
 
 ## Failure modes recorded
 
