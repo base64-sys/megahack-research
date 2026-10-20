@@ -210,8 +210,9 @@ is worse than one that gives up, so the regression test asserts both.
   `0x180547A98` and vtable at `0x180547B10` (0 virtuals listed in `_rtti.tsv`, so it is not
   polymorphic-by-vtable in the recovered inventory). (Resolved 2026-10-20.) Its compression
   is zlib via `FUN_1800BE770` (init version `1.3.1.2-audit`), used by `FUN_1800BF720` for
-  the tab blobs. UNVERIFIED: its members and whether the encrypted sibling is a separate
-  class or a flag on this one.
+  the tab blobs. (Resolved 2026-10-20.) The encrypted sibling is a separate class,
+  `mega::utils::EncryptedBuffer` (type descriptor `0x180547C98`, vtable `0x180547D10`),
+  not a flag on `CompressedBuffer`. UNVERIFIED: the members of both.
 - (Resolved 2026-10-20.) `compare_platform_classes.py` extracts 474 MSVC class names from
   `_original.dll` and 1,108/1,110 Itanium names from the Android `.so` files with zero overlap
   by naive name extraction, because the ABIs encode type names differently. The Android builds
