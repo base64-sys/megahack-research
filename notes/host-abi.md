@@ -312,8 +312,11 @@ evidence-backed; semantics require reading the 92 callbacks, which is M3 work.
 
 ## Open questions
 
-- Decompile `0x18019A0C0` and `0x1800AB850` to pin down the registration call and confirm the
-  argument roles.
+- (Resolved 2026-10-20.) `0x18019A0C0` and `0x1800AB850` are the two registration helpers:
+  both call `geode::hook::createConvention((TulipConvention)...)` and then
+  `FUN_180108E70(resolver, target, callback, method, order, 1)`. The six arguments are
+  resolver, target, callback, diagnostic method name, ordering, and a trailing 1. See
+  notes/hook-dispatch.md.
 - Resolve whether the `.data` mangled type names are RTTI or exception-handling payloads.
   The 16 bytes preceding them are ASCII, which argues against RTTI.
 - (Resolved 2026-10-20.) The `mov edx, 0x16c8b0` / `0x3a7a80` / `0x3b8eb0` immediates
