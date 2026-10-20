@@ -169,8 +169,11 @@ which value is compared against which.
   possibilities 1 and 2 above.
 - Enumerate every `FUN_180120A40` / `FUN_180120CA0` call site to build the full row-id table
   and its owning tab. That table is the map any UI change needs.
-- Identify settings 245, 247, 501, 502 by name; setting ids are passed straight into
-  `FUN_18008f420`, so a sweep over `mov edx, <id>` before that call enumerates the registry.
+- (Partially resolved 2026-10-20.) 245 (`0xF5`) gates whether `FUN_18017F000` uses a
+  1.0 or 0.5 delay (via `FUN_180148610`); 247 (`0xF7`) enables the delay scaling inside
+  `FUN_18017F000`; 501 (`0x1F5`) and 502 (`0x1F6`) are read in `FUN_18017F000` and in
+  the cheat helpers `areCheatsEnabled`/`disableAllCheats`. UNVERIFIED: the human-readable
+  setting names (hackpro.json keys) for all four.
 - Establish how `hackpro::define` misses are handled, and whether a missing key yields empty
   text or the key itself.
 - (Resolved 2026-10-20.) The second tab registered in `FUN_180002320` uses the
