@@ -302,7 +302,9 @@ the approach that should work; recovering capacity 15 vs 31 to tell a 16-byte bu
 
 ## Open questions
 
-- Determine whether the FNV-1a hash is used for lookup, comparison or change detection.
+- (Resolved 2026-10-20.) FNV-1a-64 is used for **lookup** in both directions: `tagFor`
+  (`FUN_18007CB60`) hashes the name to find a `Tag`, and `keyFor` (`FUN_18007CCF0`) hashes
+  the `Tag` to find the name, each probing a chained map. See settings-registry.md.
 - Decode the SSO immediates for the other 40+ `FUN_18007CB60` callers, which is where most of
   the remaining unknown key names are.
 - Establish what `FUN_1801BA8A0` does with the login path — offline by assumption, so this
