@@ -152,9 +152,13 @@ lookup, or incidentally — is not hooking it, and the two numbers should not be
   directly, then `data.json`. Verified by reading the GUID bytes and the decompiled path
   join. UNVERIFIED: whether `Octavus` is a fixed literal or derived from a publisher name;
   only the literal is visible.
-- Whether `hackpro.json` write-back happens on a timer, at shutdown, or both. Both its
-  reader and its writer have **zero direct callers**, so neither is reachable by a direct
-  call-graph walk; they are dispatched through a pointer.
+- (Partially resolved 2026-10-20.) `FUN_1800BF190` and `FUN_1800BF400` occur as adjacent
+  slots in a vtable-shaped array at `0x180547890` (`+0x20` and `+0x28`), alongside
+  `0x1800BEED0`/`0x1800BEF80`/`0x1800BF030`/`0x1800BF0E0`. That explains the zero direct
+  callers: they are reached by virtual dispatch, not by name. UNVERIFIED: that this is the
+  vtable installed by the registry constructor (`FUN_1800A27E0` writes vftables at object
+  `+0x00` and `+0x128`), and on which trigger (timer, shutdown, or both) the writer slot
+  is invoked. Confirming the trigger needs a runtime trace or a caller of the virtual slot.
 - `FUN_180042FB0` has one caller, `FUN_180042D70`; whether it is a startup-only read or also
   a migration path is untraced.
 - `FUN_18019B5F0`, the shared hook gate, is now traced in
