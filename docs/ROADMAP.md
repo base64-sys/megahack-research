@@ -41,7 +41,7 @@ digests live in `notes/provenance.md` instead and must be re-checked by hand whe
 sample set is refreshed. M1 found a sharper version of this risk — the `.geode` package in
 `samples/` is already modified, so only `_original.dll` is pristine.
 
-### M1 — Binary inventory and host ABI surface (in progress)
+### M1 — Binary inventory and host ABI surface (done)
 
 Turn the binary into a navigable map before reading any logic. The payoff is that every
 later milestone gets cheap lookups instead of fresh searching.

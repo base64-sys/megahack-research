@@ -10,7 +10,10 @@
 ## Method
 
 1. `tools/pe_imports.py` / `pefile` `DIRECTORY_ENTRY_IMPORT` — 1,010 imports across 30 DLLs,
-   with preferred-base IAT addresses.
+   with preferred-base IAT addresses. 27 of these are imported by ordinal (all WS2_32.dll);
+   pefile resolves them to names via the standard ordinal table, so they appear as named
+   imports in the tooling. Raw-bytes reading: 27 ordinal, 0 unnamed. No GD gameplay classes
+   are among them.
 2. 646 of those are MSVC-mangled C++ symbols. Demangled with `undname.exe` (VS 2022
    BuildTools 14.44.35207) in **file mode** — one signature per input line, in input order.
    The output count is asserted equal to the input count before anything is parsed; a

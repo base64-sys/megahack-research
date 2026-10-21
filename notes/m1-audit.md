@@ -40,7 +40,7 @@ Two rules held for the whole audit:
 | - | --------- | ------------- | ----------- | ------- |
 | 1 | Provenance | SHA-256 recorded, cross-checked against a pristine package | digest reproduced from the archive; byte-identical | **VERIFIED** |
 | 2 | Exports | 30 named MSVC-mangled symbols, demangled with `undname.exe` | 30 export rows re-read from the image | **VERIFIED** |
-| 3 | Imports | 1,010 imports over 30 DLLs, 646 mangled | re-counted from the image: 1,010 / 30 / 646 / 0 ordinal-only | **VERIFIED** |
+| 3 | Imports | 1,010 imports over 30 DLLs, 646 mangled | re-counted from the image: 1,010 / 30 / 646 / 27 imported by ordinal (WS2_32) | **VERIFIED** |
 | 4 | Strings | 16 categories over 4,175 strings (3,609 VA, 566 SSO) | re-classified; category totals re-summed | **VERIFIED**, one claim corrected |
 | 5 | RTTI | 517 TDs, 497 COLs, 497 vtables, 794 edges, 2 structural corrections | re-walked; counts unchanged | **VERIFIED** |
 
@@ -80,7 +80,8 @@ VAs fall inside the module's `.text` range and were sampled with `pe_disasm.py`.
 | import rows | **1,010** |
 | distinct DLLs | **30** |
 | MSVC-mangled symbols | **646** |
-| ordinal-only imports | **0** |
+| imports by ordinal (WS2_32, resolved to names by the standard ordinal table) | **27** |
+| unnamed imports (no name in the PE import table) | **0** |
 | delay-import directory | absent |
 
 The headline claim — **zero GD gameplay classes are statically imported** — survives: every
@@ -136,7 +137,7 @@ itself does not. All 497 pass both.
 | A | Settings registry map | open | **OPEN for the right reason** — the *contents* are data, not code. Mechanism re-verified; two claims corrected. |
 | B | Save/load file formats | open | **OPEN** — mechanism and file identities mapped; schema still unknown. |
 | C | GD structures | open | **OPEN** — 5 of 7 offsets verified from two angles each; `+0x2C4`/`+0x35C` UNVERIFIED as GJGameLevel offsets. |
-| D | Output (`notes/`) | ticked | **VERIFIED** — 20 notes, every address claim VA-anchored; corrections applied. |
+| D | Output (`notes/`) | ticked | **VERIFIED** — 24 notes, every address claim VA-anchored; corrections applied. |
 
 ### A. Settings registry — mechanism verified, two claims corrected
 
@@ -248,9 +249,9 @@ pointer at `+0x208`. `+0x2C4` is additionally read at three different widths (by
 qword) across the image, which is only possible across different structures, and the only
 comparison against it anywhere is `cmp edx, dword ptr [rcx + 0x2c4]` at `0x1800F1B55`.
 
-### D. Output — 20 notes, corrected
+### D. Output — 24 notes, corrected
 
-`notes/` holds 20 files, one per subsystem, every M1 subsystem covered — 21 with this audit.
+`notes/` holds 24 files, one per subsystem, every M1 subsystem covered.
 The audit changed nine of them and two documents; the list is in "Contradictions found and
 fixed" below.
 
