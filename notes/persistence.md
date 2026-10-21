@@ -140,6 +140,60 @@ A consequence worth recording: `_host_methods.tsv` lists **214** methods that Me
 *names*, but only **12** of them are *hooked*. Naming a method — for diagnostics, for a
 lookup, or incidentally — is not hooking it, and the two numbers should not be confused.
 
+## Native Best Run fields (GD's schema, not Mega Hack's)
+
+M1/M4 residual work: identify which fields of GD's own structures carry the
+`(level, startPercent) -> bestEndPercent` data. Investigated 2026-10-21.
+
+### What Mega Hack actually does with Best Run
+
+Mega Hack v9.1.3 stores **no** Best Run data (established in this note above). Its
+only storage-side hook is `GJGameLevel::savePercentage` (registered in
+`FUN_180199D10`, VA `0x180199D10`), whose callback `FUN_180199DF0`
+(`0x180199DF0`) either vetoes the call (when `FUN_18019B5F0()` is true) or forwards
+it to GD's original at RVA `0x16C8B0`:
+
+```
+cVar1 = FUN_18019b5f0();
+if (cVar1 != '\0') return;          // blocked: GD never learns the percentage
+FUN_1801462c0(param_1, param_2, param_3, param_4);   // the original
+```
+
+The thunk `FUN_1801462C0` (`0x1801462C0`) truncates three arguments to 32 bits
+before forwarding, so the call shape is `savePercentage(GJGameLevel*, int, int, int)`.
+The three ints are GD's own (startPercent, endPercent, and a mode/flag are the
+plausible readings), but their meaning is GD's, not Mega Hack's.
+
+Mega Hack resolves no other GJGameLevel or PlayLayer method that reads or writes a
+"best percentage" field: `_host_methods.tsv` contains only `GJGameLevel::savePercentage`
+among GJGameLevel methods, and the PlayLayer methods Mega Hack names are lifecycle/render
+hooks (`resetLevel`, `postUpdate`, `levelComplete`, `getCurrentPercent`, …), none of
+which is a best-run accessor. `getCurrentPercent` (`FUN_1801655E0`,
+`0x1801655E0`) reads `PlayLayer + 0x3D0` (double) and `GJGameLevel + 0x4C8` (int)
+to compute the *current* percentage; it is not a best-run field.
+
+### Conclusion: GD's schema is not recoverable from this binary
+
+The `(level, startPercent) -> bestEndPercent` storage lives in **Geometry Dash's own
+executable** (`GeometryDash.exe`), which is outside this repository's ground truth
+(`_original.dll` is Mega Hack). Mega Hack never reads or writes GD's best-run fields;
+it only vetoes `savePercentage`. Therefore:
+
+- No GJGameLevel or PlayLayer offset in Mega Hack's code can be identified as the
+  carrier of `bestEndPercent`, because Mega Hack does not touch that carrier.
+- The flush points are GD's (`savePercentage` invocation), not Mega Hack's, except
+  that Mega Hack's `resetLevel`/`levelComplete` hooks bracket GD's calls.
+- The `data.json` field question in M4 is likewise unanswerable here: Mega Hack reads
+  `data.json`/`save.json` only as opaque blobs via `FUN_180042FB0` (`0x180042FB0`);
+  it does not parse individual best-run entries.
+
+**UNVERIFIED / not recoverable:** the exact field offsets inside GD's structures
+that hold `(level, startPercent) -> bestEndPercent`, and which `data.json` keys
+carry them. Confirming requires either the GD executable (out of scope/baseline) or
+a runtime observation of GD writing best-run data. The honest state for M4 is that
+Mega Hack's own role is fully mapped (veto only); GD's internal schema is a
+separate, GD-side question and is left as UNVERIFIED with this rationale.
+
 ## Open questions
 
 - **Where does v9.1.3 natively persist Best Run data?** **Answered: it does not.** See the

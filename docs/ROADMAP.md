@@ -118,15 +118,16 @@ Exit criteria:
       `early-load` ordering and the shutdown path still outstanding.
 - [ ] Geometry Dash structures Mega Hack touches documented with verified offsets
       (`GJGameLevel+0x148`, `+0x14C`, `+0x158`, `+0x198`, `+0x1B8`, `+0x2C4`, `+0x35C`).
-      **The handle now exists, and the mechanism is recovered.** Because Mega Hack imports
-      zero GD gameplay symbols, `scripts/host_methods.py` indexes the 214 method-name
-      strings it resolves at runtime, and 350 functions reference them — the only way to
-      reach the host ABI from the image. Separately, Mega Hack calls GD through absolute
-      RVAs into `GetModuleHandleA(NULL)`, wrapped by Geode under a `TulipConvention`; see
-      [hook-dispatch.md](../notes/hook-dispatch.md). Three GD function RVAs and one GD
-      field offset (`PlayLayer+0x3230`) are now verified from two angles each. The
-      `GJGameLevel` offsets themselves are still unverified, and Mega Hack does **not** use
-      `node-ids` for this, so they change on any GD re-baseline.
+      **Partially verified 2026-10-21.** Five of the seven are now confirmed in
+      `_original.dll` from two independent angles each: `+0x148`, `+0x14C`, `+0x158`,
+      `+0x198`, `+0x1B8` (see [gd-structures.md](../notes/gd-structures.md)).
+      `+0x2C4` and `+0x35C` are not accessed on a GJGameLevel in this binary and remain
+      UNVERIFIED. Mechanism recovered as before: `scripts/host_methods.py` indexes the 214
+      method-name strings, and Mega Hack calls GD through absolute RVAs into
+      `GetModuleHandleA(NULL)` (see [hook-dispatch.md](../notes/hook-dispatch.md)).
+      Three GD function RVAs and `PlayLayer+0x3230` are verified from two angles each.
+      Mega Hack does **not** use `node-ids` for this, so verified offsets change on any
+      GD re-baseline.
 - [ ] Output: `notes/` map files, one per subsystem, each fact cited by VA. Four written
       (`provenance`, `hackpro-api`, `host-abi`, `tab-registration`).
 
@@ -215,9 +216,11 @@ Exit criteria:
       storage-side hook is `GJGameLevel::savePercentage`, whose
       callback can only *veto* the call, never write. Best Run is GD's own saved percentage,
       and Mega Hack's role is to stop a cheated run from being persisted. See
-      [persistence.md](../notes/persistence.md). Residual work: the exact
-      `(level, startPercent)` fields inside GD's own structures, which are GD's schema and
-      not Mega Hack's.
+      [persistence.md](../notes/persistence.md). Residual work closed 2026-10-21:
+      the `(level, startPercent) -> bestEndPercent` fields are GD's schema inside
+      `GeometryDash.exe` and are **not recoverable from Mega Hack's binary** — Mega Hack
+      never reads or writes them (it only vetoes `savePercentage`). Marked UNVERIFIED in
+      [persistence.md](../notes/persistence.md#native-best-run-fields-gds-schema-not-mega-hacks).
 - [ ] `hackpro.json` read/write lifecycle mapped: which of `FUN_1800BF190` /
       `FUN_1800BF400` are called from where, given both have zero direct callers.
 - [ ] The `%LOCALAPPDATA%` → `Octavus` path segment resolved.

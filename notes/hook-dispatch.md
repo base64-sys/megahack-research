@@ -282,7 +282,8 @@ hackpro-internal one.
 
 - **M1, "verified GD offsets"**: three GD function RVAs and one GD field offset are now
   evidence-backed rather than assumed, each from two independent angles. `GJGameLevel+0x148/
-  +0x14C/+0x158/+0x198/+0x1B8/+0x2C4/+0x35C` remain unverified; nothing here speaks to them.
+  +0x14C/+0x158/+0x198/+0x1B8` are now verified (see `notes/gd-structures.md`); `+0x2C4`
+  and `+0x35C` remain unverified.
   Note that Mega Hack reaches GD through **absolute RVAs into the host image**, not through
   Geode's `node-ids` indirection — so a re-baselining to another GD build changes every
   offset in this table, and those offsets must be re-derived, never carried over.
