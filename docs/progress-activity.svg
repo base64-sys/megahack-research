@@ -3,49 +3,49 @@
 <rect x="0.5" y="0.5" width="899" height="493" fill="none" stroke="#30363d" rx="10"/>
 <text x="28" y="40" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="19" font-weight="600" fill="#e6edf3">Recent work — what moved, newest first</text>
 <text x="28" y="61" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#8b949e">14 most recent commits · exit criteria currently 11/34</text>
-<circle cx="38.0" cy="94.0" r="4" fill="#d29922"/>
-<text x="52.0" y="98.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">fix(progress): make --check able to pass, and able to fail</text>
-<text x="872.0" y="98.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#d29922" text-anchor="end">fix</text>
-<circle cx="38.0" cy="118.0" r="4" fill="#d29922"/>
-<text x="52.0" y="122.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">fix(progress): measure text instead of guessing layout</text>
-<text x="872.0" y="122.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#d29922" text-anchor="end">fix</text>
-<circle cx="38.0" cy="142.0" r="4" fill="#3fb950"/>
-<text x="52.0" y="146.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">feat(progress): four generated graphics, one per lens on the work</text>
-<text x="872.0" y="146.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#3fb950" text-anchor="end">feat</text>
+<circle cx="38.0" cy="94.0" r="4" fill="#3fb950"/>
+<text x="52.0" y="98.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">feat(re): recover embedded tab definitions and resolve settings registry container layout</text>
+<text x="872.0" y="98.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#3fb950" text-anchor="end">feat</text>
+<circle cx="38.0" cy="118.0" r="4" fill="#58a6ff"/>
+<text x="52.0" y="122.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">notes(tab-registration): note +8 subobject is runtime-populated</text>
+<text x="872.0" y="122.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#58a6ff" text-anchor="end">notes</text>
+<circle cx="38.0" cy="142.0" r="4" fill="#58a6ff"/>
+<text x="52.0" y="146.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">notes(tab-registration): note vtable contents are runtime-populated</text>
+<text x="872.0" y="146.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#58a6ff" text-anchor="end">notes</text>
 <circle cx="38.0" cy="166.0" r="4" fill="#58a6ff"/>
-<text x="52.0" y="170.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">notes: the serialiser's +0xB0 is a circular list head, proven from disassembly</text>
+<text x="52.0" y="170.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">notes(tab-registration): resolve Delegate as registry+8</text>
 <text x="872.0" y="170.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#58a6ff" text-anchor="end">notes</text>
 <circle cx="38.0" cy="190.0" r="4" fill="#58a6ff"/>
-<text x="52.0" y="194.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">notes: the +0xB0 conflict was two readers on different bases</text>
+<text x="52.0" y="194.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">notes(hook-dispatch): note DAT_18080CB68 setter not recovered</text>
 <text x="872.0" y="194.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#58a6ff" text-anchor="end">notes</text>
 <circle cx="38.0" cy="214.0" r="4" fill="#58a6ff"/>
-<text x="52.0" y="218.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">notes: the registry is the global at 0x180800F58, in .data zero-fill</text>
+<text x="52.0" y="218.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">notes(hook-dispatch): identify progress delta as frame time</text>
 <text x="872.0" y="218.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#58a6ff" text-anchor="end">notes</text>
-<circle cx="38.0" cy="238.0" r="4" fill="#d29922"/>
-<text x="52.0" y="242.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">fix: FUN_18002EE40 is getConfigVar&lt;hackpro::Bytes&gt;, not a second registry</text>
-<text x="872.0" y="242.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#d29922" text-anchor="end">fix</text>
-<circle cx="38.0" cy="262.0" r="4" fill="#bc8cff"/>
-<text x="52.0" y="266.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">test: pin the settings tag table and the argument splitter behind it</text>
-<text x="872.0" y="266.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#bc8cff" text-anchor="end">test</text>
-<circle cx="38.0" cy="286.0" r="4" fill="#d29922"/>
-<text x="52.0" y="290.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">fix(settings_index): make accessor argument position explicit, not guessed</text>
-<text x="872.0" y="290.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#d29922" text-anchor="end">fix</text>
-<circle cx="38.0" cy="310.0" r="4" fill="#3fb950"/>
-<text x="52.0" y="314.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">feat(hook_sites): enumerate all 43 hooks, and a settings accessor the index misses</text>
-<text x="872.0" y="314.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#3fb950" text-anchor="end">feat</text>
+<circle cx="38.0" cy="238.0" r="4" fill="#58a6ff"/>
+<text x="52.0" y="242.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">notes(hook-dispatch): defer thunk family index</text>
+<text x="872.0" y="242.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#58a6ff" text-anchor="end">notes</text>
+<circle cx="38.0" cy="262.0" r="4" fill="#58a6ff"/>
+<text x="52.0" y="266.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">notes(hook-dispatch): resolve registration helper asymmetry</text>
+<text x="872.0" y="266.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#58a6ff" text-anchor="end">notes</text>
+<circle cx="38.0" cy="286.0" r="4" fill="#58a6ff"/>
+<text x="52.0" y="290.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">notes(host-methods): resolve legacy save Best Run question</text>
+<text x="872.0" y="290.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#58a6ff" text-anchor="end">notes</text>
+<circle cx="38.0" cy="310.0" r="4" fill="#58a6ff"/>
+<text x="52.0" y="314.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">notes(host-methods): resolve resolver ownership</text>
+<text x="872.0" y="314.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#58a6ff" text-anchor="end">notes</text>
 <circle cx="38.0" cy="334.0" r="4" fill="#58a6ff"/>
-<text x="52.0" y="338.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">notes: Mega Hack stores no Best Run data; it vetoes GD's savePercentage</text>
+<text x="52.0" y="338.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">notes(host-methods): close Best Run storage framing</text>
 <text x="872.0" y="338.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#58a6ff" text-anchor="end">notes</text>
 <circle cx="38.0" cy="358.0" r="4" fill="#58a6ff"/>
-<text x="52.0" y="362.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">notes: Mega Hack calls GD through absolute RVAs into GetModuleHandleA(NULL)</text>
+<text x="52.0" y="362.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">notes(host-methods): settle Best Run storage question</text>
 <text x="872.0" y="362.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#58a6ff" text-anchor="end">notes</text>
-<circle cx="38.0" cy="382.0" r="4" fill="#3fb950"/>
-<text x="52.0" y="386.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">feat(host_methods): index the 214 GD methods Mega Hack resolves by name</text>
-<text x="872.0" y="386.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#3fb950" text-anchor="end">feat</text>
-<circle cx="38.0" cy="406.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="410.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs: finish the index-count reconciliation in the README</text>
-<text x="872.0" y="410.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
+<circle cx="38.0" cy="382.0" r="4" fill="#58a6ff"/>
+<text x="52.0" y="386.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">notes(hook-wrapper-layer): note wrapper targets stay in-module</text>
+<text x="872.0" y="386.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#58a6ff" text-anchor="end">notes</text>
+<circle cx="38.0" cy="406.0" r="4" fill="#58a6ff"/>
+<text x="52.0" y="410.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">notes(rtti-classes): note buffer members untraced</text>
+<text x="872.0" y="410.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#58a6ff" text-anchor="end">notes</text>
 <line x1="28.0" y1="450.0" x2="872.0" y2="450.0" stroke="#30363d" stroke-width="1"/>
 <text x="28.0" y="464.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="10" fill="#8b949e">regenerated on every watchdog start, so a turn's work shows up here · image 4 of 4</text>
-<text x="872.0" y="464.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">git ad272d0</text>
+<text x="872.0" y="464.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">git 8bc4a48</text>
 </svg>

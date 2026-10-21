@@ -90,22 +90,25 @@ def main() -> int:
         check(len(nz) == 0, "_initterm_e range is empty", f"got {len(nz)}")
 
     # 3. The claim the note rests on: absence from _callers.tsv means zero.
-    callers = load_callers(CALLERS)
-    check(bool(callers), "_callers.tsv parsed", f"{len(callers)} rows")
-    if callers and "_initterm" in by_sym:
-        rng = by_sym["_initterm"]
-        nz = [read_pointer(img, rng.first + i * 8) for i in range(rng.slots)]
-        nz = [v for v in nz if v]
-        orphan = [v for v in nz if v not in callers]
-        check(
-            len(orphan) == 280,
-            "280 init entries have zero direct callers",
-            f"got {len(orphan)}",
-        )
-        check(
-            callers.get(UI_TABLE) is None,
-            "UI table has no direct-caller row",
-        )
+    if not CALLERS.exists():
+        print(f"SKIP  no _callers.tsv at {CALLERS}; recovered-tree checks skipped")
+    else:
+        callers = load_callers(CALLERS)
+        check(bool(callers), "_callers.tsv parsed", f"{len(callers)} rows")
+        if callers and "_initterm" in by_sym:
+            rng = by_sym["_initterm"]
+            nz = [read_pointer(img, rng.first + i * 8) for i in range(rng.slots)]
+            nz = [v for v in nz if v]
+            orphan = [v for v in nz if v not in callers]
+            check(
+                len(orphan) == 280,
+                "280 init entries have zero direct callers",
+                f"got {len(orphan)}",
+            )
+            check(
+                callers.get(UI_TABLE) is None,
+                "UI table has no direct-caller row",
+            )
 
     print()
     if failures:

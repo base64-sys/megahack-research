@@ -48,19 +48,8 @@ Byte-comparing either against a fresh render would fail forever.
 canvas, that nothing overlaps on a shared baseline, and that every roadmap criterion gets
 exactly one checkbox — the failure modes that XML validity alone does not catch.
 
-| Milestone                                        | State       | Exit criteria |
-| ------------------------------------------------ | ----------- | ------------: |
-| M0 Environment, provenance and tooling            | done        | 6 / 6 |
-| M1 Binary inventory and host ABI surface          | in progress | 5 / 10 |
-| M2 Core infrastructure reconstruction            | not started | 0 / 6 |
-| M3 Feature module mapping                        | not started | 0 / 4 |
-| M4 Persistence and the `.dt` importer             | not started | 0 / 5 |
-| M5 Android ARM64 parity                          | not started | 0 / 3 |
-
-**11 of 34 exit criteria met (32.4%).** The per-criterion fractions in this table are read
-from the same place the graphics read them, so they cannot disagree with the pictures.
-
-Full exit criteria in [docs/ROADMAP.md](docs/ROADMAP.md).
+Milestone status and exit criteria are tracked in [docs/ROADMAP.md](docs/ROADMAP.md); the
+graphics above render the same data, so they cannot disagree with the tracker.
 
 ## Baseline
 
@@ -76,19 +65,7 @@ All work targets one pinned triple. Do not mix baselines.
 `mod.json` declares `"early-load": true`, so Mega Hack initialises before other mods and
 relies on `node-ids` for stable hook addresses.
 
-## Target binaries
-
-| File                                      | Arch    | Size       | Notes                            |
-| ----------------------------------------- | ------- | ---------- | -------------------------------- |
-| `absolllute.hackmega.dll`                 | x86-64  | 8,697,056  | Generated extended build         |
-| `absolllute.hackmega_original.dll`        | x86-64  | 8,697,056  | Untouched release (baseline)     |
-| `absolllute.hackmega_pre_persistence.dll` | x86-64  | 8,697,056  | Incoming experiment              |
-| `absolllute.hackmega_working_aslr.dll`    | x86-64  | 8,697,056  | Minimal ASLR-safe build          |
-| `absolllute.megahack.android32.so`        | ARM32   | 7,591,352  | Android, deferred to M5          |
-| `absolllute.megahack.android64.so`        | ARM64   | 10,721,792 | Android, deferred to M5          |
-
-**Use `_original.dll` as the read-only ground truth.** The other DLLs are experiments and
-must never be treated as evidence about the released binary.
+Target binaries and their roles are listed in [docs/GOALS.md](docs/GOALS.md#target-binaries).
 
 ## PE layout (`_original.dll`)
 
