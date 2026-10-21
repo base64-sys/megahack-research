@@ -30,6 +30,15 @@ REPO = pathlib.Path(__file__).resolve().parent.parent
 FUNCTIONS = REPO / "recovered" / "functions"
 INDEX = FUNCTIONS / "_xrefs.tsv"
 
+# Statically-linked library code (OpenSSL, zlib, ...) begins after a 0x528a0-byte
+# gap at 0x180352640; the first function in that region is at 0x1803A4EE0.
+# Mega Hack's own code lives below it. A snake_case string referenced only by
+# functions at/above this boundary is a library-internal name, not a Mega Hack
+# identifier. Source: recovered/functions/*.c filename address distribution
+# (bounds.py analysis, 2026-10-21): largest gap in the function set is
+# 0x1802FFDA0 -> 0x180352640 -> 0x1803A4EE0.
+LIBRARY_REGION_START = 0x1803A4EE0
+
 # Ordered rules. First match wins.
 SETTING_KEY = re.compile(
     r"^(?:[A-Z][A-Z0-9_]*(?:/[A-Z0-9_{}]+)+|"
@@ -113,11 +122,49 @@ CATEGORIES = [
 ]
 
 
-def classify(text: str) -> str:
+# Loaded lazily in main(); kept module-global so classify() can use it.
+_VA_FUNCS: dict[str, list[str]] = {}
+_SSO_FUNCS: dict[str, list[str]] = {}
+
+
+def _base_addr(func_name: str) -> int | None:
+    m = re.match(r"([0-9a-fA-F]+)_", func_name)
+    if not m:
+        return None
+    try:
+        return int(m.group(1), 16)
+    except ValueError:
+        return None
+
+
+def classify(text: str, va: str = "") -> str:
     for name, pattern in CATEGORIES:
         if pattern.search(text):
-            return name
-    return "other"
+            cat = name
+            break
+    else:
+        cat = "other"
+
+    # Promote `mod-identifier` / `other` to `third-party` when every referencing
+    # function sits in the statically-linked library region. This is the OpenSSL
+    # case the prefix list cannot enumerate: hundreds of distinct stems (aes_,
+    # asn1_, bn_, ...) whose only common feature is where their code lives.
+    # Prefix guessing was explicitly rejected in the note; the address region is
+    # evidence instead. 0x1803A4EE0 is the first function after the 0x528a0-byte
+    # gap at 0x180352640; Mega Hack's own code lives below it.
+    if cat in ("mod-identifier", "other"):
+        if va.startswith("0x"):
+            funcs = _VA_FUNCS.get(va, [])
+        elif va == "sso":
+            funcs = _SSO_FUNCS.get(text, [])
+        else:
+            funcs = []
+        if funcs and all(
+            (a := _base_addr(f)) is not None and a >= LIBRARY_REGION_START
+            for f in funcs
+        ):
+            cat = "third-party"
+    return cat
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -134,6 +181,27 @@ def main(argv: list[str] | None = None) -> int:
         print(f"no {args.index}; run scripts/build_xref_index.py first", file=sys.stderr)
         return 1
 
+    # Build VA -> referencing functions and text -> referencing functions (SSO)
+    # from the index, so classify() can apply the library-region rule.
+    global _VA_FUNCS, _SSO_FUNCS
+    in_sso = False
+    for line in args.index.read_text(encoding="utf-8").splitlines():
+        if line.startswith("#"):
+            if "stack-built" in line:
+                in_sso = True
+            continue
+        if not line.strip():
+            continue
+        parts = line.split("\t")
+        if len(parts) < 4:
+            continue
+        if in_sso or parts[0] == "sso":
+            _SSO_FUNCS.setdefault(parts[3].strip().strip("'"), []).extend(
+                parts[2].split(",")
+            )
+        else:
+            _VA_FUNCS.setdefault(parts[0], []).extend(parts[2].split(","))
+
     rows: list[tuple[str, str, str]] = []  # (category, va, text)
     for line in args.index.read_text(encoding="utf-8").splitlines():
         if line.startswith("#"):
@@ -144,7 +212,7 @@ def main(argv: list[str] | None = None) -> int:
         va, text = parts[0], parts[3].strip().strip("'")
         if not text:
             continue
-        rows.append((classify(text), va, text))
+        rows.append((classify(text, va), va, text))
 
     counts = collections.Counter(c for c, _, _ in rows)
     va_backed = sum(1 for c, va, _ in rows if va.startswith("0x"))

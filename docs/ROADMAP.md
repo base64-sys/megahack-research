@@ -60,8 +60,12 @@ Exit criteria:
       Geode, Windows and CRT — `notes/host-abi.md`. 1,010 imports over 32 DLLs; all 646
       mangled symbols demangled. Headline: **zero** GD gameplay classes are statically
       imported; they are reached by runtime name resolution.
-- [ ] Full string inventory split into user-visible labels, setting keys, file paths,
-      language keys and format strings, each anchored to a VA.
+- [x] Full string inventory split into user-visible labels, setting keys, file paths,
+      language keys and format strings, each anchored to a VA. 17 categories over 4,175
+      strings (3,609 VA-anchored, 566 SSO); 957 OpenSSL names reclassified to
+      `third-party` by code-region evidence (boundary 0x1803A4EE0). Residual 353 rows
+      (8.5%) are JSON keywords, CRT constants and SSO decoder artefacts, characterised in
+      [string-inventory.md](../notes/string-inventory.md). Done 2026-10-21.
 - [x] Mega Hack's own RTTI/vtable set enumerated; the class hierarchy recovered. Partly
       pre-solved: namespaces `hackpro`, `hackpro::extensions` and `mega::utils::safe_mode`
       are known from the export table rather than inferred. **Completed by

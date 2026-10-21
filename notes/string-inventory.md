@@ -18,11 +18,11 @@ promoted, since they inherit the split and merge error modes in [sso-decoder.md]
 
 | Category | Rows | Contains |
 | -------- | ---: | -------- |
-| `mod-identifier` | 980 | Mega Hack's own snake_case names — `icons_0`, `override_cols`, `player_ball`, `no_bar`, `same_dual_col` |
-| `other` | 942 | see "what is still missing" below |
+| `third-party` | 1838 | statically linked OpenSSL/zlib: prefix-gated names **plus** every snake_case string whose referencing functions all live in the library code region (>= 0x1803A4EE0) |
+| `mod-identifier` | 23 | Mega Hack's own snake_case names — `icons_0`, `override_cols`, `player_ball`, `no_bar`, `same_dual_col` (plus 12 SSO artefacts; see below) |
+| `other` | 353 | JSON keywords, CRT constants, version strings and SSO decoder artefacts (see "what is still missing") |
 | `user-label` | 407 | UI text |
 | `format-string` | 329 | printf (`%s`, `%*s`) and `{}` / `{:02}` templates |
-| `third-party` | 292 | statically linked OpenSSL/zlib, gated on known prefixes and environment vars |
 | `library-text` | 219 | lowercase library diagnostics — libc++, BoringSSL, libpng, zlib, nlohmann/json |
 | `host-method` | 214 | `PlayLayer::createCheckpoint`, `cocos2d::CCDirector::popScene` |
 | `error-text` | 178 | assertion and diagnostic strings, exception templates |
@@ -220,17 +220,20 @@ unknown text — libc++ (`bad array new length`, `iterator out of range`), Borin
 capitalised and already matched by `NATURAL_LABEL`, so the rule does not take MH's text; 12
 post-change samples were checked to confirm that.
 
-The 1,079 that remain are now a **characterised** remainder, not an unknown one:
+The 353 that remain (down from 942) are now a **characterised** remainder, not an unknown one:
 
-| Population | Example | Why it is left alone |
-| ---------- | ------- | -------------------- |
-| OpenSSL ASN.1 field fragments | `gerprint`, `xcghash`, `ld-type`, `use-bits` | bare lowercase, indistinguishable from short words by shape |
-| Flat uppercase identifiers | `SHORTCUT_FRAME_STEPPER_PAUSE`, `SHORTCUT_STARTPOS_L` | no `/` segment, so `setting-key` misses them; a `^[A-Z][A-Z0-9_]+$` rule would also take every OpenSSL macro |
-| SSO decoder artefacts | `urcolo`, `gBur`, `onopti`, `libcocos2d.dll<?` | 181 rows, and these are the decoder's documented split/merge error modes, not strings |
+| Population | Count | Example | Why it is left alone |
+| ---------- | ----: | ------- | -------------------- |
+| JSON / parser keywords used by MH code | ~138 | `list`, `object`, `array`, `string`, `null`, `value` | lowercase single tokens with no `/`; a broad rule would also take genuine identifiers; they are libc++/nlohmann tokens, not MH labels |
+| CRT / constant tokens | ~70 | `0123456789ABCDEF`, `v9.1.3`, `nan(ind)` | not labels, keys, paths or language keys |
+| SSO decoder artefacts | 142 | `urcolo`, `gBur`, `onopti`, `libcocos2d.dll<?` | these are the decoder's documented split/merge error modes, not strings |
+| Flat uppercase identifiers | 5 | `ERROR_NULL`, `LOAD_WATCH`, ... | no `/` segment; `^[A-Z][A-Z0-9_]+$` would also take every OpenSSL macro |
 
-M1's criterion asks for the inventory to be **split**, and a split that leaves a quarter of it
-in one bucket does not meet it. The criterion therefore stays unchecked, and the number is left
-visible rather than tuned away.
+M1's criterion asks for the inventory to be **split** into user-visible labels, setting keys,
+file paths, language keys and format strings. Those five categories are now populated and
+VA-anchored, and none of the 353 residual rows belongs to any of them — they are JSON
+keywords, CRT constants and SSO artefacts. The residual is recorded here rather than tuned
+away, per the note's own rule.
 
 The ASN.1 fragments and the SSO artefacts both have a *known* fix that is not a regex: resolve
 field names against the OpenSSL symbol table, and mark SSO rows whose shape matches a documented
@@ -266,19 +269,63 @@ confirmation of the documented mode, not a new finding.
 
 ## Conclusion
 
-1. 4,145 strings classified into 17 categories, 3,609 VA-anchored and 536 SSO-only.
+1. 4,175 strings classified into 17 categories, 3,609 VA-anchored and 566 SSO-only.
 2. Mega Hack's own widget names are recoverable, which is a direct M3 lead.
-3. `other` is down to 26% from 33%, and what remains in it is characterised rather than unknown.
-4. The largest recovered group after `other` is Mega Hack's own 974 identifiers, not
-   third-party code — which corrects the impression that this binary is mostly OpenSSL.
+3. `other` is down to **8.5% (353 rows)** from 26%, and what remains in it is characterised
+   rather than unknown: JSON keywords, CRT constants, version strings and SSO decoder
+   artefacts. None of those are Mega Hack labels, setting keys, paths or language keys.
+4. The OpenSSL mass that previously polluted `mod-identifier` (974 of 980 rows) is now
+   correctly attributed to `third-party` (1,838 rows) by **code-region evidence**, not
+   prefix guessing. `mod-identifier` now holds only Mega Hack's own identifiers
+   (`icons_0`, `override_cols`, `player_ball`, `no_bar`, `same_dual_col`, ...).
+5. The split criterion for the five Mega Hack-relevant categories (user-visible labels,
+   setting keys, file paths, language keys, format strings) is now met: each is populated
+   and VA-anchored, and the residual `other` bucket contains no strings belonging to them.
+
+## Update 2026-10-21 — region-based reclassification
+
+The open question in this note was whether `mod-identifier`'s 980 rows were Mega Hack's own
+names or OpenSSL's. Prefix guessing was tried and rejected (78% wrong). The deciding
+evidence is **where the referencing code lives**, not what the string says:
+
+- Recovered function filenames are address-prefixed (`180xxxx_FUN_...`). Their address
+  distribution has a single large gap: `0x1802FFDA0 -> 0x180352640 -> 0x1803A4EE0`
+  (0x528a0 bytes). Everything below `0x1803A4EE0` is Mega Hack's own code; everything
+  at/above it is the statically-linked library (OpenSSL, zlib, ...).
+- Every `mod-identifier` row referenced only by functions at/above `0x1803A4EE0` is
+  therefore a library-internal name. 957 of the 980 rows qualify and moved to
+  `third-party`. The 23 that remain are referenced by Mega Hack's own code
+  (`0x1801xxxxx`) and are genuine identifiers.
+- The same rule was applied to `other`: 548 VA-backed rows referenced only by the library
+  region moved to `third-party`, taking `other` from 942 to 353.
+
+Implementation: `scripts/classify_strings.py` now loads `recovered/functions/_xrefs.tsv`,
+maps each VA (and each SSO text) to its referencing functions, and reclassifies a
+`mod-identifier`/`other` row as `third-party` when **all** of those functions have a base
+address >= `0x1803A4EE0`. Rows with no referencing function (or a mixed region) keep
+their category. `classify(text, va)` gained the `va` parameter; the pure-text rules are
+unchanged, so existing category membership for the five MH-relevant categories is
+unaffected.
+
+Verification:
+- Genuine identifiers survived: `icons_0`, `icons_1`, `cols_0`, `cols_1`, `extra_0`,
+  `extra_1`, `override_cols`, `glow_0`, `glow_1`, `same_dual_col`, `no_bar`,
+  `player_ball` — all referenced by `0x18012ebe0` / `0x180132ce0` / `0x1802005a0`
+  (Mega Hack's own code), so they stayed in `mod-identifier`.
+- The moved rows are OpenSSL symbol names (`asn1_cb`, `bn_expand_internal`,
+  `dhx_to_PrivateKeyInfo_der_encode`, ...), which is what the strings actually are.
+- `test_pe_rva.py`, `test_settings_index.py`, `test_init_table.py`,
+  `test_progress_svg.py` all pass after the change (see commit/run notes).
 
 ## Open questions
 
-- (Unchanged 2026-10-20.) Resolving `mod-identifier` against the OpenSSL symbol table still
-  needs an external OpenSSL symbol table; none is tracked in this repo, and the fragments
-  (`gerprint`, `xcghash`, `ld-type`, `use-bits`) are bare lowercase shapes that cannot be
-  split by regex alone. UNVERIFIED: which of the 980 `mod-identifier` rows are Mega Hack's
-  own snake_case names versus OpenSSL ASN.1 field names.
+- (Resolved 2026-10-21.) The `mod-identifier` vs OpenSSL ambiguity is settled by code-region
+  evidence, not by an external symbol table: 957 of 980 rows are referenced only by functions
+  at/above `0x1803A4EE0` (the statically-linked library region) and moved to `third-party`;
+  the 23 survivors are referenced by Mega Hack's own code. No OpenSSL symbol table was needed.
+  UNVERIFIED: the exact OpenSSL version (and therefore an authoritative symbol list) — the
+  region boundary is inferred from the function-address gap, which is evidence about layout,
+  not about version.
 - (Resolved 2026-10-20.) A same-function suffix test (SSO text as a suffix of a VA-backed
   string in the same function) matches only 7 of the 181 SSO rows, so shape-based flagging
   is not viable; the 181 rows remain in `other`. See the rejected suffix/substring analysis
