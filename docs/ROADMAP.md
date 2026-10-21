@@ -57,13 +57,17 @@ Exit criteria:
 - [x] Export table recovered: 30 named MSVC-mangled symbols, demangled with
       `undname.exe`, recorded in `notes/hackpro-api.md`. The export table is **not** stripped.
 - [x] Full import table with preferred-base IAT addresses classified into Geometry Dash,
-      Geode, Windows and CRT — `notes/host-abi.md`. 1,010 imports over 32 DLLs; all 646
+      Geode, Windows and CRT - `notes/host-abi.md`. 1,010 imports over 30 DLLs; all 646
       mangled symbols demangled. Headline: **zero** GD gameplay classes are statically
       imported; they are reached by runtime name resolution.
 - [x] Full string inventory split into user-visible labels, setting keys, file paths,
-      language keys and format strings, each anchored to a VA. 17 categories over 4,175
+      language keys and format strings, each anchored to a VA. 16 categories over 4,175
       strings (3,609 VA-anchored, 566 SSO); 957 OpenSSL names reclassified to
-      `third-party` by code-region evidence (boundary 0x1803A4EE0). Residual 353 rows
+      `third-party` by code-region evidence (boundary 0x1803A4EE0), and the region rule
+      then extended to every Mega Hack-facing category, moving a further 415 rows
+      (230 `user-label`, 184 `format-string`, 1 `file-path`) into `third-party` as well.
+      No Mega Hack-looking name moved: the five Mega Hack-facing categories hold zero
+      all-library rows and zero library-vocabulary rows. Residual 353 rows
       (8.5%) are JSON keywords, CRT constants and SSO decoder artefacts, characterised in
       [string-inventory.md](../notes/string-inventory.md). Done 2026-10-21.
 - [x] Mega Hack's own RTTI/vtable set enumerated; the class hierarchy recovered. Partly
@@ -94,13 +98,23 @@ Exit criteria:
       UNVERIFIED per row in `_hook_sites.tsv` are those not yet checked against a thunk. The registry object is
       now identified — the global at `0x180800F58`, at least `0x4A8` bytes, in `.data`'s
       zero-fill tail with no file backing, and every accessor receives it `+0xD8`. Its
-      constructor writing `hackpro::Config::vftable` at `+0x00` and `+0x128` independently
-      confirms the `Config`-at-`+0x128` layout. The apparent "`+0xB0` is claimed twice"
-      conflict is **resolved**: the two readers use different bases — the serialiser arrives
-      by virtual dispatch at `+0x128`, the accessors at `+0xD8` — so they are different
-      fields, and disassembly settles the serialiser's as a circular list head
-      (`mov rsi,[rdi+0xb0]`, then `r13 = *r13` until `r13 == rsi`). The field grouping of
-      the `Bytes` map remains UNVERIFIED and needs one function read. The criterion stays open
+      constructor writes `hackpro::Config`'s primary vftable (`0x180544FD8`) at
+      `registry + 0xD8` and its secondary vftable (`0x180544FF0`, RTTI base offset 296 =
+      `0x128`) at `registry + 0x200`, which independently confirms the `Config`-at-`+0x128`
+      layout. **Correction (2026-10-21 audit):** the apparent "`+0xB0` is claimed twice"
+      conflict is **not** resolved — the accessors' base is verified (`registry + 0xD8`, so
+      `+0xB0` is `registry + 0x188`), but the serialiser's base is **UNVERIFIED**: it is
+      `hackpro::BasicConfig::vtable[0]` and is called directly from `FUN_18008A530` with
+      `rcx` unmodified, so its `this` is whatever object that function was invoked on. If
+      the two share a base they read the *same* field, and the serialiser's circular walk
+      (`mov rsi,[rdi+0xb0]`, then `r13 = *r13` until `r13 == rsi`) is the map's own node
+      list. The `Bytes` map's **field grouping is now read off the instruction bytes**: a
+      chained FNV-1a-64 map whose container starts at `registry + 0x180` with
+      {sentinel node `+0x08`, bucket array `+0x18`, mask `+0x30`, bucket count `+0x38`},
+      16-byte bucket slots, and an element node of
+      {prev, next, tag `+0x10`, `vector.begin +0x18`, `vector.end +0x20`, type byte
+      `+0x38`}. It is **not** MSVC's `std::unordered_map` (bucket stride 16, not 8); the
+      exact C++ type remains UNVERIFIED. The criterion stays open
       because the *contents* are data, and that data is user data this repo deliberately
       does not commit.
 - [ ] Save/load file formats mapped. **The three stores the release uses are now
@@ -121,22 +135,43 @@ Exit criteria:
       **Partially verified 2026-10-21.** Five of the seven are now confirmed in
       `_original.dll` from two independent angles each: `+0x148`, `+0x14C`, `+0x158`,
       `+0x198`, `+0x1B8` (see [gd-structures.md](../notes/gd-structures.md)).
-      `+0x2C4` and `+0x35C` are not accessed on a GJGameLevel in this binary and remain
-      UNVERIFIED. Mechanism recovered as before: `scripts/host_methods.py` indexes the 214
+      `+0x2C4` and `+0x35C` are **not** accessed on a GJGameLevel in this binary and
+      remain UNVERIFIED. A machine-code sweep of every direct memory operand in `.text`
+      closes the "did we miss an access" question: `+0x2C4` has 18 sites in 14 functions,
+      `+0x35C` 5 sites in 3 functions. Both offsets turn out to live on one **other** GD
+      structure — the object returned by the host function at RVA `0x17B4A0`, which
+      carries its own `int` triples at `+0x348`–`+0x374` and a current-level pointer at
+      `+0x208`. `+0x2C4` is additionally read at three different widths (byte, dword,
+      qword) across the image, which is only possible across different structures.
+      Mechanism recovered as before: `scripts/host_methods.py` indexes the 214
       method-name strings, and Mega Hack calls GD through absolute RVAs into
       `GetModuleHandleA(NULL)` (see [hook-dispatch.md](../notes/hook-dispatch.md)).
       Three GD function RVAs and `PlayLayer+0x3230` are verified from two angles each.
       Mega Hack does **not** use `node-ids` for this, so verified offsets change on any
       GD re-baseline.
-- [ ] Output: `notes/` map files, one per subsystem, each fact cited by VA. Four written
-      (`provenance`, `hackpro-api`, `host-abi`, `tab-registration`).
+- [x] Output: `notes/` map files, one per subsystem, each fact cited by VA. **Twenty-one
+      written**: `provenance`, `hackpro-api`, `host-abi`, `host-methods`, `hook-dispatch`,
+      `hook-wrapper-layer`, `tab-registration`, `init-table`, `string-inventory`,
+      `sso-decoder`, `fnv-hash-probe`, `settings-registry`, `rtti-classes`,
+      `gd-structures`, `persistence`, `definition-keys`, `new-best-label`, `android-abi`,
+      `finding-code`, `not-investigated-licence-path`, `m1-audit`. Every M1 subsystem has
+      one, and every address claim in them is VA-anchored; the notes that record an open
+      subject say so in the note. `m1-audit` is the 2026-10-21 audit of M1 itself: every
+      count in this tracker, in the README and in these notes was re-checked against
+      `_original.dll`, and the claims that did not survive were corrected in place rather
+      than appended to - see [m1-audit.md](../notes/m1-audit.md).
 
 Status: layout, cave, state block, patch-site set, hook map, level-identity scheme and DB
 format are known and now re-derived from `_original.dll` in `notes/provenance.md`. Export
 table and extension API are in `notes/hackpro-api.md`. Host ABI and the GD runtime-resolution
-path in `notes/host-abi.md`. Tab registration in `notes/tab-registration.md`. Still
-outstanding: the string inventory, full RTTI, settings registry, remaining lifecycle, and
-the `GJGameLevel` offsets.
+path in `notes/host-abi.md`. Tab registration in `notes/tab-registration.md`. The string
+inventory (4,175 strings over 16 categories), the full RTTI set (517 type descriptors, 497
+vtables, 794 distinct inheritance edges) and the settings-registry **mechanism** (184 tags
+over six typed accessors) are mapped and re-derived. Still outstanding: the settings registry
+**contents** (they live in `hackpro.json`, which is user data this repo does not commit),
+the save/load file formats, the remaining lifecycle (TLS callbacks, `early-load` ordering,
+the shutdown path), and the `+0x2C4`/`+0x35C` offsets, which a machine-code sweep has
+shown belong to a different GD structure rather than to a `GJGameLevel`.
 
 The runtime GD resolution path identified in `notes/host-abi.md` is the highest-value target
 left in M1, and arguably belongs to M2: every feature reaches gameplay through it.

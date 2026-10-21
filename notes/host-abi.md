@@ -9,7 +9,7 @@
 
 ## Method
 
-1. `tools/pe_imports.py` / `pefile` `DIRECTORY_ENTRY_IMPORT` — 1,010 imports across 32 DLLs,
+1. `tools/pe_imports.py` / `pefile` `DIRECTORY_ENTRY_IMPORT` — 1,010 imports across 30 DLLs,
    with preferred-base IAT addresses.
 2. 646 of those are MSVC-mangled C++ symbols. Demangled with `undname.exe` (VS 2022
    BuildTools 14.44.35207) in **file mode** — one signature per input line, in input order.

@@ -152,9 +152,9 @@ Ids are not contiguous. There are gaps — for instance nothing reads 823 throug
 entries were reserved and abandoned, or with several independent id spaces sharing one
 numbering scheme.
 
-UNVERIFIED: whether the range really is ~880 settings. Only 134 are read through these three
-accessors; others may be reached by a fourth accessor not yet identified, or by the key-based
-form.
+UNVERIFIED: whether the range really is ~880 settings. Only **184** are read through the six
+accessors recognised so far; others may be reached by a further accessor not yet identified,
+or by the key-based form.
 
 ## The seven previously-open ids, all confirmed
 
@@ -226,11 +226,11 @@ split would mis-count), and the captured argument must be a bare literal.
 
 Result:
 
-| | Before | After |
-| --- | ---: | ---: |
-| distinct tags | 134 | **149** |
-| total reads | 177 | 192 |
-| id range | 4..881 | **3..881** |
+| | Before | After | Now (2026-10-21) |
+| --- | ---: | ---: | ---: |
+| distinct tags | 134 | **149** | **184** |
+| total reads | 177 | 192 | **233** |
+| id range | 4..881 | **3..881** | **1..883** |
 
 The 15 recovered tags are `3`, `131`, `132`, `285`, `303`, `304`, `305`, `321`, `403`, and
 `851`–`856`. Every one was verified by reading its call site, not by trusting the count.
@@ -242,7 +242,7 @@ documented above. The "sibling tags mean one feature" rule does not survive cont
 this example, and it was stated too confidently.
 
 UNVERIFIED: whether any other tag group in `_settings.tsv` is a dispatch table rather than a
-feature. With 149 tags read by 192 sites, that cannot be answered from the table alone.
+feature. With 184 tags read by 233 sites, that cannot be answered from the table alone.
 
 ### Corrected: `FUN_18002EE40` is `getConfigVar<hackpro::Bytes>`, not a second registry
 
@@ -310,30 +310,51 @@ as zero in the image:
 
 ### Constructor, and a second angle on the `+0x128` layout
 
-`FUN_1800A27E0` (`0x1800A27E0`, 97 bytes) calls `FUN_1800A5BA0`, then `FUN_1800A28C0`, then
-zeroes three qwords at the end. `FUN_1800A28C0` (359 bytes) contains:
+`FUN_1800A27E0` (`0x1800A27E0`, 97 bytes) is the registry's static constructor. It is called
+as `FUN_1800A27E0(&DAT_180800F58)` — from `FUN_1800A2720`, the lazy getter, and from
+`hackpro::define` (`0x1800A3C40`) — so the object it fills is the global at `0x180800F58`:
 
 ```
-*param_1              = hackpro::Config::vftable;
-param_1[0x25]         = hackpro::Config::vftable;     // 0x25 * 8 = 0x128
+0x1800a27f6  mov byte ptr [rcx], 0                     ; registry+0x00 = 0
+0x1800a27f9  add rcx, 8
+0x1800a2801  call 0x1800a5ba0                         ; BasicConfig ctor, this = registry+0x08
+0x1800a2806  lea rcx, [rsi + 0xd8]
+0x1800a2811  call 0x1800a28c0                         ; Config-side ctor, this = registry+0xD8
+0x1800a2816  lea rcx, [rsi + 0x3b0]
+0x1800a281d  call 0x180097b90                         ; this = registry+0x3B0
+0x1800a2825  movups xmmword ptr [rsi + 0x490], xmm0    ; registry+0x490..0x49F = 0
+0x1800a282c  mov qword ptr [rsi + 0x4a0], 0            ; registry+0x4A0 = 0
 ```
 
-This is an **independent confirmation** of the layout derived in
-[hook-dispatch.md](hook-dispatch.md) from the `add rcx, -0x128` adjustment in
-`FUN_1800917B0`. Two unrelated functions — a thunk and a constructor — agree that
-`hackpro::Config` sits at `+0x128` of this object and `hackpro::BasicConfig` at 0.
+`FUN_1800A28C0` (359 bytes) writes two vtable pointers:
 
-The constructor's other writes give the object's extent and its initialised members:
+```
+0x1800a28db  lea rax, [rip + 0x4a26f6]         ; 0x180544FD8
+0x1800a28e2  mov qword ptr [rsi], rax           ; registry+0xD8
+0x1800a28e5  lea rax, [rip + 0x4a2704]         ; 0x180544FF0
+0x1800a28ec  mov qword ptr [rsi + 0x128], rax   ; registry+0x200
+```
 
-| Offset | Written as |
-| ------ | ---------- |
-| `+0x00` | `hackpro::Config::vftable` |
-| `+0x08`, `+0x10` | zeroed by `FUN_1800A5BA0` |
-| `+0x50`, `+0x90` | map constructors |
-| `+0x128` | `hackpro::Config::vftable` |
-| `+0x1B0`, `+0x1C0`, `+0x1D8` | zeroed as a consecutive group |
-| `+0x248` | `FUN_1803A50B4(0x28)` sentinel node, self-referential with `+0x18 = 0x101` |
-| `+0x490`–`+0x4A0` | zeroed |
+Both addresses are in the RTTI index (`recovered/functions/_rtti.tsv`): `0x180544FD8` is
+`hackpro::Config`'s primary vtable and `0x180544FF0` its secondary one, recorded at base
+offset **296 = 0x128**. That is an **independent confirmation**, from the type information
+rather than from a constructor, that the class at `registry + 0xD8` carries a
+`hackpro::Config` base sub-object at `+0x128`, and it agrees with the `add rcx, -0x128`
+adjustment in the thunk `FUN_1800917B0` (`0x1800917B0`), which converts a secondary-base
+pointer into the primary one before tail-jumping to `getConfigVar<bool>` (`0x18008F420`).
+
+**Correction (2026-10-21 audit).** An earlier draft of this table listed offsets as if one
+constructor wrote them all, and mixed the registry global, the `hackpro::BasicConfig`
+sub-object and the `registry + 0xD8` sub-object in one column. The bases are now explicit:
+
+| Base | Offset | Written as |
+| ---- | -----: | ---------- |
+| registry global | `+0x00` | one zero byte |
+| registry global | `+0x08` | `hackpro::BasicConfig` sub-object: `+0x08`–`+0x17` zeroed (`movups xmmword ptr [rcx], xmm6` at `0x1800A5BBD`), then containers constructed at `+0x18`, `+0x58`, `+0x98` — three 0x40-byte containers that end exactly at `+0xD8` |
+| registry global | `+0xD8` | primary vftable `0x180544FD8`; containers constructed at `+0x208`, `+0x248`, `+0x2A0`, `+0x2E0`, `+0x330`, `+0x370`; `+0x288`–`+0x297` zeroed; a `0x28`-byte sentinel node at `+0x320` (self-referential, `+0x18 = 0x101`) |
+| registry global | `+0x200` | secondary vftable `0x180544FF0` |
+| registry global | `+0x3B0` | constructed by `FUN_180097B90` |
+| registry global | `+0x490`–`+0x4A7` | zeroed |
 
 So the object is at least **`0x4A8` = 1192 bytes**.
 
@@ -377,32 +398,95 @@ consistent with `FUN_18007D1C0`'s `contains` walk in the same file.
 
 | Reader | Base | Field | Object offset | Shape |
 | ------ | ---- | ----- | ------------: | ----- |
-| `FUN_180076EB0` (serialiser) | `+0x128` | `+0xB0` | **`+0x1D8`** | circular list head |
-| `FUN_18002EE40` (`Bytes`) | `+0xD8` | `+0xB0` | **`+0x188`** | pointer to a bucket array |
+| `FUN_180076EB0` (serialiser) | `+0x128` (UNVERIFIED) | `+0xB0` | **`+0x1D8`** | circular list head |
+| `FUN_18002EE40` (`Bytes`) | `+0xD8` (verified) | `+0xB0` | **`+0x188`** | map sentinel node |
 
 **Different fields.** What looked like one field claimed twice was the same offset number read
 through two bases — the same class of error as the "second registry" claim, one level down.
 
-### Resolved: The `Bytes` map is an MSVC `std::unordered_map` at `+0x170`
+**Correction (2026-10-21 audit).** The `Bytes` accessor's base is verified: `FUN_18008A510()`
+is `FUN_1800A2F90(FUN_1800A2720())`, `FUN_1800A2720` returns the global `0x180800F58`, and
+`FUN_1800A2F90` is `lea rax, [rcx + 0xd8]; ret` — so every accessor receives
+`registry + 0xD8` and the `Bytes` accessor's `+0xB0` is `registry + 0x188`.
 
-A full disassembly read of `FUN_18002EE40` (VA `0x18002EE40`, RVA `0x2EE40`) and constructor
-`FUN_1800A28C0` (VA `0x1800A28C0`, RVA `0xA28C0`) settles the container layout completely:
+The **serialiser's** base is *not* verified. It is `hackpro::BasicConfig::vtable[0]`
+(the image holds `0x18053E8D8 → 0x180076EB0`) and it is called directly from `FUN_18008A530`
+with `rcx` unmodified (`0x18008A55D`), so its `this` is whatever object that function was
+invoked on. The `+0x128` in the table is this note's earlier reading of it and is
+**UNVERIFIED**: under it the serialiser's list head is `registry + 0x1D8`; if the two readers
+share the `registry + 0xD8` base they read the *same* field, `registry + 0x188`, which is the
+map's sentinel node — and the serialiser's circular walk over it is the map's own node list
+(`node->next` at `+0x00`, key at `+0x10`). Both readings fit the instruction bytes, and the
+disassembly alone cannot tell them apart.
 
-1. `FUN_1800A28C0` constructs the container at `object + 0x170` via `call 0x1800A42A0`.
-2. When accessed via `param_1 = object + 0xD8`, the displacements correspond exactly to the standard
-   MSVC x64 `std::_Hash` (`std::unordered_map<uint64_t, std::vector<unsigned int>>`) layout:
-   - `[rcx + 0xb0]` (`object + 0x188`): loaded into `rdx` — `_List._Myhead` (end sentinel node).
-   - `[rcx + 0xb8]` (`object + 0x190`): `_List._Mysize`.
-   - `[rcx + 0xc0]` (`object + 0x198`): loaded into `rcx` — `_Vec._Myfirst` (bucket array base pointer).
-   - `[rcx + 0xc8]` (`object + 0x1A0`): `_Vec._Mylast`.
-   - `[rcx + 0xd0]` (`object + 0x1A8`): `_Vec._Myend`.
-   - `[rcx + 0xd8]` (`object + 0x1B0`): masked via `and r8, [rcx + 0xd8]` — `_Mask` (bucket bitmask).
-   - `[rcx + 0xe0]` (`object + 0x1B8`): `_Max_idx`.
-3. The apparent "gaps" at `+0x190`, `+0x1A0`, `+0x1A8` were the intermediate members of MSVC's
-   standard `_Hash` container not referenced in the lookup loop.
-4. If found, the node holds type byte `4` (`V_BYTES`) at `[r14 + 0x38]`, vector begin pointer at
-   `[r14 + 0x18]`, and vector end pointer at `[r14 + 0x20]`. Element count is `(end - begin) >> 2`
-   (`sar rax, 2`, four bytes per `unsigned int`), allocated via `FUN_1803A50B4` and copied with `memmove`.
+UNVERIFIED: the serialiser's `this`. What would settle it: the caller of `FUN_18008A530`
+(`hackpro::Config::vtable[0]`) and the object it is invoked on.
+
+### Resolved: the `Bytes` map is a chained FNV-1a-64 hash map inside the registry
+
+**Correction (2026-10-21 audit).** An earlier draft of this section claimed the container is
+"an MSVC `std::unordered_map<uint64_t, std::vector<unsigned int>>` at `+0x170`". The machine
+code does not support that, and the claim is replaced here.
+
+`FUN_18002EE40` (VA `0x18002EE40`, RVA `0x2EE40`) probes the map with FNV-1a-64 over the
+8 bytes of the tag:
+
+| VA | Instruction | Meaning |
+| -- | ----------- | ------- |
+| `0x18002EEEE` | `and r8, qword ptr [rcx + 0xd8]` | bucket mask, `registry + 0x1B0` |
+| `0x18002EEF5` | `mov rdx, qword ptr [rcx + 0xb0]` | chain sentinel node, `registry + 0x188` |
+| `0x18002EEFC` | `mov rcx, qword ptr [rcx + 0xc0]` | bucket array base, `registry + 0x198` |
+| `0x18002EF03` | `shl r8, 4` | **bucket stride 16 bytes** |
+| `0x18002EF07` | `mov r14, qword ptr [rcx + r8 + 8]` | first node of the chain, `slot + 8` |
+| `0x18002EF15` | `cmp rax, qword ptr [r14 + 0x10]` | the tag, `node + 0x10` |
+
+So the container's own layout is
+
+| Offset in container | Field |
+| -------------------: | ----- |
+| `+0x00` | max-load factor (float; the constructor writes `1.0f`) |
+| `+0x08` | pointer to the chain sentinel node |
+| `+0x10` | unused |
+| `+0x18` | bucket array, first |
+| `+0x20` | bucket array, last |
+| `+0x28` | bucket array, capacity end |
+| `+0x30` | bucket mask (`7` in the constructor) |
+| `+0x38` | bucket count (`8` in the constructor) |
+
+and the container the `Bytes` accessor uses starts at **`registry + 0x180`**, because
+`registry + 0x188` is its `+0x08` field. Each 16-byte bucket slot holds two pointers:
+`slot + 0` is the chain's end node and `slot + 8` its first node.
+
+Three independent checks agree with that layout:
+
+1. The constructor `FUN_1800A42A0` (VA `0x1800A42A0`, called by `FUN_1800A28C0` with
+   `rcx = registry + 0x248`) writes exactly this shape: `1.0f` at `+0x00`, a 0x30-byte
+   self-linked node at `+0x08`, a 0x80-byte bucket buffer at `+0x18` (8 slots of 16 bytes,
+   every one pointing at the sentinel node), `7` at `+0x30` and `8` at `+0x38`.
+2. The string-keyed lookup `FUN_18007CB60` (VA `0x18007CB60`) has the same relative layout
+   — mask at `+0x88`, sentinel at `+0x60`, buckets at `+0x70`, the same `shl r10, 4` stride —
+   so its container starts at `registry + 0x130`. Two accessors, one shape.
+3. The same container type appears three more times inside the registry, at `registry + 0x18`,
+   `+0x58` and `+0x98` (built by `FUN_1800A5BA0`); each is 0x40 bytes, and the three end
+   exactly at `registry + 0xD8`, where the next sub-object begins — which is how the
+   container's size was fixed.
+
+The element node is `{prev +0x00, next +0x08, tag +0x10, vector.begin +0x18,
+vector.end +0x20, …, type byte +0x38}`. The value is a `std::vector<unsigned int>`: the
+element count is `(end - begin) >> 2` (`sar rax, 2` at `0x18002EF5E`), the bytes are copied
+out with `memmove`, and the type byte at `node + 0x38` must be `4` (`V_BYTES`) or the
+function raises `"Tag {} invalid for type {}"` with the type name `"hackpro::Bytes"`.
+
+**It is not `std::unordered_map`.** MSVC's bucket array holds 8-byte node pointers, its
+`_Hash_table` keeps the list head inline rather than behind a pointer, and it has no mask
+member; here the stride is 16 bytes, the head is a pointer at `+0x08`, and the mask lives at
+`+0x30`. Mega Hack's own chained FNV-1a-64 map is the shape that fits, and the same shape
+backs the string-keyed lookup.
+
+UNVERIFIED: the exact C++ type of the container. The two maps inside the registry are built
+at load time, not by the registry constructor, so the constructor that would name the type is
+not on the constructor path — `FUN_1800A28C0` builds an instance of the same container
+*type* at `registry + 0x248`, but that is a different map.
 
 ### A correction to my own reasoning
 
@@ -774,7 +858,7 @@ which independently corroborates that note.
 every key, its numeric tag, its type, its default and whether it is saved — is **not in the
 binary at all**. It lives in `hackpro.json` in the installed Geode mod folder. A static
 analysis of `_original.dll` cannot enumerate it, which is why the registry looked
-unrecoverable and why `_settings.tsv`'s 134 tags are a sample of what code happens to read
+unrecoverable and why `_settings.tsv`'s 184 tags are a sample of what code happens to read
 rather than a count of what exists.
 
 Per `AGENTS.md`, that file is user data and is **not** read into or committed from this
@@ -840,10 +924,17 @@ rather than an extension of either.
   functions were those containing both FNV-1a-64 constants (`0xcbf29ce484222325`,
   `0x100000001b3`), a `shl …, 4` bucket stride, an `and …, [base + 0x??]` mask load,
   and a full-`uint64` key compare (`cmp …, qword ptr [… + 0x10]`) with a `+0x08`
-  chain walk. Two mask offsets occur in practice: `+0xd8` (Map A, the MSVC
-  `std::unordered_map` at object `+0x188`) and `+0x160` (Map B). Each candidate
+  chain walk. Two mask offsets occur in practice: `+0xd8` (Map A — mask at
+  `registry + 0x1B0`, container base `registry + 0x180`) and `+0x160` (Map B — mask at
+  `registry + 0x160`, container base `registry + 0x130`). Each candidate
   was then checked against the recovered decompilation for a `hackpro::` type
   literal on the miss path.
+
+  (Corrected 2026-10-21.) This passage originally described Map A as "the MSVC
+  `std::unordered_map` at object `+0x188`". The container is **not** MSVC's
+  `std::unordered_map` and does not start at `+0x188`: `+0x188` is the container's
+  `+0x08` field, the pointer to the chain sentinel node. See
+  [Resolved: the `Bytes` map is a chained FNV-1a-64 hash map inside the registry](#resolved-the-bytes-map-is-a-chained-fnv-1a-64-hash-map-inside-the-registry).
 - **Result** — two read accessors were missing, not one:
   - `FUN_18002E4C0` (RVA `0x2E4C0`), `undefined8 (longlong, ulonglong)`,
     type byte `1`, miss logs `hackpro::Int`. Called as
@@ -875,7 +966,7 @@ rather than an extension of either.
 1. The registry lives on `hackpro::BasicConfig`; `hackpro::Config` derives from it at
    `+0x128` and its `vtable[2]` is a `getConfigVar<bool>` forwarder.
 2. Settings are keyed by **`hackpro::Tag`, a 64-bit value**, not by a small number. The
-   134 values in `_settings.tsv` are what this build uses, not the interface's type.
+   184 values in `_settings.tsv` are what this build uses, not the interface's type.
 3. Tag names exist only in a runtime map on the registry, and tag ↔ name is a **bijection**
    maintained by `FUN_18007C700`.
 4. **The whole registry is `hackpro.json`, not the binary.** `FUN_18008B780` reads each
@@ -937,6 +1028,14 @@ rather than an extension of either.
   via virtual dispatch (`object + 0x128`) — and neither was the same field.
   **Offsets are only comparable once translated onto a common base**, and the base has to be
   derived, not assumed from the fact that both functions talk about "the config".
+- **Naming a container from a plausible offset pattern.** The claim "the `Bytes` map is an MSVC
+  `std::unordered_map<uint64_t, std::vector<unsigned int>>`" was built by matching the
+  accessor's displacements to MSVC's `_Hash_table` layout member by member, and it read like a
+  proof. The instruction bytes refute it: the bucket stride is 16 (`shl r8, 4` at
+  `0x18002EF03`), MSVC's bucket array holds 8-byte node pointers, and the element node here
+  carries a type byte at `+0x38` that a `uint64_t → std::vector<unsigned int>` map has no room
+  for. A layout that *fits* is not a layout that was *read* — read the constructor, count the
+  stride, and check the node size.
 - **Grepping for an offset across the whole tree is worse than useless.** `+0xB0` appears 385
   times in 280 files. Filtering to functions that actually receive the registry reduces that
   to **two**, neither of which is the pair in question. Always filter by *receiver* first,

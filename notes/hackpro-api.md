@@ -136,9 +136,12 @@ pointers into mid-function data.
 
 | Region | VA span | Size |
 | ------ | ------- | ---- |
-| `hackpro` + `hackpro::extensions` (all 29 named symbols) | `0x180072B60`–`0x180075530` | `0x29D0` (10,704 B) |
-| `mega::utils::safe_mode` | `0x18019B350`–`0x18019B5A0` | `0x250` (592 B) |
-| `hackpro::define` | `0x1800A3C40` | — |
+| `geodeImplicitEntry` + `hackpro` + `hackpro::extensions` (26 named symbols) | `0x180072B60`–`0x180075530` | `0x29D0` (10,704 B) |
+| `mega::utils::safe_mode` (3 symbols) | `0x18019B350`–`0x18019B5A0` | `0x250` (592 B) |
+| `hackpro::define` (1 symbol) | `0x1800A3C40` | — |
+
+30 named exports in total: 26 in the block above, 3 `safe_mode` functions, and
+`hackpro::define`.
 
 The whole extension API lives in one contiguous ~10 KB block, consistent with a single
 translation unit. The three `safe_mode` functions sit within 0x250 bytes of each other,
@@ -220,8 +223,9 @@ callers of `0x18019B350` and string references to ranked/safe-mode terminology v
   `hackpro::Tag` (64-bit integer) and `hackpro::extensions::Delegate` remains unmapped.
   (Resolved 2026-10-20: `hackpro::Tag` is a 64-bit integer passed by value and used as a
   map key; no further fields are visible in this binary.)
-- (Partially resolved 2026-10-20.) The 29 `hackpro` symbols occupy a single contiguous
-  range `0x180072B60`–`0x180075530` (10,704 bytes) with no interleaving functions from
+- (Partially resolved 2026-10-20.) The 26 symbols in the `0x180072B60`–`0x180075530`
+  block (25 `hackpro`/`hackpro::extensions` plus `geodeImplicitEntry`) occupy a single
+  contiguous range (10,704 bytes) with no interleaving functions from
   other namespaces, which is consistent with one TU. UNVERIFIED: a compiler-level proof
   (e.g. a single .pdata range or identical prologue padding) rather than contiguity.
 - (Resolved 2026-10-20.) `define` at `0x1800A3C40` is not a counterpart config API: it is

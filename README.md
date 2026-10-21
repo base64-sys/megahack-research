@@ -189,11 +189,15 @@ These live in `scripts/`, so they exist on a fresh clone. Neither needs `samples
 | `test_init_table.py`         | Pin those tables and the zero-caller counts; skips without a sample set       |
 | `test_settings_index.py`     | Pin the tag table and the argument splitter that has lost tags twice         |
 
-`_strings.tsv` splits 4,175 code-referenced strings into 17 categories. The string-inventory
-M1 criterion is now met: the five Mega Hack-relevant categories (user-visible labels, setting
-keys, file paths, language keys, format strings) are populated and VA-anchored. The residual
-`other` bucket is down to **8.5%** (353 rows) and is characterised rather than unknown: JSON
-keywords, CRT constants, version strings and SSO decoder artefacts. The OpenSSL mass that
+`_strings.tsv` splits 4,175 code-referenced strings into 16 categories. The string-inventory
+M1 criterion is now met: the Mega Hack-relevant categories (user-visible labels, setting
+keys, file paths, language keys, format strings) are populated and VA-anchored, and the
+region rule that separates Mega Hack's own strings from the statically linked library was
+extended to every one of them — **415 rows** (230 user-label, 184 format-string, 1
+file-path) moved to `third-party` when their referencing functions all live in the library
+code region at or beyond `0x1803A4EE0`. The residual `other` bucket is down to **8.5%**
+(353 rows) and is characterised rather than unknown: JSON keywords, CRT constants, version
+strings and SSO decoder artefacts. The OpenSSL mass that
 once polluted `mod-identifier` (974 of 980 rows) was reclassified to `third-party` by
 code-region evidence (boundary `0x1803A4EE0`), so `mod-identifier` now holds only Mega
 Hack's own identifiers (`icons_0`, `override_cols`, `player_ball`, ...). See
@@ -217,21 +221,26 @@ analysis of `_original.dll` can enumerate the full key list — which is why the
 The registry is the **global object at VA `0x180800F58`**, at least `0x4A8` bytes, in
 `.data`'s zero-fill tail — it has no bytes in the file at all and is built entirely by the
 static constructor `FUN_1800A27E0`. Every accessor receives that global `+0xD8`. Its
-constructor writes `hackpro::Config::vftable` at both `+0x00` and `+0x128`, which
-independently confirms the `Config`-at-`+0x128` layout that the `add rcx, -0x128` thunk in
-`FUN_1800917B0` implies — two unrelated functions agreeing on the same offset.
+constructor writes `hackpro::Config`'s primary vftable (`0x180544FD8`) at `registry + 0xD8`
+and its secondary vftable (`0x180544FF0`, RTTI base offset 296 = `0x128`) at
+`registry + 0x200`, which independently confirms the `Config`-at-`+0x128` layout that the
+`add rcx, -0x128` thunk in `FUN_1800917B0` implies — two unrelated functions agreeing on
+the same offset.
 
 One trap worth stating, because this repo walked into it twice: **struct offsets are only
-comparable once translated onto a common base.** The serialiser `FUN_180076EB0` arrives by
-virtual dispatch (`this = object + 0x128`) while the accessors get `object + 0xD8`, so their
-respective `+0xB0` fields are object `+0x1D8` and `+0x188` — **different fields**, not one
-claimed twice. Disassembly settles the serialiser's as a circular list head
-(`mov rsi,[rdi+0xb0]`, then `r13 = *r13` until `r13 == rsi`). Reading offsets without the
-base produced a false "second registry" and a false "`+0xB0` is claimed twice"; both are
-recorded as failure modes in [notes/settings-registry.md](notes/settings-registry.md).
+comparable once translated onto a common base.** The accessors' base is verified
+(`registry + 0xD8`, so their `+0xB0` is `registry + 0x188`); the serialiser
+`FUN_180076EB0` is `hackpro::BasicConfig::vtable[0]` and is called directly from
+`FUN_18008A530` with `rcx` unmodified, so **its** base is UNVERIFIED. The earlier reading
+— that the serialiser arrives at `+0x128` and therefore reads a *different* `+0xB0` field at
+`object + 0x1D8` — is no longer asserted: if the two share a base they read the *same*
+field, and the serialiser's circular walk (`mov rsi,[rdi+0xb0]`, then `r13 = *r13` until
+`r13 == rsi`) is the map's own node list. Reading offsets without the base produced a false
+"second registry" and a false "`+0xB0` is claimed twice"; both are recorded as failure
+modes in [notes/settings-registry.md](notes/settings-registry.md).
 
 `FUN_18002EE40` is the typed accessor for **`hackpro::Bytes`** — it logs that literal on a
-miss — so all four accessors read the one registry with four different value types. It takes
+miss — so all six accessors read the one registry, over five value types. It takes
 the tag as its *third* argument, which is why an index that guessed argument position had
 missed it entirely. That gap is now closed, and
 `scripts/test_settings_index.py` pins it: the argument splitter is tested as a pure
@@ -269,7 +278,7 @@ Finding code by feature name is the practical bottleneck, so ten indexes exist:
 | ----- | ---: | ------- |
 | `_wrappers.tsv` | 277 | which function does this thunk actually call? |
 | `_xrefs.tsv` | 4,178 | which functions name this string? |
-| `_settings.tsv` | 184 | which tags are read, and by which accessor? |
+| `_settings.tsv` | 188 | which tags are read, and by which accessor? |
 | `_calls.tsv` / `_callers.tsv` | 42,701 | who calls what? |
 | `_rtti.tsv` | 497 | which classes exist, and where is each vtable? |
 | `_rtti_hierarchy.tsv` | 794 | what does each class derive from? |

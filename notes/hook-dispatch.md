@@ -250,7 +250,7 @@ address moved from the patch's label to a disassembly-backed fact.
 43 of the 338 callbacks are Ghidra `LAB_` labels and 19 are data slots, so neither has a
 recovered `.c` to read. Recorded as `callback_kind=label` / `data` rather than dropped.
 
-## A settings accessor this repo's index misses
+## The settings accessor this note used to call "missing"
 
 The body after the `onQuit` hook's tail jump calls `FUN_18002EE40(config, &local, 0x11d)`.
 `FUN_18002EE40` is a settings accessor — it folds all eight bytes of the third argument
@@ -261,22 +261,40 @@ lVar5 = ((... FNV-1a-64 of param_3 ...) * 0x100000001b3 & *(ulonglong *)(param_1
 lVar4 = *(longlong *)(*(longlong *)(param_1 + 0xc0) + 8 + lVar5);
 ```
 
-That is the same shape as `getConfigVar<bool>`, but over a **different map layout** — not
-the `BasicConfig` maps at `+0x20`/`+0x138` — so it is a second registry rather than another
-accessor on the first.
+An earlier version of this note read the differing offsets as proof that this was "a second
+registry rather than another accessor on the first", and concluded that
+`scripts/settings_index.py` missed it, so **tag `0x11D` (285) was absent from
+`_settings.tsv`** and the index jumped 284 → 292 across the gap.
 
-`scripts/settings_index.py` recognises only `FUN_18008F420`, `FUN_18002DE50` and
-`FUN_180003D80`, so **tag `0x11D` (285) is read by the release and missing from
-`_settings.tsv`** — the index jumps 284 → 292 across that gap.
+**Both halves of that are now corrected**, in
+[settings-registry.md](settings-registry.md#corrected-fun_18002ee40-is-getconfigvarhackprobytes-not-a-second-registry):
 
-This is the failure mode
-[settings-registry.md](settings-registry.md#completeness-the-accessor-list-matters) warns
-about, found again in a new place, and it is concrete rather than hypothetical: one named
-tag is absent. Adding `FUN_18002EE40` to the index should be the first change to
-`settings_index.py`; how many further accessors exist is unknown, which is exactly the point.
+- `FUN_18002EE40` is `getConfigVar<hackpro::Bytes>` — the **sixth** type-aware accessor on
+  the **same** registry. The literal it emits on a miss is the requested type's name
+  (`hackpro::Bytes`), and the map it probes (sentinel node `object + 0x188`, bucket array
+  `object + 0x198`, mask `object + 0x1B0`) lives inside that same registry object. The
+  offsets differ from `getConfigVar<bool>`'s because the two readers use different bases
+  over one object, not because the objects differ.
 
-UNVERIFIED: what the second registry is and whether tag 285 is a game-mod setting or a
-hackpro-internal one.
+  **Correction (2026-10-21 audit).** An earlier draft of this line called the probed map
+  "the MSVC `std::unordered_map<uint64_t, std::vector<unsigned int>>` that `FUN_1800A28C0`
+  constructs at `object + 0x170`". Both halves are wrong: the bucket stride is 16 bytes
+  (`shl r8, 4` at `0x18002EF03`), where MSVC's bucket array holds 8-byte node pointers, and
+  the container the accessor actually reads starts at `object + 0x180`, not at `object +
+  0x170`. It is Mega Hack's own chained FNV-1a-64 map — the same shape as the string-keyed
+  lookup `FUN_18007CB60` (mask at `+0x88`, sentinel at `+0x60`, buckets at `+0x70`, same
+  stride) — and its exact C++ type is UNVERIFIED. See
+  [settings-registry.md](settings-registry.md#resolved-the-bytes-map-is-a-chained-fnv-1a-64-hash-map-inside-the-registry).
+- `scripts/settings_index.py` now recognises it. `_settings.tsv` carries the row
+  `285	getConfigVar<hackpro::Bytes>	1	180174e00_FUN_180174e00`, and the 284 → 292 gap is
+  closed. `scripts/test_settings_index.py` pins that row.
+
+The lesson this section originally recorded is kept, because it is the useful part: **an
+index built from an assumed accessor list silently omits settings, with no error anywhere.**
+The fix is to enumerate accessors from the binary, not to assume them.
+
+UNVERIFIED: what tag 285 is — whether it is a game-mod setting or a hackpro-internal one.
+The value lives in `hackpro.json`, which this repo does not read.
 
 ## What this means for the milestones
 

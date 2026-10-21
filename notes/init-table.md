@@ -67,7 +67,7 @@ and must not be used to prune, merge or dismiss a function.
 
 `FUN_180062940` is a **DLL-load static constructor**. Its 77 UI names are registered at load
 time, with no call site in Mega Hack's own code anywhere — which is also why the 77 UI names
-and the 138 numeric settings share no function: registration and application are separate
+and the 184 numeric settings share no function: registration and application are separate
 phases, separated by load time rather than by a missing call.
 
 This does not by itself locate the settings bridge. It does mean the bridge cannot be found by

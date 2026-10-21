@@ -50,7 +50,7 @@ ACCESSORS = {
     "FUN_180003d80": (1, "getConfigVar<scalar>"),
     "FUN_18002e4c0": (1, "getConfigVar<int>"),
     "FUN_18002d710": (2, "getConfigVar<std::string>"),
-    "FUN_18002ee40": (2, "second-registry accessor"),
+    "FUN_18002ee40": (2, "getConfigVar<hackpro::Bytes>"),
 }
 
 

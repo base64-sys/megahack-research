@@ -8,7 +8,7 @@
 
 ## Why this is the right unit
 
-`notes/host-abi.md` records that of 1,010 imports over 32 DLLs, **zero** are GD gameplay
+`notes/host-abi.md` records that of 1,010 imports over 30 DLLs, **zero** are GD gameplay
 classes. Nothing is statically linked against `GJGameLevel`, `PlayLayer` or anything else;
 every one of them is found by **string name at runtime**. The consequence for research is
 that the *string* is the only handle on the host ABI — you cannot grep the import table,

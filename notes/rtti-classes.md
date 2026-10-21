@@ -121,12 +121,14 @@ what caught that.
 
 | Metric | Count |
 | ------ | ----: |
-| Raw edges | 3,102 |
-| Distinct (derived, base) pairs | **757** |
-| Classes with at least one base | 279 |
+| Raw edges (one per COL) | 3,088 |
+| Distinct (derived, base) pairs | **794** |
+| Distinct derived classes with at least one base | 297 |
 
 Raw exceeds distinct because a class with *N* vtables has *N* COLs contributing the same base
-list; the index de-duplicates.
+list; the index de-duplicates. The three numbers are what `scripts/rtti_index.py` prints
+(`inheritance edges: 3088`, `hierarchy: … (3088 raw, 794 distinct edges)`) and what
+`_rtti_hierarchy.tsv` holds (794 rows).
 
 ### Mega Hack's own hierarchy
 
@@ -161,14 +163,6 @@ Three things worth stating plainly:
 `session::Login`, `core::NoclipTracker` and `tabcore::dialog::ColourPicker` have base names
 that are clearly mis-demangled — `tabcore::std`, and a nonsense `tabcore::...` string — so
 their bases are recorded but not trusted. The `mangled` column in `_rtti.tsv` is authoritative.
-
-## Conclusion
-
-1. 497 polymorphic classes with vtables recovered from `_original.dll`, each anchored to a VA.
-2. 757 distinct inheritance edges — `numBases` lives at `+8`, not `+0` as documented.
-3. Mega Hack's namespaces are `hackpro`, `core`, `mega::extensions`, `mega::utils`, `tabcore`,
-   and `iconic`.
-4. nlohmann/json 3.12.0 is statically linked.
 
 ## Limits
 

@@ -145,14 +145,40 @@ def classify(text: str, va: str = "") -> str:
     else:
         cat = "other"
 
-    # Promote `mod-identifier` / `other` to `third-party` when every referencing
-    # function sits in the statically-linked library region. This is the OpenSSL
-    # case the prefix list cannot enumerate: hundreds of distinct stems (aes_,
-    # asn1_, bn_, ...) whose only common feature is where their code lives.
-    # Prefix guessing was explicitly rejected in the note; the address region is
-    # evidence instead. 0x1803A4EE0 is the first function after the 0x528a0-byte
-    # gap at 0x180352640; Mega Hack's own code lives below it.
-    if cat in ("mod-identifier", "other"):
+    # Promote to `third-party` when every referencing function sits in the
+    # statically-linked library region. This is the OpenSSL case the prefix list
+    # cannot enumerate: hundreds of distinct stems (aes_, asn1_, bn_, ...) whose
+    # only common feature is where their code lives. Prefix guessing was
+    # explicitly rejected in the note; the address region is evidence instead.
+    # 0x1803A4EE0 is the first function after the 0x528a0-byte gap at
+    # 0x180352640; Mega Hack's own code lives below it.
+    #
+    # The rule is applied to two different sets of categories, for two different
+    # reasons (audit 2026-10-21):
+    #
+    #   * `mod-identifier` / `other` - the generic buckets. Their rows are
+    #     library names the prefix list misses.
+    #   * the Mega Hack-facing categories (labels, format strings, setting keys,
+    #     paths, language keys, widget names, flags, urls, api paths) - these are
+    #     supposed to hold *Mega Hack's* strings. A library string that slipped
+    #     into them is contamination, not a classification. Extending the rule
+    #     moved 415 rows (230 user-label, 184 format-string, 1 file-path) out of
+    #     the Mega Hack-facing buckets; none of them was a Mega Hack string
+    #     (`CHECKBOX_*`, `OPTIONS_*`, `STATUS/*`, `PlayLayer::*` etc. all stayed).
+    PROTECTED_CATEGORIES = (
+        "mod-identifier",
+        "other",
+        "user-label",
+        "format-string",
+        "setting-key",
+        "file-path",
+        "language-key",
+        "ui-element",
+        "flag",
+        "url",
+        "api-path",
+    )
+    if cat in PROTECTED_CATEGORIES:
         if va.startswith("0x"):
             funcs = _VA_FUNCS.get(va, [])
         elif va == "sso":

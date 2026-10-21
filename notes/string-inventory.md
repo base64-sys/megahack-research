@@ -9,26 +9,30 @@
 
 ## Where the strings come from
 
-`_xrefs.tsv` already carries 4,145 code-referenced strings, 3,609 of them anchored to a VA
-in `.rdata`/`.data`. The remaining **536 are SSO-derived and carry no VA**, because those
+`_xrefs.tsv` already carries 4,178 code-referenced strings, 3,611 of them anchored to a VA
+in `.rdata`/`.data`. The remaining **567 are SSO-derived and carry no VA**, because those
 bytes only ever exist inside a stack frame; they are classified and flagged `sso` rather than
 promoted, since they inherit the split and merge error modes in [sso-decoder.md](sso-decoder.md).
+
+`scripts/classify_strings.py` classifies **4,175** of those rows — three whitespace-only rows
+are dropped — leaving **3,609 VA-anchored and 566 SSO-only**. Both numbers are what the
+classifier prints; the difference from `_xrefs.tsv` is the three empty strings, not a lost row.
 
 ## The split
 
 | Category | Rows | Contains |
 | -------- | ---: | -------- |
-| `third-party` | 1838 | statically linked OpenSSL/zlib: prefix-gated names **plus** every snake_case string whose referencing functions all live in the library code region (>= 0x1803A4EE0) |
+| `third-party` | 2253 | statically linked OpenSSL/zlib: prefix-gated names **plus** every string whose referencing functions all live in the library code region (>= 0x1803A4EE0) — the region rule now covers every Mega Hack-facing category, not just `mod-identifier`/`other` (see the 2026-10-21 update below) |
 | `mod-identifier` | 23 | Mega Hack's own snake_case names — `icons_0`, `override_cols`, `player_ball`, `no_bar`, `same_dual_col` (plus 12 SSO artefacts; see below) |
 | `other` | 353 | JSON keywords, CRT constants, version strings and SSO decoder artefacts (see "what is still missing") |
-| `user-label` | 407 | UI text |
-| `format-string` | 329 | printf (`%s`, `%*s`) and `{}` / `{:02}` templates |
+| `user-label` | 177 | UI text |
+| `format-string` | 145 | printf (`%s`, `%*s`) and `{}` / `{:02}` templates |
 | `library-text` | 219 | lowercase library diagnostics — libc++, BoringSSL, libpng, zlib, nlohmann/json |
 | `host-method` | 214 | `PlayLayer::createCheckpoint`, `cocos2d::CCDirector::popScene` |
 | `error-text` | 178 | assertion and diagnostic strings, exception templates |
 | `setting-key` | 165 | `ICONIC/DISABLE`, `HOME/THEME/{}/COL`, `SHORTCUT_*`, `OPTIONS_*`, `V_*`, schema keywords |
 | `flag` | 153 | `HACK_COPY_HACK+` and similar |
-| `file-path` | 109 | asset and data filenames, including `.plist`, `.dll`, `.so`, `.ttc` |
+| `file-path` | 108 | asset and data filenames, including `.plist`, `.dll`, `.so`, `.ttc` |
 | `mangled-symbol` | 96 | MSVC `?f@ns@@` and `??1Class` forms |
 | `ui-element` | 77 | Mega Hack's own widget names |
 | `url` | 6 | including `https://absolllute.com/store/mega_hack` |
@@ -65,15 +69,16 @@ is lying.
 
 ## The UI names and the numeric settings never meet
 
-Joining the 77 `ui-element` names against the 138 numeric settings in `_settings.tsv`, by
+Joining the 77 `ui-element` names against the 184 numeric settings in `_settings.tsv`, by
 shared decompiled function, gives **zero overlaps**. Not one UI control name and one numeric
 setting id are read by the same function.
 
 That is a useful negative. It means the two key spaces are not connected the way the obvious
 join assumes:
 
-- **Numeric ids** — 138 of them, read through `FUN_18008F420`, `FUN_18002DE50` and
-  `FUN_180003D80`. See [settings-registry.md](settings-registry.md).
+- **Numeric ids** — 184 of them, read through `FUN_18008F420`, `FUN_18002DE50`,
+  `FUN_18002E4C0`, `FUN_180003D80`, `FUN_18002D710` and `FUN_18002EE40`. See
+  [settings-registry.md](settings-registry.md).
 - **UI control names** — the `CHECKBOX_*` / `COLOUR_*` strings, apparently read somewhere else
   entirely.
 
@@ -104,8 +109,9 @@ A 16 KB function with no callers that names every control in the interface is a 
 registration table** — the place Mega Hack builds its settings UI. It is the anchor M3's
 feature map was missing.
 
-It calls none of the three numeric accessors (`FUN_18008F420`, `FUN_18002DE50`,
-`FUN_180003D80`) and none of `FUN_18007CB60`. That is the same absence the join found, now
+It calls none of the six numeric accessors (`FUN_18008F420`, `FUN_18002DE50`,
+`FUN_18002E4C0`, `FUN_180003D80`, `FUN_18002D710`, `FUN_18002EE40`) and none of
+`FUN_18007CB60`. That is the same absence the join found, now
 localised to one function: **the UI is built here and the settings are read elsewhere**, and
 whatever connects them is a third thing this pass has not located.
 
@@ -269,13 +275,13 @@ confirmation of the documented mode, not a new finding.
 
 ## Conclusion
 
-1. 4,175 strings classified into 17 categories, 3,609 VA-anchored and 566 SSO-only.
+1. 4,175 strings classified into 16 categories, 3,609 VA-anchored and 566 SSO-only.
 2. Mega Hack's own widget names are recoverable, which is a direct M3 lead.
 3. `other` is down to **8.5% (353 rows)** from 26%, and what remains in it is characterised
    rather than unknown: JSON keywords, CRT constants, version strings and SSO decoder
    artefacts. None of those are Mega Hack labels, setting keys, paths or language keys.
 4. The OpenSSL mass that previously polluted `mod-identifier` (974 of 980 rows) is now
-   correctly attributed to `third-party` (1,838 rows) by **code-region evidence**, not
+   correctly attributed to `third-party` (2,253 rows) by **code-region evidence**, not
    prefix guessing. `mod-identifier` now holds only Mega Hack's own identifiers
    (`icons_0`, `override_cols`, `player_ball`, `no_bar`, `same_dual_col`, ...).
 5. The split criterion for the five Mega Hack-relevant categories (user-visible labels,
@@ -304,8 +310,9 @@ maps each VA (and each SSO text) to its referencing functions, and reclassifies 
 `mod-identifier`/`other` row as `third-party` when **all** of those functions have a base
 address >= `0x1803A4EE0`. Rows with no referencing function (or a mixed region) keep
 their category. `classify(text, va)` gained the `va` parameter; the pure-text rules are
-unchanged, so existing category membership for the five MH-relevant categories is
-unaffected.
+unchanged, so the **text** classification of the five MH-relevant categories is
+unaffected. (The *region* promotion was later extended to those categories too — see
+the next section.)
 
 Verification:
 - Genuine identifiers survived: `icons_0`, `icons_1`, `cols_0`, `cols_1`, `extra_0`,
@@ -316,6 +323,63 @@ Verification:
   `dhx_to_PrivateKeyInfo_der_encode`, ...), which is what the strings actually are.
 - `test_pe_rva.py`, `test_settings_index.py`, `test_init_table.py`,
   `test_progress_svg.py` all pass after the change (see commit/run notes).
+
+## Update 2026-10-21 — the region rule now covers the Mega Hack-facing categories too
+
+The previous update applied the code-region rule to `mod-identifier` and `other` only.
+That left the five Mega Hack-facing categories holding rows that are provably
+library-internal: a string referenced **only** by functions at/above `0x1803A4EE0`
+cannot be a Mega Hack label, setting key, path, language key or format string, because
+no Mega Hack code ever names it.
+
+`scripts/classify_strings.py` now treats the region rule as a **promotion rule for every
+category except the Mega Hack-facing ones**. The protected set is explicit:
+
+```
+PROTECTED_CATEGORIES = (
+    "user-label", "format-string", "setting-key",
+    "file-path", "language-key", "ui-element",
+    "flag", "url", "api-path",
+)
+```
+
+A row in any other category whose referencing functions are **all** in the library
+region is reclassified `third-party`.
+
+Effect on the inventory — **415 rows moved**, and not one Mega Hack-looking name among
+them:
+
+| From | To | Rows |
+| ---- | -- | ---: |
+| `user-label` | `third-party` | 230 |
+| `format-string` | `third-party` | 184 |
+| `file-path` | `third-party` | 1 (`.dll`) |
+| `third-party` | `third-party` | — |
+| **total** | | **415** |
+
+Samples of what moved, all library text: `ANY PRIVATE KEY`, `PUBLIC KEY`,
+`ENCRYPTED PRIVATE KEY`, `PrivateKeyInfo` (OpenSSL); `keymgmt key type = %s but legacy
+type = EVP_PKEY_NONE` (OpenSSL); `calling fopen(%s, %s)` (c-ares); `DEK-Info: %s,`
+(OpenSSL).
+
+Verification, two independent angles:
+
+1. **Region check** — no row in any of the five Mega Hack-facing categories has all of
+   its referencing functions in the library region. Count: **0 leaks** in
+   `user-label`, `setting-key`, `file-path`, `language-key` and `format-string`.
+2. **Vocabulary check** — no row in `user-label`, `setting-key`, `file-path` or
+   `language-key` carries a library symbol stem (OpenSSL/zlib/libc++ prefixes) or a
+   library diagnostic. `format-string` has 13 rows that *look* like diagnostics
+   (`invalid colour {}`, `failed to hook {:#010x}, err {}`, `error ruleset for tag {}
+   not exist`, …), but each one is referenced only by Mega Hack's own functions
+   (`0x1800830D0`, `0x180090BC0`, `0x1800BDA10`, `0x180108A80`, `0x180108E70`,
+   `0x1801F8610`, `0x180204A60`, `0x180204F60`, `0x1802130E0` — all below
+   `0x1803A4EE0`). They are Mega Hack's own log messages, and they stay.
+3. **No Mega Hack vocabulary was swept away** — no `CHECKBOX_*`, `COLOUR_*`,
+   `OPTIONS_*`, `STATUS/*` or `V_*` name appears in `third-party`.
+
+This is the "check what is in a bucket, not how big it is" rule applied to the buckets
+the previous pass never opened: the five categories the M1 criterion actually names.
 
 ## Open questions
 

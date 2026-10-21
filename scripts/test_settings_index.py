@@ -34,7 +34,7 @@ from settings_index import (  # noqa: E402
 # Tags that were absent at some point and must never be again.
 PINNED_TAGS = {
     501: "getConfigVar<scalar>",
-    285: "second-registry accessor",  # 0x11d, the three-argument accessor
+    285: "getConfigVar<hackpro::Bytes>",  # 0x11d, the three-argument accessor
     309: "getConfigVar<int>",        # 0x135, Int accessor (FUN_18002e4c0)
     871: "getConfigVar<std::string>",  # 0x367, String accessor (FUN_18002d710)
 }
@@ -83,7 +83,7 @@ def check_splitter(failures: list[str]) -> None:
     )
     check(
         ACCESSORS["FUN_18002ee40"][0] == 2,
-        "second-registry accessor takes the tag third",
+        "hackpro::Bytes accessor takes the tag third",
     )
 
 
@@ -127,8 +127,8 @@ def check_tree(failures: list[str]) -> None:
         check(present, f"tag {tag:#x} present", "" if present else "MISSING")
         if present:
             check(
-                "second-registry" in rows[tag][0],
-                f"tag {tag:#x} is a second-registry tag",
+                "hackpro::Bytes" in rows[tag][0],
+                f"tag {tag:#x} is a hackpro::Bytes tag",
                 rows[tag][0],
             )
 

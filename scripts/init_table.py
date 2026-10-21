@@ -273,7 +273,10 @@ def main(argv: list[str] | None = None) -> int:
     out.parent.mkdir(parents=True, exist_ok=True)
     with out.open("w", encoding="utf-8", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=list(rows[0].keys()), delimiter="\t", lineterminator="\n")
-        w.writeheader()
+        # The header is a comment line, like every other index in this repo, so
+        # that "rows" means the same thing everywhere: `make_progress_svg.py`
+        # skips `#` lines, and a plain header row counted as data.
+        fh.write("# " + "\t".join(rows[0].keys()) + "\n")
         w.writerows(rows)
     print(f"wrote {len(rows)} rows to {out}")
 
