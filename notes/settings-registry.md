@@ -9,13 +9,17 @@ Several notes carried settings as bare numbers. This turns those into one table.
 
 ## Accessors
 
-Settings are read through three numeric accessors, all `(this, id)` shaped:
+Settings are read through six numeric accessors (two bool maps plus one per value
+type), all registry-in / tag-in shaped:
 
 | Accessor | Meaning | Evidence |
 | -------- | ------- | -------- |
-| `FUN_18008F420` | `getConfigVar<bool>` | returns `bool`; id 245 gates the New Best label |
-| `FUN_18002DE50` | `getFlag` | returns `bool`; ids 761/762 gate `cps` fields |
-| `FUN_180003D80` | `getConfigVar<scalar>` | result lands in `xmm0`; id 501 is a scale factor |
+| `FUN_18008F420` | `getConfigVar<bool>` (Map B) | returns `bool`; id 245 gates the New Best label |
+| `FUN_18002DE50` | `getFlag` / `getConfigVar<hackpro::Bool>` (Map A, type 0) | returns `bool`; ids 761/762 gate `cps` fields |
+| `FUN_18002E4C0` | `getConfigVar<int>` (Map A, type 1) | returns `__int64`; miss logs `hackpro::Int` |
+| `FUN_180003D80` | `getConfigVar<hackpro::Decimal>` (Map A, type 2) | result lands in `xmm0`; id 501 is a scale factor |
+| `FUN_18002D710` | `getConfigVar<std::string>` (Map A, type 3) | writes through an out-pointer; miss logs `hackpro::String` |
+| `FUN_18002EE40` | `getConfigVar<hackpro::Bytes>` (Map A, type 4) | out-pointer form; miss logs `hackpro::Bytes` |
 
 A fourth call form also exists: `FUN_18007CB60(manager, out, key)`. This is a **keyed lookup in
 an FNV-1a-64 chained hash map**, and it has been mislabelled twice here. Recorded once, settled
@@ -120,10 +124,11 @@ configuration namespace is a real, named concept in the registry.
 
 ```
 recovered functions    : 18825
-distinct tags          : 149
-total tag reads        : 192
-tag range              : 3..881
-accessors recognised   : 4  (FUN_18008F420 bool, FUN_18002DE50, FUN_180003D80 scalar,
+distinct tags          : 184
+total tag reads        : 233
+tag range              : 1..883
+accessors recognised   : 6  (FUN_18008F420 bool, FUN_18002DE50 flag, FUN_18002E4C0 int,
+                            FUN_180003D80 decimal, FUN_18002D710 string,
                             FUN_18002EE40 hackpro::Bytes)
 ```
 
@@ -826,6 +831,44 @@ save-data paths; see [references/](references/).
 
 These two stores are the reason M4's `best_runs.bin` work is a third, separate mechanism
 rather than an extension of either.
+
+## Closing the accessor gap (2026-10-21)
+
+- **Question** — is there a fifth accessor beyond the four already recognised, and does
+  it (they) change `_settings.tsv`?
+- **Method** — enumerated from the binary with `pe_disasm.py`, not assumed. Candidate
+  functions were those containing both FNV-1a-64 constants (`0xcbf29ce484222325`,
+  `0x100000001b3`), a `shl …, 4` bucket stride, an `and …, [base + 0x??]` mask load,
+  and a full-`uint64` key compare (`cmp …, qword ptr [… + 0x10]`) with a `+0x08`
+  chain walk. Two mask offsets occur in practice: `+0xd8` (Map A, the MSVC
+  `std::unordered_map` at object `+0x188`) and `+0x160` (Map B). Each candidate
+  was then checked against the recovered decompilation for a `hackpro::` type
+  literal on the miss path.
+- **Result** — two read accessors were missing, not one:
+  - `FUN_18002E4C0` (RVA `0x2E4C0`), `undefined8 (longlong, ulonglong)`,
+    type byte `1`, miss logs `hackpro::Int`. Called as
+    `FUN_18002e4c0(registry, tag)` (tag is the second argument).
+  - `FUN_18002D710` (RVA `0x2D710`), `undefined8 * (longlong, undefined8 *, ulonglong)`,
+    type byte `3`, miss logs `hackpro::String`. Called as
+    `FUN_18002d710(registry, out, tag)` (tag is the third argument, behind an
+    out-pointer).
+  Both are confirmed by the exported API wrappers
+  `getConfigVar<__int64>` (`0x180073F20`) and
+  `getConfigVar<std::basic_string<…>>` (`0x180074D10`), which resolve the name via
+  `FUN_18007CB60` and then call these accessors with the resulting tag.
+- **False positives ruled out** — the other Map A candidates with the same hash
+  shape are setters (`FUN_180004010`, `FUN_1800274C0`, `FUN_180027C30`,
+  `FUN_180027ED0`, `FUN_1800282A0`, `FUN_180040FC0`, `FUN_180041D60`,
+  `FUN_180042060`, `FUN_1800867B0`, `FUN_180086AD0`) and the Map B candidates
+  other than `FUN_18008F420` are not value readers. `FUN_18008F420` itself was
+  already recognised.
+- **Effect** — `ACCESSORS` in `scripts/settings_index.py` now has six entries.
+  Re-running the index raises distinct tags from 149 to 184 and total reads from
+  192 to 233. `scripts/test_settings_index.py` remains green; two pins were added
+  (309 → `getConfigVar<int>`, 871 → `getConfigVar<std::string>`).
+- **UNVERIFIED** — whether any of the 35 newly surfaced tags are themselves a
+  dispatch table rather than independent settings; the table alone cannot tell, per
+  the earlier correction in this file.
 
 ## Conclusion
 

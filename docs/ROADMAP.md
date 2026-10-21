@@ -79,7 +79,8 @@ Exit criteria:
       descriptors at all. Caveat: template argument scoping is not tracked in the demangler,
       so a minority of base names are approximations — the `mangled` column is authoritative.
 - [ ] Settings registry map: every key, its type, default, and the function that applies it.
-      **Mechanism mapped, contents relocated, one accessor still missing.** The registry
+      **Mechanism mapped, contents relocated, accessor list now complete (six accessors).**
+      The registry
       class, its `+0x128` `Config` base layout, the 64-bit `hackpro::Tag` key type, the
       tag↔name bijection, `tagFor` (`0x180072DF0`), `keyFor` (`0x180072E20`), the by-tag
       setter (`0x18008B490`) and the five value types are all mapped in

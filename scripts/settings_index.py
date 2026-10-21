@@ -48,6 +48,8 @@ ACCESSORS = {
     "FUN_18008f420": (1, "getConfigVar<bool>"),
     "FUN_18002de50": (1, "getFlag"),
     "FUN_180003d80": (1, "getConfigVar<scalar>"),
+    "FUN_18002e4c0": (1, "getConfigVar<int>"),
+    "FUN_18002d710": (2, "getConfigVar<std::string>"),
     "FUN_18002ee40": (2, "second-registry accessor"),
 }
 

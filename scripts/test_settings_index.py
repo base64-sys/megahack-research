@@ -35,6 +35,8 @@ from settings_index import (  # noqa: E402
 PINNED_TAGS = {
     501: "getConfigVar<scalar>",
     285: "second-registry accessor",  # 0x11d, the three-argument accessor
+    309: "getConfigVar<int>",        # 0x135, Int accessor (FUN_18002e4c0)
+    871: "getConfigVar<std::string>",  # 0x367, String accessor (FUN_18002d710)
 }
 
 # FUN_1801904F0 reads six consecutive tags into six locals; see
