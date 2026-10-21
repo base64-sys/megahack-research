@@ -169,7 +169,7 @@ These live in `scripts/`, so they exist on a fresh clone. Neither needs `samples
 | `ghidra_scripts/ExportAllFunctions.java` | Decompiles every function, one `.c` per function                   |
 | `resolve_wrappers.py`         | Map Mega Hack's 277 runtime hook sites to their real targets                |
 | `build_xref_index.py`         | Index every code-referenced string to the functions that name it            |
-| `settings_index.py`           | Index the settings registry: 149 read tags over four typed accessors         |
+| `settings_index.py`           | Index the settings registry: 184 read tags over six typed accessors         |
 | `build_callgraph.py`          | Build the call graph: 42,701 static edges over 16,204 functions              |
 | `rtti_index.py`               | Walk MSVC RTTI: 497 polymorphic classes, each anchored to its vtable VA       |
 | `decode_sso.py`               | Recover MSVC small-string literals the decompiler renders as typed locals    |
@@ -189,16 +189,15 @@ These live in `scripts/`, so they exist on a fresh clone. Neither needs `samples
 | `test_init_table.py`         | Pin those tables and the zero-caller counts; skips without a sample set       |
 | `test_settings_index.py`     | Pin the tag table and the argument splitter that has lost tags twice         |
 
-`_strings.tsv` splits 4,175 code-referenced strings into 17 categories — 980 of them Mega Hack's
-own snake_case identifiers, 77 its own UI widget names. Largest bucket is still `other` at **26%**
-(down from 33%), so M1's criterion is not yet met. See [notes/string-inventory.md](notes/string-inventory.md).
-
-`other` is now a characterised remainder rather than an unknown one: the bulk of it is OpenSSL
-ASN.1 field-name fragments (`gerprint`, `xcghash`, `ld-type`), SSO decoder artifacts, and flat
-uppercase identifiers such as `SHORTCUT_FRAME_STEPPER_PAUSE` that have no `/` segment. Those
-are named as open work rather than being swept into a category by a broad rule — an earlier
-generic snake_case rule put 78% of its bucket in the wrong place, which is worse than a small
-honest bucket.
+`_strings.tsv` splits 4,175 code-referenced strings into 17 categories. The string-inventory
+M1 criterion is now met: the five Mega Hack-relevant categories (user-visible labels, setting
+keys, file paths, language keys, format strings) are populated and VA-anchored. The residual
+`other` bucket is down to **8.5%** (353 rows) and is characterised rather than unknown: JSON
+keywords, CRT constants, version strings and SSO decoder artefacts. The OpenSSL mass that
+once polluted `mod-identifier` (974 of 980 rows) was reclassified to `third-party` by
+code-region evidence (boundary `0x1803A4EE0`), so `mod-identifier` now holds only Mega
+Hack's own identifiers (`icons_0`, `override_cols`, `player_ball`, ...). See
+[notes/string-inventory.md](notes/string-inventory.md).
 
 Those UI names and the numeric settings share **no** decompiled function, and that is now
 explained rather than open: the join happens at the **exported API boundary**.
@@ -270,7 +269,7 @@ Finding code by feature name is the practical bottleneck, so ten indexes exist:
 | ----- | ---: | ------- |
 | `_wrappers.tsv` | 277 | which function does this thunk actually call? |
 | `_xrefs.tsv` | 4,178 | which functions name this string? |
-| `_settings.tsv` | 153 | which tags are read, and by which accessor? |
+| `_settings.tsv` | 184 | which tags are read, and by which accessor? |
 | `_calls.tsv` / `_callers.tsv` | 42,701 | who calls what? |
 | `_rtti.tsv` | 497 | which classes exist, and where is each vtable? |
 | `_rtti_hierarchy.tsv` | 794 | what does each class derive from? |
@@ -346,9 +345,9 @@ the vtable that references it. It recovers Mega Hack's namespaces (`hackpro`, `c
 [notes/rtti-classes.md](notes/rtti-classes.md). It also recovers 794 distinct inheritance
 edges — `numBases` sits at `+8` in the hierarchy descriptor, not `+0` as MSVC documents.
 
-`_settings.tsv` is 149 distinct tag values read through four accessors — `FUN_18008F420`,
-`FUN_18002DE50`, `FUN_180003D80` and `FUN_18002EE40` — plus 4 keyed lookups through
-`FUN_18007CB60`. Those tags are
+`_settings.tsv` is 184 distinct tag values read through six accessors — `FUN_18008F420`,
+`FUN_18002DE50`, `FUN_180003D80`, `FUN_18002EE40`, `FUN_18002E4C0` and `FUN_18002D710` —
+plus 4 keyed lookups through `FUN_18007CB60`. Those tags are
 **64-bit `hackpro::Tag` values**, not small integers — the registry lives on
 `hackpro::BasicConfig`, tag names exist only in a runtime map, and the exported
 `hackpro::extensions::keyFor(Tag)` is the handle-to-name direction. The save file is keyed
