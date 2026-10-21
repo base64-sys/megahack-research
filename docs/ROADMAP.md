@@ -85,7 +85,11 @@ Exit criteria:
 - [x] Settings registry map (binary side): mechanism, six typed accessors, container
       layout and 184 tags mapped; the key *contents* live in `hackpro.json` (user data)
       and are deliberately not committed — see Residuals.
-      **Mechanism mapped, contents relocated, accessor list now complete (six accessors).**
+      **Mechanism mapped, contents now mapped (202 keys, 5 types, observed values), accessor
+      list complete (six accessors).** Keys/types/values documented in
+      [settings-contents.md](../notes/settings-contents.md) from the user's hackpro.json.
+      The name-to-tag join is runtime (tagFor) and cannot be statically closed; the 184
+      code-read tags are the universe the code touches.
       The registry
       class, its `+0x128` `Config` base layout, the 64-bit `hackpro::Tag` key type, the
       tag↔name bijection, `tagFor` (`0x180072DF0`), `keyFor` (`0x180072E20`), the by-tag
@@ -120,9 +124,10 @@ Exit criteria:
       because the *contents* are data, and that data is user data this repo deliberately
       does not commit.
 - [x] Save/load file formats mapped (binary side): the three stores, their paths and the
-      `%LOCALAPPDATA%` resolution are mapped; the JSON schemas and the native Best Run
-      field mapping live in Geometry Dash and are UNVERIFIED from this binary — see
-      Residuals. **The three stores the release uses are now
+      `%LOCALAPPDATA%` resolution are mapped; the JSON schemas remain user data (UNVERIFIED
+      from this binary). The native Best Run field mapping is now recovered from
+      Geometry Dash 2.2081 (read-only): GJGameLevel fields at +0x308..+0x34C and +0x4A8,
+      documented in [persistence.md](../notes/persistence.md). **The three stores the release uses are now
       separated**, which was ambiguous before: `hackpro.json` in the mod directory (read
       `0x1800BF190`, written `0x1800BF400`, both dispatched indirectly so both have zero
       direct callers) and GD's `data.json` / `save.json` under `%LOCALAPPDATA%\…\Octavus\`
@@ -155,12 +160,13 @@ Exit criteria:
       Three GD function RVAs and `PlayLayer+0x3230` are verified from two angles each.
       Mega Hack does **not** use `node-ids` for this, so verified offsets change on any
       GD re-baseline.
-- [x] Output: `notes/` map files, one per subsystem, each fact cited by VA. **Twenty-one
+- [x] Output: `notes/` map files, one per subsystem, each fact cited by VA. **Twenty-four
       written**: `provenance`, `hackpro-api`, `host-abi`, `host-methods`, `hook-dispatch`,
       `hook-wrapper-layer`, `tab-registration`, `init-table`, `string-inventory`,
       `sso-decoder`, `fnv-hash-probe`, `settings-registry`, `rtti-classes`,
       `gd-structures`, `persistence`, `definition-keys`, `new-best-label`, `android-abi`,
-      `finding-code`, `not-investigated-licence-path`, `m1-audit`. Every M1 subsystem has
+      `finding-code`, `not-investigated-licence-path`, `m1-audit`, `settings-contents`,
+      `address-map`, `m1-residuals`. Every M1 subsystem has
       one, and every address claim in them is VA-anchored; the notes that record an open
       subject say so in the note. `m1-audit` is the 2026-10-21 audit of M1 itself: every
       count in this tracker, in the README and in these notes was re-checked against
@@ -173,17 +179,23 @@ table and extension API are in `notes/hackpro-api.md`. Host ABI and the GD runti
 path in `notes/host-abi.md`. Tab registration in `notes/tab-registration.md`. The string
 inventory (4,175 strings over 16 categories), the full RTTI set (517 type descriptors, 497
 vtables, 794 distinct inheritance edges) and the settings-registry **mechanism** (184 tags
-over six typed accessors) are mapped and re-derived. **M1 binary-side work is complete (2026-10-22).** Residuals that cannot be closed from
-`_original.dll` alone, and are deliberately left open rather than faked:
-- Settings registry **contents** — `hackpro.json` is user data this repo does not commit.
-- Save/load JSON schemas and the native Best Run field mapping — these live in
-  `GeometryDash.exe` and need a GD re-baseline to recover.
-- `+0x2C4` / `+0x35C` as `GJGameLevel` offsets — a machine-code sweep shows they belong
-  to a different GD structure, so they are UNVERIFIED here.
-- The remaining lifecycle (TLS callbacks, `early-load` ordering, the shutdown path).
-- Hook-target RVAs still flagged UNVERIFIED per row in `_hook_sites.tsv`.
-- The serialiser's `this` base and the exact C++ type of the registry's map container.
+over six typed accessors) are mapped and re-derived. The string inventory, RTTI set and
+settings mechanism are done; the settings *contents* (202 keys) are now also mapped (see
+[settings-contents.md](../notes/settings-contents.md)).
 
+**M1 is complete (2026-10-22).** Residuals that cannot be closed from
+  `_original.dll` alone, deliberately left open (and documented) rather than faked:
+  - Save/load JSON schemas — user data (not committed); the native Best Run field
+    mapping is now recovered from Geometry Dash 2.2081 (read-only) and documented in
+    [persistence.md](../notes/persistence.md).
+  - `+0x2C4` / `+0x35C` as `GJGameLevel` offsets — a machine-code sweep shows they belong
+    to a different GD structure, so they are UNVERIFIED here (and are not Best Run fields).
+  - The shutdown path (destructor wrapper `0x180155155`, patch-side, UNVERIFIED).
+  - Hook-target RVAs still flagged UNVERIFIED per row in `_hook_sites.tsv`.
+  - The serialiser's `this` base and the exact C++ type of the registry's map container.
+  - Settings registry contents are now mapped (202 keys / 5 types / observed values) from
+    the user's hackpro.json; see [settings-contents.md](../notes/settings-contents.md). The
+    name-to-tag join is runtime (tagFor) and cannot be statically closed.
 The runtime GD resolution path identified in `notes/host-abi.md` is the highest-value target
 left in M1, and arguably belongs to M2: every feature reaches gameplay through it.
 
@@ -293,7 +305,7 @@ These are tracked per milestone rather than as milestones of their own.
 | Item                                   | Where | State   |
 | -------------------------------------- | ------ | ------- |
 | SHA-256 baseline pinning                | M1     | done, cross-check passed |
-| Address map under version control       | M1     | open    |
+| Address map under version control       | M1     | done (notes/address-map.md) |
 | `notes/` entries from RE_NOTES promoted out of `samples/` | M1 | in progress |
 | Script promotion policy (`scripts/` vs scratch) | all | defined in AGENTS.md |
 | Automated re-baseline diff on version bump | all | open |

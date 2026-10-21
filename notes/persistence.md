@@ -230,3 +230,47 @@ separate, GD-side question and is left as UNVERIFIED with this rationale.
   command. A substring that does not occur in the binary appears to be the worst case for
   its search. Prefer `_xrefs.tsv` for existence questions about known strings, and a direct
   byte scan when the question is "is this string present at all".
+## Native Best Run fields (GD 2.2081, read-only reference)
+
+Source: disassembly of GJGameLevel::savePercentage at RVA 0x16C8B0 in
+GeometryDash.exe 2.2081 (base 0x140000000), analysed read-only. Mega Hack never
+reads or writes these fields — it only vetoes the call via the savePercentage hook
+(RVA 0x16C8B0, registered in FUN_180199D10). The mapping below is GD's own schema.
+
+Fields on the GJGameLevel object (all dword unless noted), offsets relative to
+the object base:
+
+| Offset | R/W in savePercentage | Role (inferred) |
+| ------ | --------------------- | --------------- |
+| +0x308 | W | best-run value (set from r15d; written when a new best is recorded) |
+| +0x30C | W | paired value (+0x308-adjacent, written from a time-derived eax) |
+| +0x310 | W | (written from r15d) |
+| +0x314 | W | (written from eax + r15d) |
+| +0x318 | W | (written from a time-derived value) |
+| +0x31C | W | (written from ebx) |
+| +0x320 | W | (written, a composite hash-like value) |
+| +0x324 | W (byte) | (written from a byte) |
+| +0x328 | W | best end percent (normal mode) — written edi (clamped 0..100) on a new best |
+| +0x32C | W | time-derived value (+0x328-adjacent) |
+| +0x330 | W | +0x32C + edi |
+| +0x334 | R/W | (read at 0x14016CB5C, written at 0x14016CB93) |
+| +0x338 | R/W | (read at 0x14016CB62, written at 0x14016CB8B) |
+| +0x33C | W | (written edi) |
+| +0x340 | R/W | (read at 0x14016C98B, written at 0x14016C9C6) |
+| +0x344 | R/W | (read at 0x14016C991, written at 0x14016C9BE) |
+| +0x348 | W | (written edi) |
+| +0x34C | R/W | best value in practice mode (read at 0x14016C904, written at 0x14016C953) |
+| +0x4A8 | (string) | a std::string/record (lea rbp,[rsi+0x4a8], passed to a string-append helper) |
+
+Two parallel tracks are visible: +0x308..+0x330 and +0x334..+0x34C, selected by the
+practice-mode flag (r8b) and by the ebp < edi comparison at 0x14016C997. The exact
+semantic labels (which field is "best end percent" vs. "best start percent" vs. a time
+value) are inferred from write patterns and remain UNVERIFIED against GD's own
+serialization; a second GD-side function touching the same fields was not identified
+(levelComplete at 0x3A7A80 and resetLevel at 0x3B8EB0 touch different offsets).
+
+Mega Hack's own documented GJGameLevel offsets (+0x148, +0x14C, +0x158, +0x198,
++0x1B8) are different fields and are verified in Mega Hack's binary. +0x2C4 and +0x35C
+are not among the Best Run fields and, per the machine-code sweep in
+gd-structures.md, are not accessed on a GJGameLevel in Mega Hack's binary either — they
+live on a different GD structure (the host object at RVA 0x17B4A0).

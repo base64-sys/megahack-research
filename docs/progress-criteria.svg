@@ -66,7 +66,7 @@
 <text x="52.0" y="522.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#e6edf3">Geometry Dash structures Mega Hack touches documented with verified offsets</text>
 <rect x="30.0" y="539.0" width="12.0" height="12.0" fill="#3fb950" rx="3"/>
 <path d="M33 544.5 l2.5 2.5 l4.5 -5" fill="none" stroke="#0d1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="52.0" y="548.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#e6edf3">Output: notes/ map files, one per subsystem, each fact cited by VA. Twenty-one</text>
+<text x="52.0" y="548.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#e6edf3">Output: notes/ map files, one per subsystem, each fact cited by VA. Twenty-four</text>
 <line x1="28.0" y1="592.0" x2="872.0" y2="592.0" stroke="#30363d" stroke-width="1"/>
 <rect x="30.0" y="601.0" width="12.0" height="12.0" fill="#21262d" rx="3" stroke="#30363d" stroke-width="1"/>
 <text x="52.0" y="610.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#8b949e">Module entry and early-load path reconstructed as compiling C++. Root is</text>
@@ -109,5 +109,5 @@
 <text x="52.0" y="1160.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#8b949e">Cross-platform implementation compiles from one source tree.</text>
 <line x1="28.0" y1="1222.0" x2="872.0" y2="1222.0" stroke="#30363d" stroke-width="1"/>
 <text x="28.0" y="1236.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="10" fill="#8b949e">ticks are read from docs/ROADMAP.md — untick a box and this goes stale · image 2 of 4</text>
-<text x="872.0" y="1236.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">git cf68190</text>
+<text x="872.0" y="1236.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">git 5767efb</text>
 </svg>

@@ -244,3 +244,11 @@ target (operand only) or by replacing the instruction outright (opcode included)
 - A stale loop variable in a throwaway script printed `.reloc`'s section characteristics
   while labelling the output `.data`. Section characteristics in these notes were re-read
   directly and are `0xC0000040` (read/write) for `.data`.
+## Lifecycle (2026-10-22)
+
+- TLS callbacks: none — the PE TLS directory (AddressOfCallBacks at 0x18063F958)
+  is an empty (zero-terminated) array. Verified via pefile + pe_rva.
+- Early-load ordering: mapped in notes/tab-registration.md (geodeImplicitEntry
+  0x180072B60 -> tab registration + Import .dt action tag resolution).
+- Shutdown path: the destructor wrapper at 0x180155155 remains UNVERIFIED on the
+  release side (it is a patch-side symbol).

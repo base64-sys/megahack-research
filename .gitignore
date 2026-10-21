@@ -78,6 +78,7 @@ venv/
 
 # --- Long-run wrapper scratch --------------------------------------------------
 .oc/
+.opencode/
 
 # --- Watchdog runtime state ----------------------------------------------------
 # Generated worker, pid file and log. The script that writes them is tracked.

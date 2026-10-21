@@ -1058,3 +1058,16 @@ rather than an extension of either.
   `FUN_18002ee40(param_1,(vector<unsigned_int,std::allocator<unsigned_int>_> *)…)`, whose
   cast contains a comma. A naive split puts the tag one position later and reads it as
   `None`.
+
+## Contents (2026-10-22)
+
+The full key list, types and observed values are in [settings-contents.md](settings-contents.md):
+202 keys across five typed buckets (72 bool, 30 bytes, 26 decimal, 49 int, 25 string),
+plus 53 enabled hacks in the DEFAULT profile. These come from the user's hackpro.json
+(gitignored, user data); only keys/types/values are documented, never the file itself.
+
+The applying function for a given key is not statically recoverable: the name-to-tag join
+is built at runtime by tagFor (0x180072DF0) over the string-keyed FNV-1a-64 map at
+registry + 0x130. The 184 tags recovered by scripts/settings_index.py are the universe
+the code touches; the intersection with the 202 stored keys cannot be computed without
+executing tagFor against this install's hackpro.json.
