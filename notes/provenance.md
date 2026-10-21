@@ -250,5 +250,5 @@ target (operand only) or by replacing the instruction outright (opcode included)
   is an empty (zero-terminated) array. Verified via pefile + pe_rva.
 - Early-load ordering: mapped in notes/tab-registration.md (geodeImplicitEntry
   0x180072B60 -> tab registration + Import .dt action tag resolution).
-- Shutdown path: the destructor wrapper at 0x180155155 remains UNVERIFIED on the
+- Shutdown path: the release-side shutdown is atexit(FUN_180001370) (registered in FUN_180002320), which resets the CoreDirector vtables at 0x1808004D0 / 0x180800840 / 0x180800848 and frees two allocations. The patch-side wrapper at 0x180155155 is a separate (patch) symbol and remains UNVERIFIED on the release side. TLS callbacks: none (the PE TLS callback array at 0x18063F958 is empty).
   release side (it is a patch-side symbol).

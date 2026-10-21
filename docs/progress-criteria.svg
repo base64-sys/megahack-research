@@ -109,5 +109,5 @@
 <text x="52.0" y="1160.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="11" fill="#8b949e">Cross-platform implementation compiles from one source tree.</text>
 <line x1="28.0" y1="1222.0" x2="872.0" y2="1222.0" stroke="#30363d" stroke-width="1"/>
 <text x="28.0" y="1236.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="10" fill="#8b949e">ticks are read from docs/ROADMAP.md — untick a box and this goes stale · image 2 of 4</text>
-<text x="872.0" y="1236.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">git 9149edf</text>
+<text x="872.0" y="1236.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">git 7099a0a</text>
 </svg>

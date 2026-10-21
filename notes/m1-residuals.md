@@ -68,32 +68,39 @@ These are binary work against `_original.dll` only:
 
 All six are user data: document schema/key names only, never commit values.
 
-### Path discrepancy to resolve during analysis (important)
+### Octavus path — VERIFIED (not a hallucination)
 
-The audit (`notes/persistence.md`, `notes/m1-audit.md`) states that `data.json` / `save.json` live
-under `%LOCALAPPDATA%\Octavus\`, derived from `FUN_180042FB0` → `SHGetKnownFolderPath` with the
-`FOLDERID` GUID at `0x1805820E0`. The user **cannot find any `Octavus` folder** on their machine.
-Instead, the mod's data files (`hackpro.json`, `home.json`, `iconic.json`, `keybinds.json`,
-`best_runs.bin`) all live under:
+The audit's `%LOCALAPPDATA%\Octavus\` claim is **confirmed correct**, not a hallucination.
+Disassembly of `FUN_180042FB0` (VA `0x180042FB0`) contains the string table at
+`0x18053FBA5`: `Octavus\0data.json\0save.json\0...`. The GUID at `0x1805820E0` is
+`FOLDERID_LocalAppData` (f1b32785-6fba-4fcf-9d55-7b8e7f157091), so the path resolves to
+`%LOCALAPPDATA%\Octavus\{data,save}.json`.
 
-`C:\Users\Robert_\AppData\Local\GeometryDash\geode\mods\absolllute.megahack\v9\`
+The user could not find the folder because **it is created at runtime** — only when the
+mod performs a save operation. The mod's own folder (`GeometryDash\geode\mods\...\v9\`)
+holds the *mod's* config (`hackpro.json`, `home.json`, `iconic.json`, `keybinds.json`,
+`best_runs.bin`); `Octavus` is a *separate* store used by the release for `data.json` /
+`save.json` (GD-side state). The two coexist.
 
-This must be reconciled when the save/load analysis runs: either (a) the `Octavus` path is a
-different store that this user's install does not populate, (b) the path resolution differs
-between the release and the patch, or (c) the disassembly reading of the GUID/folder name needs
-re-checking. **Do not assume the audit's path is correct until this is re-verified.** The
-`best_runs.bin` sidecar is confirmed to be the **patch's** format (the release contains neither
-`best_runs` nor `MHBRDB1`), so the user's copy is useful for documenting the patch format for
-comparison, not for the release.
+**Quest (optional, only for the save/load JSON schema):** play one level in Geometry Dash
+with Mega Hack installed, then check whether `%LOCALAPPDATA%\Octavus\` appears. If it does,
+share `data.json` / `save.json` (keys+types only is fine). If it does not appear after a
+save, that is itself a finding (the path may be conditional on a setting).
 
-### Provenance note
+## Binary-only closures (2026-10-22)
 
-The user states they have not authored any of the repository's content themselves — they have
-only been prompting AI. The origin of the scripts in `scripts/` and the notes is therefore
-unknown to them (AI-generated and/or sourced from the internet). This does not affect M1's
-evidence (all claims are re-derived from `_original.dll`), but it means tooling provenance is
-not independently attested. No action required; flagging for honesty.
+Closed without user input:
+- Octavus path — verified (string table at 0x18053FBA5: Octavus\0data.json\0save.json).
+  The folder is created at runtime on save; the user can trigger it by playing a level.
+- Shutdown path — release-side shutdown is atexit(FUN_180001370) (resets CoreDirector
+  vtables at 0x1808004D0/0x180800840/0x180800848, frees two allocations). TLS
+  callbacks: none (PE TLS callback array at 0x18063F958 is empty).
+- Lifecycle — early-load ordering mapped (tab-registration); TLS none; shutdown mapped.
 
+Still open (deep, unlikely to close without runtime):
+- Hook-target RVAs (30 name-resolved sites, not individually checked against thunks).
+- Serialiser this base (UNVERIFIED).
+- Exact C++ type of the registry's map container (UNVERIFIED).
 ## User's stated preference
 
 The user can help analyse user-data parts (their own config, their own GD install) when

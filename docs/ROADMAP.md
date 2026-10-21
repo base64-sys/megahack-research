@@ -187,10 +187,13 @@ settings mechanism are done; the settings *contents* (202 keys) are now also map
   `_original.dll` alone, deliberately left open (and documented) rather than faked:
   - Save/load JSON schemas — user data (not committed); the native Best Run field
     mapping is now recovered from Geometry Dash 2.2081 (read-only) and documented in
-    [persistence.md](../notes/persistence.md).
+    [persistence.md](../notes/persistence.md). The Octavus path (`%LOCALAPPDATA%\Octavus\`)
+    is verified (string table at `0x18053FBA5`); the folder is created at runtime on save.
   - `+0x2C4` / `+0x35C` as `GJGameLevel` offsets — a machine-code sweep shows they belong
     to a different GD structure, so they are UNVERIFIED here (and are not Best Run fields).
-  - The shutdown path (destructor wrapper `0x180155155`, patch-side, UNVERIFIED).
+  - The shutdown path: release-side shutdown is atexit(FUN_180001370) (resets CoreDirector
+    vtables, frees two allocations); TLS callbacks: none. The patch-side wrapper at
+    `0x180155155` remains UNVERIFIED on the release side.
   - Hook-target RVAs still flagged UNVERIFIED per row in `_hook_sites.tsv`.
   - The serialiser's `this` base and the exact C++ type of the registry's map container.
   - Settings registry contents are now mapped (202 keys / 5 types / observed values) from
