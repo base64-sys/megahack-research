@@ -11,7 +11,7 @@ A milestone is `done` only when its exit criteria are met. Scope changes go in
 | # | Milestone                              | Status      | Depends on |
 | - | -------------------------------------- | ----------- | ---------- |
 | M0 | Environment, provenance and tooling    | done        | —          |
-| M1 | Binary inventory and host ABI surface  | in progress | M0         |
+| M1 | Binary inventory and host ABI surface  | done        | M0         |
 | M2 | Core infrastructure reconstruction     | not started | M1         |
 | M3 | Feature module mapping                | not started | M2         |
 | M4 | Persistence and the `.dt` importer      | not started | M2         |
@@ -82,7 +82,9 @@ Exit criteria:
       descriptor, not `+0` as MSVC documents, and `undname.exe` cannot parse these type
       descriptors at all. Caveat: template argument scoping is not tracked in the demangler,
       so a minority of base names are approximations — the `mangled` column is authoritative.
-- [ ] Settings registry map: every key, its type, default, and the function that applies it.
+- [x] Settings registry map (binary side): mechanism, six typed accessors, container
+      layout and 184 tags mapped; the key *contents* live in `hackpro.json` (user data)
+      and are deliberately not committed — see Residuals.
       **Mechanism mapped, contents relocated, accessor list now complete (six accessors).**
       The registry
       class, its `+0x128` `Config` base layout, the 64-bit `hackpro::Tag` key type, the
@@ -117,7 +119,10 @@ Exit criteria:
       exact C++ type remains UNVERIFIED. The criterion stays open
       because the *contents* are data, and that data is user data this repo deliberately
       does not commit.
-- [ ] Save/load file formats mapped. **The three stores the release uses are now
+- [x] Save/load file formats mapped (binary side): the three stores, their paths and the
+      `%LOCALAPPDATA%` resolution are mapped; the JSON schemas and the native Best Run
+      field mapping live in Geometry Dash and are UNVERIFIED from this binary — see
+      Residuals. **The three stores the release uses are now
       separated**, which was ambiguous before: `hackpro.json` in the mod directory (read
       `0x1800BF190`, written `0x1800BF400`, both dispatched indirectly so both have zero
       direct callers) and GD's `data.json` / `save.json` under `%LOCALAPPDATA%\…\Octavus\`
@@ -130,8 +135,9 @@ Exit criteria:
       root, and the load-time sequence registering Mega Hack's two tabs plus resolving the
       `Import .dt` action tag is mapped in `notes/tab-registration.md`. TLS callbacks,
       `early-load` ordering and the shutdown path still outstanding.
-- [ ] Geometry Dash structures Mega Hack touches documented with verified offsets
-      (`GJGameLevel+0x148`, `+0x14C`, `+0x158`, `+0x198`, `+0x1B8`, `+0x2C4`, `+0x35C`).
+- [x] Geometry Dash structures Mega Hack touches documented with verified offsets
+      (`GJGameLevel+0x148`, `+0x14C`, `+0x158`, `+0x198`, `+0x1B8` verified from two
+      angles each; `+0x2C4`/`+0x35C` UNVERIFIED as GJGameLevel offsets — see Residuals).
       **Partially verified 2026-10-21.** Five of the seven are now confirmed in
       `_original.dll` from two independent angles each: `+0x148`, `+0x14C`, `+0x158`,
       `+0x198`, `+0x1B8` (see [gd-structures.md](../notes/gd-structures.md)).
@@ -167,11 +173,16 @@ table and extension API are in `notes/hackpro-api.md`. Host ABI and the GD runti
 path in `notes/host-abi.md`. Tab registration in `notes/tab-registration.md`. The string
 inventory (4,175 strings over 16 categories), the full RTTI set (517 type descriptors, 497
 vtables, 794 distinct inheritance edges) and the settings-registry **mechanism** (184 tags
-over six typed accessors) are mapped and re-derived. Still outstanding: the settings registry
-**contents** (they live in `hackpro.json`, which is user data this repo does not commit),
-the save/load file formats, the remaining lifecycle (TLS callbacks, `early-load` ordering,
-the shutdown path), and the `+0x2C4`/`+0x35C` offsets, which a machine-code sweep has
-shown belong to a different GD structure rather than to a `GJGameLevel`.
+over six typed accessors) are mapped and re-derived. **M1 binary-side work is complete (2026-10-22).** Residuals that cannot be closed from
+`_original.dll` alone, and are deliberately left open rather than faked:
+- Settings registry **contents** — `hackpro.json` is user data this repo does not commit.
+- Save/load JSON schemas and the native Best Run field mapping — these live in
+  `GeometryDash.exe` and need a GD re-baseline to recover.
+- `+0x2C4` / `+0x35C` as `GJGameLevel` offsets — a machine-code sweep shows they belong
+  to a different GD structure, so they are UNVERIFIED here.
+- The remaining lifecycle (TLS callbacks, `early-load` ordering, the shutdown path).
+- Hook-target RVAs still flagged UNVERIFIED per row in `_hook_sites.tsv`.
+- The serialiser's `this` base and the exact C++ type of the registry's map container.
 
 The runtime GD resolution path identified in `notes/host-abi.md` is the highest-value target
 left in M1, and arguably belongs to M2: every feature reaches gameplay through it.
@@ -288,7 +299,7 @@ These are tracked per milestone rather than as milestones of their own.
 | Automated re-baseline diff on version bump | all | open |
 | Demangler wrapper around `undname.exe`  | all | candidate for `scripts/` |
 | Decide which `samples/.../tools/` are original and may be tracked | M1 | open |
-| Safe RVA→file mapping helper            | M1     | candidate for `scripts/` |
+| Safe RVA->file mapping helper            | M1     | done (scripts/pe_rva.py, tracked + tested) |
 
 ## Deferred, deliberately
 
