@@ -53,6 +53,47 @@ These are binary work against `_original.dll` only:
 5. **Address map under version control** (cross-cutting).
 6. **`samples/.../tools/` triage** (cross-cutting).
 
+## User's second batch of inputs (2026-10-22)
+
+### Additional files received (stored in `.oc/`, gitignored)
+
+| File | Size | Notes |
+| ---- | ---: | ----- |
+| `hackpro.json` | 13,258 B | second upload; same size as the first. User states there is **no separate "default"** — these values are the ones to treat as defaults. |
+| `home.json` | 587 B | mod data file from the v9 folder |
+| `iconic.json` | 13,727 B | mod data file from the v9 folder |
+| `keybinds.json` | 14,309 B | mod data file from the v9 folder |
+| `best_runs.bin` | 49,352 B | the **patch's** Best Run sidecar (not the release's format) |
+| `best_runs.bin.bak` | 49,352 B | backup of the above |
+
+All six are user data: document schema/key names only, never commit values.
+
+### Path discrepancy to resolve during analysis (important)
+
+The audit (`notes/persistence.md`, `notes/m1-audit.md`) states that `data.json` / `save.json` live
+under `%LOCALAPPDATA%\Octavus\`, derived from `FUN_180042FB0` → `SHGetKnownFolderPath` with the
+`FOLDERID` GUID at `0x1805820E0`. The user **cannot find any `Octavus` folder** on their machine.
+Instead, the mod's data files (`hackpro.json`, `home.json`, `iconic.json`, `keybinds.json`,
+`best_runs.bin`) all live under:
+
+`C:\Users\Robert_\AppData\Local\GeometryDash\geode\mods\absolllute.megahack\v9\`
+
+This must be reconciled when the save/load analysis runs: either (a) the `Octavus` path is a
+different store that this user's install does not populate, (b) the path resolution differs
+between the release and the patch, or (c) the disassembly reading of the GUID/folder name needs
+re-checking. **Do not assume the audit's path is correct until this is re-verified.** The
+`best_runs.bin` sidecar is confirmed to be the **patch's** format (the release contains neither
+`best_runs` nor `MHBRDB1`), so the user's copy is useful for documenting the patch format for
+comparison, not for the release.
+
+### Provenance note
+
+The user states they have not authored any of the repository's content themselves — they have
+only been prompting AI. The origin of the scripts in `scripts/` and the notes is therefore
+unknown to them (AI-generated and/or sourced from the internet). This does not affect M1's
+evidence (all claims are re-derived from `_original.dll`), but it means tooling provenance is
+not independently attested. No action required; flagging for honesty.
+
 ## User's stated preference
 
 The user can help analyse user-data parts (their own config, their own GD install) when
