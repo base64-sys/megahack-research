@@ -1,0 +1,11 @@
+{
+  "dependencies": {
+    "ecc-universal": "^2.2.3"
+  },
+  "devDependencies": {
+    "@opencode-ai/plugin": "^1.19.3"
+  },
+  "allowScripts": {
+    "msgpackr-extract@3.0.4": true
+  }
+}
