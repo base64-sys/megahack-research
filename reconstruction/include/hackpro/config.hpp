@@ -57,9 +57,12 @@ public:
     // Serialization
     std::string serializeJson() const;
     bool deserializeJson(std::string const& jsonStr);
+    bool loadFromFile(std::string const& path);
+    bool saveToFile(std::string const& path) const;
 
 private:
     mutable std::mutex m_mutex;
+    Tag internKeyLocked(std::string const& key);
 
     // Bi-directional key <-> tag interning
     std::unordered_map<std::string, Tag> m_keyToTag;

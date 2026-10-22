@@ -215,7 +215,7 @@ Exit criteria:
 - [ ] Module entry and `early-load` path reconstructed as compiling C++. Root is
       `geodeImplicitEntry` at `0x180072B60`, confirmed by disassembly — see
       [hackpro-api.md](../notes/hackpro-api.md).
-- [ ] Settings registry reconstructed: typed keys, defaults, load/save, and the boolean
+- [x] Settings registry reconstructed: typed keys, defaults, load/save, and the boolean
       setter that Mega Hack uses to intercept settings by tag. The exported shape is a
       string-keyed, typed config with five value types (`bool`, `double`, `int64`,
       `std::string`, `std::vector<unsigned int>`), interned `Tag` identity, and per-key typed

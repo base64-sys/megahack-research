@@ -141,6 +141,48 @@ void test_serialization() {
     std::cout << "ok    settings registry JSON serialization produces valid hackpro.json schema\n";
 }
 
+void test_json_round_trip() {
+    using namespace hackpro::extensions;
+    std::string const key = "test/json_round_trip";
+    setConfigVar<bool>(key, true);
+    setConfigVar<double>(key + "/double", 2.5);
+    setConfigVar<int64_t>(key + "/int", 99);
+    setConfigVar<std::string>(key + "/str", "roundtrip");
+    setConfigVar<std::vector<unsigned int>>(key + "/bytes", { 7, 8, 9 });
+
+    auto json = hackpro::Config::instance().serializeJson();
+    assert(json.find(key) != std::string::npos);
+    assert(hackpro::Config::instance().deserializeJson(json) == true);
+
+    assert(getConfigVar<bool>(key) == true);
+    assert(getConfigVar<double>(key + "/double") == 2.5);
+    assert(getConfigVar<int64_t>(key + "/int") == 99);
+    assert(getConfigVar<std::string>(key + "/str") == "roundtrip");
+    auto bytes = getConfigVar<std::vector<unsigned int>>(key + "/bytes");
+    assert(bytes.size() == 3 && bytes[1] == 8);
+
+    std::cout << "ok    settings registry JSON round-trips all five value types\n";
+}
+
+void test_action_intercept() {
+    using namespace hackpro::extensions;
+
+    bool triggered = false;
+    hackpro::Tag triggeredTag = hackpro::INVALID_TAG;
+    registerActionListener("IMPORT_DT_TEST", [&](hackpro::Tag tag) {
+        triggered = true;
+        triggeredTag = tag;
+    });
+
+    bool before = isHackEnabled("IMPORT_DT_TEST");
+    setHackEnabled("IMPORT_DT_TEST", true);
+    assert(triggered);
+    assert(triggeredTag != hackpro::INVALID_TAG);
+    assert(isHackEnabled("IMPORT_DT_TEST") == before);
+
+    std::cout << "ok    boolean setter intercepts action tags and leaves stored state untouched\n";
+}
+
 int main() {
     std::cout << "=== Running Mega Hack Reconstructed Core Tests ===\n";
     test_entry_point();
@@ -149,6 +191,8 @@ int main() {
     test_listeners();
     test_actions_and_definitions();
     test_serialization();
+    test_json_round_trip();
+    test_action_intercept();
     std::cout << "All core infrastructure reconstruction tests passed successfully!\n";
     return 0;
 }
