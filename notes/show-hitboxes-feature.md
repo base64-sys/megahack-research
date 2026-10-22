@@ -42,10 +42,14 @@ From [settings-contents.md](settings-contents.md):
 
 ## Evidence — UI registration
 
-- `FUN_180062940` (`0x180062940`) registers UI labels:
-  - `HACK_SHOW_HITBOXES`
-  - `HACK_SHOW_HITBOXES_ON_DEATH`
-  - `HACK_SHOW_HITBOXES_TRAIL`
+- `FUN_180062940` (`0x180062940`) is a static initializer that builds an 85-entry
+  `{label, integer}` map. The three Show Hitboxes labels and their values are:
+  - `HACK_SHOW_HITBOXES` = 192 (`0x0C0`)
+  - `HACK_SHOW_HITBOXES_ON_DEATH` = 216 (`0x0D8`)
+  - `HACK_SHOW_HITBOXES_TRAIL` = 224 (`0x0E0`)
+
+  The integers are **not established as settings tags** — see
+  [static-hack-label-map.md](static-hack-label-map.md).
 - Changelog features include:
   - "Selected Objects Only to Show Hitboxes"
   - "Show Hitboxes Hide Activated Objects option"

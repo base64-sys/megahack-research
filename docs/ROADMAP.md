@@ -254,6 +254,10 @@ Exit criteria:
       the criterion stays open. See [m3-validation.md](../notes/m3-validation.md).
 - [ ] Each feature mapped to its implementing function(s) with VAs, its settings keys, its
       default, and its interactions.
+      **New 2026-10-23:** 85 `HACK_*` names are statically enumerated in the CRT initializer
+      `FUN_180062940`, each paired with a small integer. That is a name list, not an
+      implementing function, and the integers are not established as settings tags, so the
+      criterion stays open. See [static-hack-label-map.md](../notes/static-hack-label-map.md).
 - [x] High-value clusters documented as patterns rather than 160 isolated notes: input
       hooks, render hooks, gameplay rewrites, UI add-ons, save-data features.
 - [ ] Reconstructed modules validated against release behaviour for the sampled clusters.

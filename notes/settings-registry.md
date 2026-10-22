@@ -974,6 +974,13 @@ rather than an extension of either.
    No static analysis of `_original.dll` can enumerate it. This closes M1's "where are the
    names" question by relocating it: the answer is in the shipped data, which is
    deliberately not committed.
+   **Correction 2026-10-23:** the observed `.oc/hackpro.json` (13,258 bytes) contains no
+   `"tag"` member anywhere; it stores typed buckets and a name-only `PROFILES/DEFAULT`
+   list. Either tags are assigned at load, or the `"tag"` field exists only in a different
+   release of the file. UNVERIFIED: where the numeric tags in `_settings.tsv` come from.
+   A separate static map of 85 `HACK_*` names exists in the binary
+   (`FUN_180062940`); see [static-hack-label-map.md](static-hack-label-map.md). It does not
+   supply the registry's tags — its integers are not established as `hackpro::Tag`.
 5. The public API is **string-in**: every exported `getConfigVar<T>`/`setConfigVar<T>` takes a
    `std::string`, resolves it with `tagFor` (`0x180072DF0`) to a `Tag`, then uses the
    numeric accessors. That is the bridge between the UI widget names and the numeric
@@ -993,6 +1000,25 @@ rather than an extension of either.
 10. Ids 501/502 and 445/446/447 are read as groups, which is where a session/global switch
     would most plausibly sit.
 11. Any index built from an assumed accessor list undercounts. Enumerate, do not assume.
+
+### Correction 2026-10-23 — a separate 85-entry static name map exists
+
+`FUN_180062940` (CRT static initializer, `_initterm` slot `0x18063F0C8`) builds an 85-entry
+`{std::string label; uint64_t value}` array and inserts it into the FNV-1a-64 map at
+`0x180800D78`. The labels are the `HACK_*` name segments of hack toggles, so the "no static
+analysis can enumerate it" line above is too strong **for those 85 names**.
+
+This does **not** recover the registry's name→tag join:
+
+- only 14 of the 85 values appear among the accessor-read tags in `_settings.tsv`;
+- `HACK_RESPAWN_TIME` is 245, while setting tag 245 suppresses the New Best label;
+- 10 of the 85 values coincide with the separately enumerated `FUN_180120A40` UI row ids;
+- no read site for `DAT_180800D78` exists in `_original.dll` (constructor, insert loop and
+  destructor only).
+
+UNVERIFIED: whether the values are `hackpro::Tag`s in a per-map tag space, UI row ids, or a
+third id space. The table is documented in full in
+[static-hack-label-map.md](static-hack-label-map.md).
 
 ## Open questions
 
@@ -1071,3 +1097,6 @@ is built at runtime by tagFor (0x180072DF0) over the string-keyed FNV-1a-64 map 
 registry + 0x130. The 184 tags recovered by scripts/settings_index.py are the universe
 the code touches; the intersection with the 202 stored keys cannot be computed without
 executing tagFor against this install's hackpro.json.
+
+The 85-entry static map in [static-hack-label-map.md](static-hack-label-map.md) does not
+change this: its integers are not established as registry tags, and its consumer is unknown.
