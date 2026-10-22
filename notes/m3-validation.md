@@ -28,8 +28,12 @@
 
 - Runtime comparison of reconstructed hook callbacks against the release's
   observable behaviour.
-- Per-feature settings-key and default mapping for the 389 changelog features.
-- Alias/dead classification for features absent from the current build.
+- Cluster-level accounting is now complete: every changelog feature row in
+  [feature-inventory.md](feature-inventory.md) is marked `mapped` with a link to
+  its cluster note (2026-10-23).
+- Per-feature settings-key and default mapping for the 389 changelog features
+  remains open.
+- Alias/dead classification for features absent from the current build remains open.
 
 ## Conclusion
 
