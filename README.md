@@ -15,13 +15,13 @@ for what "done" means and [AGENTS.md](AGENTS.md) for the rules that keep the wor
 Four generated graphics, each a different lens on the same work, because one number cannot
 portray progress honestly.
 
-![Overview](docs/progress.svg?raw=true)
+![Overview](docs/progress.svg)
 
-![Exit criteria](docs/progress-criteria.svg?raw=true)
+![Exit criteria](docs/progress-criteria.svg)
 
-![Research surface](docs/progress-indexes.svg?raw=true)
+![Research surface](docs/progress-indexes.svg)
 
-![Recent work](docs/progress-activity.svg?raw=true)
+![Recent work](docs/progress-activity.svg)
 
 **What each one shows**
 
