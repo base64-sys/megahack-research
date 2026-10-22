@@ -300,7 +300,7 @@ Deferred by design. Begins only when M4 is `done`.
 
 Exit criteria:
 
-- [ ] ARM64 `lib` mapped against the x86-64 map; divergences catalogued rather than assumed.
+- [x] ARM64 `lib` mapped against the x86-64 map; divergences catalogued rather than assumed.
 - [ ] Behaviour of the same features confirmed on device.
 - [ ] Cross-platform implementation compiles from one source tree.
 
