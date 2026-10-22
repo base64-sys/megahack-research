@@ -303,6 +303,12 @@ Exit criteria:
 - [x] ARM64 `lib` mapped against the x86-64 map; divergences catalogued rather than assumed.
 - [ ] Behaviour of the same features confirmed on device.
 - [ ] Cross-platform implementation compiles from one source tree.
+      **Partially verified 2026-10-23:** `reconstruction/` builds and its nine behavioural
+      checks pass under MinGW-W64 g++ 16.2.0 (C++20, Ninja), and a source scan finds no
+      Windows API use — the only platform branch is the visibility macro in
+      `include/hackpro/types.hpp`. This rules out an MSVC-only tree but still targets
+      Windows; an NDK/aarch64 build is outstanding. See
+      [portable-build.md](../notes/portable-build.md).
 
 ## Cross-cutting work
 
