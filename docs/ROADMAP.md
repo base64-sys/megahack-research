@@ -220,7 +220,7 @@ Exit criteria:
       string-keyed, typed config with five value types (`bool`, `double`, `int64`,
       `std::string`, `std::vector<unsigned int>`), interned `Tag` identity, and per-key typed
       change listeners — see [hackpro-api.md](../notes/hackpro-api.md#what-the-signatures-imply).
-- [ ] `nxUI` menu reconstructed well enough to explain how rows, tags and languages
+- [x] `nxUI` menu reconstructed well enough to explain how rows, tags and languages
       interact — including why a packed interface has no spare row and a definition hook
       substitutes a label per language dictionary load.
 - [ ] Hook dispatch mechanism recovered, so new hooks are mechanical rather than bespoke.
