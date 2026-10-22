@@ -288,7 +288,7 @@ Exit criteria:
 - [x] `hackpro.json` read/write lifecycle mapped: which of `FUN_1800BF190` /
       `FUN_1800BF400` are called from where, given both have zero direct callers.
 - [x] The `%LOCALAPPDATA%` -> `Octavus` path segment resolved.
-- [ ] Native `Import .dt` action reproduced end to end: `GetOpenFileNameW` wrapper,
+- [x] Native `Import .dt` action reproduced end to end: `GetOpenFileNameW` wrapper,
       importer dispatch at `0x180027C30`, tag resolution at `0x1800023DC`, label
       substitution at `0x180098868`, cancel-is-a-no-op.
 - [ ] Reconstructed persistence code validated against release behaviour on the sampled
