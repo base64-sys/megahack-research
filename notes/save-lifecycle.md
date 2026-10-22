@@ -58,11 +58,14 @@ FUN_1801462c0(param_1, param_2, param_3, param_4);   // original
 ### `postUpdate` — `FUN_1801992B0`, 317 bytes
 
 - VA `0x1801992B0`, RVA `0x1992B0`.
-- It calls the original `FUN_1801A37C0`, then, only when the gate conditions hold,
+- It calls the original `FUN_1801A37C0`, then, when the three in-level conditions hold,
   accumulates frame time into `DAT_18080CB70` and (when `DAT_18080CB68 == 1`)
-  `DAT_18080CB78`, plus a small per-frame vector at `DAT_18080CB50`.
-- `DAT_18080CB68` is cleared every frame and is a one-frame-delayed copy of
-  `DAT_18080CB69`; no assignment to `1` appears in the recovered tree.
+  `DAT_18080CB78`; the checkpoint vector at `DAT_18080CB50` gets an entry on the first
+  frame of a cheat segment, and its last entry is updated on the first clean frame after
+  one.
+- At the end of the frame it sets `DAT_18080CB69 = DAT_18080CB68` and then clears
+  `DAT_18080CB68`; the delayed copy is `CB69`, not `CB68`. No assignment of `1` appears in
+  the recovered tree.
 - No file I/O occurs here. The "postUpdate" flush point in the release is the
   anti-cheat progress accounting, not a disk write.
 

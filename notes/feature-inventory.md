@@ -13,10 +13,21 @@
 | `mapped` | The feature has its own evidence: a note that names it, its settings key(s) and default, and/or its implementing function(s) with VAs. |
 | `alias` / `dead` | A restatement of an earlier feature / absent from this build, with the evidence for that call. |
 
-All 389 rows below are `cluster` as of 2026-10-23. **None are `mapped` in the sense
-above.** A keyword check finds that **185 of 389** rows point at a note that never
-mentions the feature at all, so for those even the cluster assignment is only a lead.
-The method and the measured gap are recorded in [m3-validation.md](m3-validation.md).
+All 389 rows below were `cluster` at the 2026-10-23 baseline. Three now have per-feature
+evidence and are `mapped`: **Added Safe Mode**, **Added Auto Safe Mode** and **Added
+Disable Progress to Noclip** (see below). The other 386 remain `cluster`. A keyword check
+at the baseline found that **185 of 389** rows point at a note that never mentions the
+feature at all, so for those even the cluster assignment is only a lead. That count
+predates the three promotions; the method is recorded in
+[m3-validation.md](m3-validation.md).
+
+## Mapped rows
+
+| Feature | Evidence |
+| --- | --- |
+| Added Safe Mode | tag 482 (`0x1E2`, `HACK_SAFE_MODE`) read by `FUN_18019B5F0`; the gate vetoes `GJGameLevel::savePercentage` (`FUN_180199DF0`) and marks `PlayLayer::levelComplete` (`FUN_180199E30`). See [safe-mode-feature.md](safe-mode-feature.md). |
+| Added Auto Safe Mode | tag 481 (`0x1E1`, `HACK_AUTO_SAFE_MODE`) plus `DAT_18080CBD8`, the `hasCheatedInAttempt` cache refreshed by `FUN_18019B330` after `resetLevel` (`FUN_180199E80`). See [safe-mode-feature.md](safe-mode-feature.md). |
+| Added Disable Progress to Noclip | tag 73 (`0x49`, `CHECKBOX_NOCLIP_DISABLE_PROGRESS`) enters the same gate when `FUN_180199520() < 1.0`; the progress accumulators are in `FUN_1801992B0`. See [noclip-feature.md](noclip-feature.md). |
 
 | Version | Feature (changelog wording) | Status | Notes |
 | --- | --- | --- | --- |
@@ -225,8 +236,8 @@ The method and the measured gap are recorded in [m3-validation.md](m3-validation
 | v8.0.0-alpha5 | Added StartPos Switcher interface | cluster | [startpos-switcher-feature.md](startpos-switcher-feature.md) |
 | v8.0.0-alpha5 | Added Hide Interface to StartPos Switcher | cluster | [startpos-switcher-feature.md](startpos-switcher-feature.md) |
 | v8.0.0-alpha5 | Added Inject DLL | cluster | [ui-addons.md](ui-addons.md) |
-| v8.0.0-alpha4 | Added Safe Mode | cluster | [safe-mode-feature.md](safe-mode-feature.md) |
-| v8.0.0-alpha4 | Added Auto Safe Mode | cluster | [safe-mode-feature.md](safe-mode-feature.md) |
+| v8.0.0-alpha4 | Added Safe Mode | mapped | [safe-mode-feature.md](safe-mode-feature.md) |
+| v8.0.0-alpha4 | Added Auto Safe Mode | mapped | [safe-mode-feature.md](safe-mode-feature.md) |
 | v8.0.0-alpha4 | Added Platformer Practice | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v8.0.0-alpha4 | Added Trail Cutting | cluster | [render-hooks.md](render-hooks.md) |
 | v8.0.0-alpha4 | Added Zero Delay | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
@@ -234,7 +245,7 @@ The method and the measured gap are recorded in [m3-validation.md](m3-validation
 | v8.0.0-alpha4 | Added Slider Bypass | cluster | [ui-addons.md](ui-addons.md) |
 | v8.0.0-alpha4 | Added No Trail | cluster | [render-hooks.md](render-hooks.md) |
 | v8.0.0-alpha4 | Added No Wave Pulse | cluster | [render-hooks.md](render-hooks.md) |
-| v8.0.0-alpha4 | Added Disable Progress to Noclip | cluster | [noclip-feature.md](noclip-feature.md) |
+| v8.0.0-alpha4 | Added Disable Progress to Noclip | mapped | [noclip-feature.md](noclip-feature.md) |
 | v8.0.0 (initial release) | Added Profiles | cluster | [ui-addons.md](ui-addons.md) |
 | v8.0.0 (initial release) | Added Mouse 4 & 5 Support to Keybinds | cluster | [input-hooks.md](input-hooks.md) |
 | v8.0.0 (initial release) | Added Controller Support to Keybinds | cluster | [input-hooks.md](input-hooks.md) |

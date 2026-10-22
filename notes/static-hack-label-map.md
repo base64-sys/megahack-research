@@ -31,7 +31,7 @@ The function does not stop there. At `0x180064993` it registers the first map's 
 then builds a **second 21-entry table** and inserts it into the adjacent map at
 `0x180800DB8` (ctor `0x180049D20`; insert `0x18004A030`, called 21 times from
 `0x1800651A1` to `0x1800653B4`; destructor `0x180042910` registered at `0x180065420`).
-That second map is the `OPTIONS_BOOL` default table; see below.
+That second map is the `OPTIONS_BOOL` name→tag table; see below.
 
 The 85-entry map is **not dead data**. `FUN_180043970` (the profile loader) probes its
 internals directly — sentinel `DAT_180800D80`, bucket table `DAT_180800D90`, mask
@@ -132,7 +132,7 @@ setter `FUN_18008B490` with the node's value at `+0x30` and the profile's flag
 | 83 | `HACK_WAVE_TRAIL_FIX` | 411 | `0x19b` | `0x180064855` |
 | 84 | `HACK_WAVE_TRAIL_ON_DEATH` | 419 | `0x1a3` | `0x1800648BF` |
 
-## Second table: 21 `OPTIONS_BOOL` defaults
+## Second table: 21 `OPTIONS_BOOL` name→tag entries
 
 The cleanup loop at `0x1800653B9`-`0x1800653EE` walks this table backwards in `0x28` steps,
 starting at `rbx=0x320` and ending after the entry at `rbp-0x60`, which is 21 entries
@@ -178,8 +178,13 @@ transcription mistake.
 `OPTIONS_BOOL` to `FUN_180045800` at `0x180043DFA` (literal at `0x18053FBFB`, length 12).
 The same block routes `OPTIONS_BYTES` (`0x180800DF8`), `OPTIONS_FLOAT` (`0x180800E38`) and
 `OPTIONS_INT`/`OPTIONS_UINT` (both `0x180800E78`) to their loaders; the bool/bytes/float/int
-maps sit 0x40 bytes apart. So `0x180800DB8` is the default boolean-option map, not a UI row
-list.
+maps sit 0x40 bytes apart. So `0x180800DB8` is the boolean-option **name→tag map** consumed
+by the `OPTIONS_BOOL` loader, not a UI row list and not a tag→default table.
+`FUN_180045800` iterates the section's name→bool entries, looks each name up in this map,
+and calls `setConfigVar<bool>(tag, value)` (`FUN_180027C30`): the map supplies the tag, the
+section supplies the value. Whether that section is the shipped defaults or a persisted
+profile is UNVERIFIED; the sampled `.oc/hackpro.json` uses `V_BOOL` and has no
+`OPTIONS_BOOL` key.
 
 The values corroborate it: 19 of the 21 ids appear in `_settings.tsv` with accessor
 `getConfigVar<bool>` (Map A, `FUN_18002DE50`). The two absent ids (236, 225) are not read
@@ -235,11 +240,11 @@ through the six indexed accessors, which is consistent with the index's known un
   (`0x180049131`) and the mask `7` at `[map+0x30]` (`0x1800490DB`).
 - **The second map does have a reader.** The profile loader `FUN_180043970` references
   `0x180800DB8` at `0x180043DEB` and passes it with the `OPTIONS_BOOL` literal, which is
-  independent evidence that the 21-entry table is a live default map, not dead data.
+  independent evidence that the 21-entry table is a live name→tag map, not dead data.
 
 ## What is the integer? Two maps, both resolved
 
-The 21-entry `OPTIONS_BOOL` table is the **Map A** config-value default map. 19/21 values
+The 21-entry `OPTIONS_BOOL` table is the **Map A** config-value name→tag map. 19/21 values
 are read by `FUN_18002DE50`, which disassembly shows is the accessor behind the exported
 `getConfigVar<bool>` (`0x180073880` → `0x1800738BF`). The settings index labels that
 function `getConfigVar<bool>` (the old `getFlag` label was the swap, corrected 2026-10-23).

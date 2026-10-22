@@ -28,12 +28,14 @@
 
 - Runtime comparison of reconstructed hook callbacks against the release's
   observable behaviour.
-- Cluster assignment exists but is only a lead: all 389 changelog rows in
-  [feature-inventory.md](feature-inventory.md) are status `cluster`, not `mapped`.
-  A keyword check finds **185 of 389** rows whose linked note never mentions the
-  feature at all (method below).
-- Per-feature settings-key and default mapping for the 389 changelog features
-  remains open.
+- Cluster assignment exists but is only a lead for most rows: 386 of the 389 changelog
+  rows in [feature-inventory.md](feature-inventory.md) are status `cluster`; 3 are
+  `mapped` (Safe Mode, Auto Safe Mode, Disable Progress to Noclip). The keyword check
+  found **185 of 389** rows whose linked note never mentioned the feature at the
+  baseline (method below); that count predates the three promotions.
+- Per-feature settings-key and default mapping for the remaining 386 rows remains open.
+  The 3 mapped rows have tags and code VAs, but their JSON keys and shipped defaults are
+  not all confirmed.
 - Alias/dead classification for features absent from the current build remains open.
 
 ### Cluster-assignment check (2026-10-23)

@@ -86,7 +86,7 @@ Two independent angles confirm each RVA, and both are needed because either alon
 
 | GD method | RVA | Angle 1: registration passes it | Angle 2: thunk reads it back |
 | --------- | --: | -------------------------------- | --------------------------- |
-| `PlayLayer::resetLevel` | `0x3B8EB0` | `FUN_180199D10` | `FUN_1801A4300`, 24 callers |
+| `PlayLayer::resetLevel` | `0x3B8EB0` | `FUN_180199D10`, `FUN_1801990B0` | `FUN_1801A4300`, 24 callers |
 | `PlayLayer::levelComplete` | `0x3A7A80` | `FUN_180199D10` | `FUN_1801A5190`, 2 callers |
 | `GJGameLevel::savePercentage` | `0x16C8B0` | `FUN_180199D10` | `FUN_1801462C0`, 1 caller |
 
@@ -129,6 +129,10 @@ void FUN_180199e80(void) {
 No guard, no state, no re-entrancy. It calls the original first, then its own work. This is
 the cleanest possible example of the pattern a reconstruction has to match.
 
+A second `resetLevel` hook, `FUN_180199250`, is registered by `FUN_1801990B0`; it calls
+the same original and then clears the progress accumulators. It does not consult the gate.
+See [safe-mode-feature.md](safe-mode-feature.md).
+
 **`FUN_180199DF0`**, the `GJGameLevel::savePercentage` hook — 64 bytes:
 
 ```
@@ -156,29 +160,30 @@ FUN_1801a5190(param_1);
 
 `PlayLayer+0x3230` is a **one-byte re-entrancy flag** Mega Hack sets around the original
 `levelComplete`, so its own callbacks fired by that original can tell they are running
-inside it. `FUN_18019B5F0()` is the shared predicate that gates all three hooks.
+inside it. `FUN_18019B5F0()` is the predicate consulted by this wrapper and the
+`savePercentage` wrapper; the `resetLevel` wrappers do not call it.
 
 **Verified GD structure offset: `PlayLayer + 0x3230`.** Derived from the load/store pair
 above, not from any struct layout assumption.
 
 ## The shared gate, `FUN_18019B5F0`
 
-`FUN_18019B5F0`, VA `0x18019B5F0`, 117 bytes, 2 callers — the predicate all three hooks
-consult. Read in full it is the mod's anti-cheat check, and it is short enough to state
-exactly:
+`FUN_18019B5F0`, VA `0x18019B5F0`, 117 bytes, 2 callers — the predicate consulted by the
+`savePercentage` and `levelComplete` wrappers. The two `resetLevel` wrappers do not call
+it. Read in full it is the mod's progress-validity check:
 
 ```
 lVar2 = FUN_1801acdb0();                       // 50 callers
 if (lVar2 != 0) {                              // ...there is a current level
     uVar3 = FUN_18008a510();
     if (FUN_18008f420(uVar3, 0x1e2))  goto ACTIVE;                  // HACK_SAFE_MODE (482)
-    if (FUN_18008f420(uVar3, 0x1e1) && DAT_18080cbd8) goto ACTIVE; // HACK_AUTO_SAFE_MODE (481) + safe mode
-    if (FUN_18002de50(uVar3, 0x49) && FUN_180199520() >= 1.0) goto ACTIVE;
+    if (FUN_18008f420(uVar3, 0x1e1) && DAT_18080cbd8) goto ACTIVE; // HACK_AUTO_SAFE_MODE (481) + hasCheatedInAttempt
+    if (FUN_18002de50(uVar3, 0x49) && FUN_180199520() < 1.0) goto ACTIVE; // CHECKBOX_NOCLIP_DISABLE_PROGRESS (73)
 }
 return INACTIVE;
 ```
 
-with no current level meaning **inactive**, so the hooks pass GD's original through
+with no current level meaning **inactive**, so the wrappers pass GD's original through
 untouched.
 
 Its three parts:
@@ -186,25 +191,29 @@ Its three parts:
 - `FUN_1801ACDB0` (VA `0x1801ACDB0`, 21 bytes, **50 callers**) is
   `*(thunk_FUN_180147BA0() + 0x208)` — the current level pointer, with the null test being
   the "not in a level" guard.
-- `DAT_18080CBD8` is a cached safe-mode flag. `FUN_18019B330`, VA `0x18019B330`, 20 bytes,
-  one caller, is the whole writer:
-  `DAT_18080CBD8 = mega::utils::safe_mode::areCheatsEnabled();`
-  and it runs after **every** `resetLevel`, because `FUN_180199E80` calls it. So safe mode
-  is re-evaluated once per level start, not per frame.
+- `DAT_18080CBD8` is the `hasCheatedInAttempt` cache, not a live safe-mode flag:
+  `hasCheatedInAttempt` (VA `0x18019B5A0`) is an 8-byte getter that returns it.
+  `FUN_18019B330` (VA `0x18019B330`, 20 bytes, one caller) refreshes it after **every**
+  `resetLevel`, because `FUN_180199E80` calls it. Two other writers exist:
+  `FUN_18019B2F0` refreshes it on a ruleset change, and `FUN_18019B670` ORs it with
+  `areCheatsEnabled()` as a latch. The cache is therefore "were cheats enabled at the
+  last reset, or has the latch fired", not a per-frame query.
 - `FUN_180199520` (VA `0x180199520`, 58 bytes) is a two-global float expression:
-  `(1.0 - DAT_18080cb78 / DAT_18080cb70)` when `DAT_18080cb70 > 0.0`, else `1.0`. It is a
-  **progress fraction** built from two `double` globals, and the gate fires when it reaches
-  `1.0`.
+  `(1.0 - DAT_18080cb78 / DAT_18080cb70)` when `DAT_18080cb70 > 0.0`, else `1.0`. It is
+  the **non-cheat share** of level time, built from the total and cheat-attributed
+  accumulators in `FUN_1801992B0`. The gate fires when it is **below** `1.0`, i.e. on any
+  cheat-attributed frame; an earlier draft had the comparison inverted and read the
+  denominator-zero `1.0` as a 100% cheat share.
 
 `mega::utils::safe_mode::areCheatsEnabled` is one of the 30 exported symbols
 (VA `0x18019B350`), so this whole scheme is reachable from other mods through the
 extension API.
 
-UNVERIFIED: what the two progress globals at `DAT_18080CB70` / `DAT_18080CB78` measure, and
-why `>= 1.0` is the trigger rather than `>= 100.0` or a fraction of one. The expression
-yields `1.0` both when the denominator is zero and when the numerator equals it, so at least
-two different states collapse onto the same value and the comparison is disambiguating
-between them by exclusion.
+The two accumulators are now identified: `DAT_18080CB70` is the total level time and
+`DAT_18080CB78` the time attributed to `DAT_18080CB68 == 1`, both fed by the frame delta
+in `FUN_1801992B0` (`PlayLayer::postUpdate`). UNVERIFIED: what sets
+`DAT_18080CB68 = 1`; only `FUN_1801992B0` and `FUN_180199250` write the flag in the
+recovered tree, and both write 0.
 
 ## The complete hook surface
 
@@ -309,25 +318,26 @@ The value lives in `hackpro.json`, which this repo does not read.
   bespoke"**: this is the mechanism. Registering a hook is
   `(resolver, targetFromGDBase(rva), callback, name, -32, 1)` under a `TulipConvention`,
   and calling a GD original is `FUN_1801A33C0(FUN_18010DDC0() + rva)`.
-- **M3**: `FUN_18019B330` (called after every `resetLevel`) and `FUN_18019B5F0` (the shared
-  predicate) are the two chokepoints through which most feature code must pass. Mapping
-  their callers is likely the cheapest route into the 160+ feature modules.
+- **M3**: `FUN_18019B330` (called after every `resetLevel`) and `FUN_18019B5F0` (the
+  two-caller progress gate) are the safe-mode/progress chokepoints. Mapping their callers
+  is a route into the progress side of the feature set, not into "most feature code"; the
+  gate has only the two hook wrappers.
 
 ## Open questions
 
 - The two progress globals in `FUN_18019B5F0`: `DAT_18080CB70` accumulates every
   `param_2` delta passed to `FUN_1801992B0`, and `DAT_18080CB78` accumulates the same
-  delta only while `DAT_18080CB68 == 1` (safe-mode/cheat-active). `FUN_180199250`
-  (called from the `resetLevel` hook `FUN_180199E80`'s follow-up path) zeroes both at
-  level start. `FUN_180199520` returns `1.0 - cb78/cb70` when `cb70 > 0`, else `1.0`,
-  and `FUN_180199560` multiplies the same expression by `100.0`. The gate therefore fires
-  when the cheat-attributed share of total progress reaches 100%. `param_2` is the float
-  delta passed to the `PlayLayer::postUpdate` hook, i.e. frame time, so the globals
-  accumulate time spent in cheat-attributed frames. `DAT_18080CB68` is cleared every frame in
-  `FUN_1801992B0` and is a one-frame-delayed copy of `DAT_18080CB69`; no assignment to
-  `1` appears in the recovered tree, so its setter is not in the recovered set (or is
+  delta only while `DAT_18080CB68 == 1`. `FUN_180199250` is a second `resetLevel` hook
+  (registered by `FUN_1801990B0`, not called from `FUN_180199E80`) and zeroes both at
+  level start. `FUN_180199520` returns `1.0 - cb78/cb70` when `cb70 > 0`, else `1.0`;
+  `FUN_180199560` multiplies the same expression by `100.0`. The gate therefore fires
+  when the non-cheat share falls below 1.0, i.e. on any cheat-attributed frame. `param_2`
+  is the float delta passed to the `PlayLayer::postUpdate` hook, i.e. frame time.
+  `FUN_1801992B0` clears `DAT_18080CB68` every frame and copies it to `DAT_18080CB69`, so
+  `CB69` is the one-frame-delayed copy, not the other way round. No assignment of `1` to
+  `CB68` appears in the recovered tree, so its setter is not in the recovered set (or is
   reached through a pointer). UNVERIFIED: what sets `DAT_18080CB68` and whether it is the
-  safe-mode-active flag.
+  cheat-attributed-frame marker.
 - (Resolved 2026-10-20.) `FUN_1800AB850` versus `FUN_18019A0C0`: both call
   `createConvention` then register, but they are different helper variants distinguished by
   callback signature/arity, not by semantics. `FUN_18019A0C0` is the variant used by
