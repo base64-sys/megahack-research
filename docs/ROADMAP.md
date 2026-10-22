@@ -15,7 +15,7 @@ A milestone is `done` only when its exit criteria are met. Scope changes go in
 | M2 | Core infrastructure reconstruction     | done        | M1         |
 | M3 | Feature module mapping                | in progress | M2         |
 | M4 | Persistence and the `.dt` importer      | done        | M2         |
-| M5 | Android ARM64 parity                   | not started | M4         |
+| M5 | Android ARM64 parity                   | in progress | M4         |
 
 ### M0 â€” Environment, provenance and tooling (done)
 
@@ -294,7 +294,7 @@ Exit criteria:
 - [x] Reconstructed persistence code validated against release behaviour on the sampled
       stores.
 
-### M5 â€” Android ARM64 parity (not started)
+### M5 â€” Android ARM64 parity (in progress)
 
 Deferred by design. Begins only when M4 is `done`.
 
