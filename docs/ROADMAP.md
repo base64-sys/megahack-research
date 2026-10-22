@@ -13,7 +13,7 @@ A milestone is `done` only when its exit criteria are met. Scope changes go in
 | M0 | Environment, provenance and tooling    | done        | —          |
 | M1 | Binary inventory and host ABI surface  | done        | M0         |
 | M2 | Core infrastructure reconstruction     | done        | M1         |
-| M3 | Feature module mapping                | not started | M2         |
+| M3 | Feature module mapping                | in progress | M2         |
 | M4 | Persistence and the `.dt` importer      | not started | M2         |
 | M5 | Android ARM64 parity                   | not started | M4         |
 
