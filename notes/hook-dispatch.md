@@ -171,8 +171,8 @@ exactly:
 lVar2 = FUN_1801acdb0();                       // 50 callers
 if (lVar2 != 0) {                              // ...there is a current level
     uVar3 = FUN_18008a510();
-    if (FUN_18008f420(uVar3, 0x1e2))  goto ACTIVE;                  // config tag
-    if (FUN_18008f420(uVar3, 0x1e1) && DAT_18080cbd8) goto ACTIVE; // config tag + safe mode
+    if (FUN_18008f420(uVar3, 0x1e2))  goto ACTIVE;                  // HACK_SAFE_MODE (482)
+    if (FUN_18008f420(uVar3, 0x1e1) && DAT_18080cbd8) goto ACTIVE; // HACK_AUTO_SAFE_MODE (481) + safe mode
     if (FUN_18002de50(uVar3, 0x49) && FUN_180199520() >= 1.0) goto ACTIVE;
 }
 return INACTIVE;

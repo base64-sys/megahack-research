@@ -14,12 +14,21 @@ type), all registry-in / tag-in shaped:
 
 | Accessor | Meaning | Evidence |
 | -------- | ------- | -------- |
-| `FUN_18008F420` | `getConfigVar<bool>` (Map B) | returns `bool`; id 245 gates the New Best label |
-| `FUN_18002DE50` | `getFlag` / `getConfigVar<hackpro::Bool>` (Map A, type 0) | returns `bool`; ids 761/762 gate `cps` fields |
+| `FUN_18008F420` | `isHackEnabled` / Map B hack-flag getter | returns `bool`; called from the export at `0x18007302F`; id 245 gates the New Best label |
+| `FUN_18002DE50` | `getConfigVar<bool>` (Map A, type 0) | exported wrapper calls it at `0x1800738BF`; ids 761/762 gate `cps` fields |
 | `FUN_18002E4C0` | `getConfigVar<int>` (Map A, type 1) | returns `__int64`; miss logs `hackpro::Int` |
 | `FUN_180003D80` | `getConfigVar<hackpro::Decimal>` (Map A, type 2) | result lands in `xmm0`; id 501 is a scale factor |
 | `FUN_18002D710` | `getConfigVar<std::string>` (Map A, type 3) | writes through an out-pointer; miss logs `hackpro::String` |
 | `FUN_18002EE40` | `getConfigVar<hackpro::Bytes>` (Map A, type 4) | out-pointer form; miss logs `hackpro::Bytes` |
+
+**Correction 2026-10-23 — the two bool labels are swapped.** `settings_index.py` names
+`FUN_18008F420` `getConfigVar<bool>` and `FUN_18002DE50` `getFlag`. The export wrappers show
+the opposite: `getConfigVar<bool>` (`0x180073880`) calls `FUN_18002DE50` (`0x1800738BF`)
+and probes the Map A mask at `+0xD8`; `isHackEnabled` (`0x180072FF0`) calls `FUN_18008F420`
+(`0x18007302F`) and probes the Map B mask at `+0x160`. `setConfigVar<bool>`
+(`0x180073800`) calls `FUN_180027C30` (Map A), while `setHackEnabled` (`0x180073070`) calls
+`FUN_18008B490` (Map B). The `_settings.tsv` labels are historical names, not export names;
+the tag sets and the Map A/Map B split remain correct.
 
 A fourth call form also exists: `FUN_18007CB60(manager, out, key)`. This is a **keyed lookup in
 an FNV-1a-64 chained hash map**, and it has been mislabelled twice here. Recorded once, settled
@@ -341,7 +350,8 @@ offset **296 = 0x128**. That is an **independent confirmation**, from the type i
 rather than from a constructor, that the class at `registry + 0xD8` carries a
 `hackpro::Config` base sub-object at `+0x128`, and it agrees with the `add rcx, -0x128`
 adjustment in the thunk `FUN_1800917B0` (`0x1800917B0`), which converts a secondary-base
-pointer into the primary one before tail-jumping to `getConfigVar<bool>` (`0x18008F420`).
+pointer into the primary one before tail-jumping to the Map B hack-flag getter
+(`0x18008F420`).
 
 **Correction (2026-10-21 audit).** An earlier draft of this table listed offsets as if one
 constructor wrote them all, and mixed the registry global, the `hackpro::BasicConfig`
@@ -598,7 +608,7 @@ vtables were read directly:
 `rcx` entering a virtual is already adjusted to the subobject, so `-0x128` is exactly the
 offset of the `hackpro::Config` subobject within the most-derived object — which places
 the `hackpro::BasicConfig` base at offset 0 and its vtable at `+0x128`. `0x18008F420`,
-`getConfigVar<bool>`, is a **non-virtual** member of the base.
+the Map B hack-flag getter, is a **non-virtual** member of the base.
 
 Two independent angles agree: the RTTI walk says `Config` has its own vtable, and the
 adjustment `rcx - 0x128` is the only way `Config::vtable[2]` can reach a function that lives
@@ -978,9 +988,10 @@ rather than an extension of either.
    `"tag"` member anywhere; it stores typed buckets and a name-only `PROFILES/DEFAULT`
    list. Either tags are assigned at load, or the `"tag"` field exists only in a different
    release of the file. UNVERIFIED: where the numeric tags in `_settings.tsv` come from.
-   A separate static map of 85 `HACK_*` names exists in the binary
-   (`FUN_180062940`); see [static-hack-label-map.md](static-hack-label-map.md). It does not
-   supply the registry's tags — its integers are not established as `hackpro::Tag`.
+   A separate static pair of name maps exists in the binary (`FUN_180062940`): 85 `HACK_*`
+   names (Map B hack flags, consumed by the profile loader) and 21 `CHECKBOX_*` names
+   (Map A config bools, 19 confirmed). See
+   [static-hack-label-map.md](static-hack-label-map.md).
 5. The public API is **string-in**: every exported `getConfigVar<T>`/`setConfigVar<T>` takes a
    `std::string`, resolves it with `tagFor` (`0x180072DF0`) to a `Tag`, then uses the
    numeric accessors. That is the bridge between the UI widget names and the numeric
@@ -1001,23 +1012,33 @@ rather than an extension of either.
     would most plausibly sit.
 11. Any index built from an assumed accessor list undercounts. Enumerate, do not assume.
 
-### Correction 2026-10-23 — a separate 85-entry static name map exists
+### Correction 2026-10-23 — two separate static name maps exist
 
-`FUN_180062940` (CRT static initializer, `_initterm` slot `0x18063F0C8`) builds an 85-entry
-`{std::string label; uint64_t value}` array and inserts it into the FNV-1a-64 map at
-`0x180800D78`. The labels are the `HACK_*` name segments of hack toggles, so the "no static
-analysis can enumerate it" line above is too strong **for those 85 names**.
+`FUN_180062940` (CRT static initializer, `_initterm` slot `0x18063F0C8`) builds two
+`{std::string label; uint64_t value}` tables and inserts them into adjacent FNV-1a-64 maps:
 
-This does **not** recover the registry's name→tag join:
+- 85 `HACK_*` hack toggles into `0x180800D78`;
+- 21 `CHECKBOX_*` / `NO_LEGACY_SYNC` boolean options into `0x180800DB8`.
 
-- only 14 of the 85 values appear among the accessor-read tags in `_settings.tsv`;
-- `HACK_RESPAWN_TIME` is 245, while setting tag 245 suppresses the New Best label;
-- 10 of the 85 values coincide with the separately enumerated `FUN_180120A40` UI row ids;
-- no read site for `DAT_180800D78` exists in `_original.dll` (constructor, insert loop and
-  destructor only).
+The second map is `OPTIONS_BOOL`: the profile loader `FUN_180043970` passes
+`&DAT_180800DB8` with that literal at `0x180043DFA`, and 19/21 of its values are read by
+`FUN_18002DE50` (index label `getFlag`, the exported `getConfigVar<bool>`; Map A). Those 19
+are confirmed Map A tags; the two absent ids (236, 225) are inferred from the table's
+uniformity but are not accessor-confirmed.
 
-UNVERIFIED: whether the values are `hackpro::Tag`s in a per-map tag space, UI row ids, or a
-third id space. The table is documented in full in
+The 85-entry table is the **Map B** hack-flag name→tag map. `FUN_180043970` reads the
+map's internals and passes each matched node's value to `FUN_18008B490` (`0x180043D27`),
+the same setter `setHackEnabled` uses (`0x1800730B5`). The 14 ids that also appear in
+`_settings.tsv` are read by `FUN_18008F420` (Map B; the index labels it
+`getConfigVar<bool>`). The earlier "245 collision" is resolved: 245 is a Map B hack-flag
+tag, and the New Best path reads the same Map B tag. `HACK_RESPAWN_TIME = 245` means the
+Respawn Time cheat is the toggle the New Best path sees. UNVERIFIED: the exact UI effect at
+runtime.
+
+What remains open: 71/85 ids are not read by the known Map B getter (they may be written
+only, or read through a path the index does not cover); 10/85 ids also coincide with the
+separately enumerated `FUN_180120A40` UI row ids, and one of those (396) is both a row id
+and a Map B tag. Full tables in
 [static-hack-label-map.md](static-hack-label-map.md).
 
 ## Open questions
@@ -1098,5 +1119,8 @@ registry + 0x130. The 184 tags recovered by scripts/settings_index.py are the un
 the code touches; the intersection with the 202 stored keys cannot be computed without
 executing tagFor against this install's hackpro.json.
 
-The 85-entry static map in [static-hack-label-map.md](static-hack-label-map.md) does not
-change this: its integers are not established as registry tags, and its consumer is unknown.
+The static maps in [static-hack-label-map.md](static-hack-label-map.md) sharpen this: the
+21 `OPTIONS_BOOL` pairs are Map A config tags and the 85 `HACK_*` pairs are Map B hack-flag
+tags, both consumed by the binary. They do not supply the typed `hackpro.json` key→tag join
+beyond their own names; the 202 stored keys still cannot be joined to the 184 accessor tags
+without executing `tagFor`.

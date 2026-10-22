@@ -42,13 +42,17 @@ From [settings-contents.md](settings-contents.md):
 
 ## Evidence — UI registration
 
-- `FUN_180062940` (`0x180062940`) is a static initializer that builds an 85-entry
-  `{label, integer}` map. The three Show Hitboxes labels and their values are:
+- `FUN_180062940` (`0x180062940`) is a static initializer that builds two
+  `{label, integer}` maps: 85 `HACK_*` names and 21 `CHECKBOX_*`/`NO_LEGACY_SYNC`
+  `OPTIONS_BOOL` names. The three Show Hitboxes labels in the first map are:
   - `HACK_SHOW_HITBOXES` = 192 (`0x0C0`)
   - `HACK_SHOW_HITBOXES_ON_DEATH` = 216 (`0x0D8`)
   - `HACK_SHOW_HITBOXES_TRAIL` = 224 (`0x0E0`)
 
-  The integers are **not established as settings tags** — see
+  The same initializer also builds a 21-entry `CHECKBOX_*`/`NO_LEGACY_SYNC` `OPTIONS_BOOL`
+  map; its 19 accessor-listed ids are confirmed Map A config tags. The 85-entry table is the
+  Map B hack-flag map, and the three values above are read by the Map B getter
+  `FUN_18008F420` (`isHackEnabled`). See
   [static-hack-label-map.md](static-hack-label-map.md).
 - Changelog features include:
   - "Selected Objects Only to Show Hitboxes"

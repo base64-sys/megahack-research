@@ -1,7 +1,7 @@
-# The static hack-label map in `FUN_180062940`
+# The static label maps in `FUN_180062940`
 
-- **Question** — `FUN_180062940` references ~250 `HACK_*` strings. What does it build, and
-  can the 85 label → integer pairs be recovered statically?
+- **Question** — `FUN_180062940` is the CRT initializer behind Mega Hack's label → integer
+  registry. What does it build, and can the pairs be recovered statically?
 - **Baseline** — Mega Hack v9.1.3, GD 2.2081, Geode 5.6.1.
 - **Ground truth** — `samples/absolllute.hackmega/_original.dll`, SHA-256
   `1635c3391e853d68eb718965a756fd411ec6a876c23c0b92db508366e1107a92`.
@@ -26,6 +26,19 @@ on the stack and inserts every pair into the global FNV-1a-64 map at `0x180800D7
 
 The table is alphabetical by label, which is consistent with a static name→value lookup
 registry. All 85 labels resolve; none are guesses.
+
+The function does not stop there. At `0x180064993` it registers the first map's destructor,
+then builds a **second 21-entry table** and inserts it into the adjacent map at
+`0x180800DB8` (ctor `0x180049D20`; insert `0x18004A030`, called 21 times from
+`0x1800651A1` to `0x1800653B4`; destructor `0x180042910` registered at `0x180065420`).
+That second map is the `OPTIONS_BOOL` default table; see below.
+
+The 85-entry map is **not dead data**. `FUN_180043970` (the profile loader) probes its
+internals directly — sentinel `DAT_180800D80`, bucket table `DAT_180800D90`, mask
+`DAT_180800DA8` — hashes each profile name with FNV-1a-64, and on a hit calls the Map B
+setter `FUN_18008B490` with the node's value at `+0x30` and the profile's flag
+(`0x180043B90`-`0x180043D27`). That is the same setter the exported `setHackEnabled` calls
+(`0x1800730B5`), so the 85 integers are the tags used for hack enable state.
 
 ## The table
 
@@ -119,6 +132,59 @@ registry. All 85 labels resolve; none are guesses.
 | 83 | `HACK_WAVE_TRAIL_FIX` | 411 | `0x19b` | `0x180064855` |
 | 84 | `HACK_WAVE_TRAIL_ON_DEATH` | 419 | `0x1a3` | `0x1800648BF` |
 
+## Second table: 21 `OPTIONS_BOOL` defaults
+
+The cleanup loop at `0x1800653B9`-`0x1800653EE` walks this table backwards in `0x28` steps,
+starting at `rbx=0x320` and ending after the entry at `rbp-0x60`, which is 21 entries
+(`0x320 / 0x28 + 1`). That matches the 21 insert calls. Every label is `CHECKBOX_*` except
+the last, `NO_LEGACY_SYNC`.
+
+| # | Label | Value | Hex | Store VA | `_settings.tsv` accessor |
+| ---: | --- | ---: | --- | --- | --- |
+| 0 | `CHECKBOX_DEAFEN_IN_PRACTICE` | 281 | `0x119` | `0x1800649E8` | `getFlag` |
+| 1 | `CHECKBOX_DEAFEN_WITH_STARTPOS` | 282 | `0x11a` | `0x180064A3A` | `getFlag` |
+| 2 | `CHECKBOX_FILL_HITBOX` | 211 | `0x0d3` | `0x180064A88` | `getFlag` |
+| 3 | `CHECKBOX_HAZARDS_HITBOX` | 198 | `0x0c6` | `0x180064ADD` | `getFlag` |
+| 4 | `CHECKBOX_HIDE_INTERFACE` | 169 | `0x0a9` | `0x180064B32` | `getFlag` |
+| 5 | `CHECKBOX_HITBOXES_PLAYER` | 206 | `0x0ce` | `0x180064B8A` | `getFlag` |
+| 6 | `CHECKBOX_JUMPSCARE_ONLY_0` | 295 | `0x127` | `0x180064BF1` | `getFlag` |
+| 7 | `CHECKBOX_LEGACY_CALCULATION` | 236 | `0x0ec` | `0x180064C58` | — |
+| 8 | `CHECKBOX_NOCLIP_ACCURACY_LIMIT` | 85 | `0x055` | `0x180064CBF` | `getFlag` |
+| 9 | `CHECKBOX_NOCLIP_DEATH_LIMIT` | 87 | `0x057` | `0x180064D26` | `getFlag` |
+| 10 | `CHECKBOX_NOCLIP_DISABLE_PROGRESS` | 73 | `0x049` | `0x180064D8D` | `getFlag` |
+| 11 | `CHECKBOX_NOCLIP_PLAYER_1` | 77 | `0x04d` | `0x180064DF7` | `getFlag` |
+| 12 | `CHECKBOX_NOCLIP_PLAYER_2` | 78 | `0x04e` | `0x180064E61` | `getFlag` |
+| 13 | `CHECKBOX_NOCLIP_TINT` | 75 | `0x04b` | `0x180064EC4` | `getFlag` |
+| 14 | `CHECKBOX_PASSABLE_HITBOX` | 204 | `0x0cc` | `0x180064F2E` | `getFlag` |
+| 15 | `CHECKBOX_SOLIDS_HITBOX` | 195 | `0x0c3` | `0x180064F8E` | `getFlag` |
+| 16 | `CHECKBOX_SPECIALS_HITBOX` | 201 | `0x0c9` | `0x180064FEE` | `getFlag` |
+| 17 | `CHECKBOX_SWITCH_AFTER_DEATH` | 168 | `0x0a8` | `0x180065055` | `getFlag` |
+| 18 | `CHECKBOX_UNCAPPED_LENGTH_IN_EDITOR` | 225 | `0x0e1` | `0x1800650C2` | — |
+| 19 | `CHECKBOX_UNDEAFEN_ON_PAUSE` | 280 | `0x118` | `0x180065129` | `getFlag` |
+| 20 | `NO_LEGACY_SYNC` | 328 | `0x148` | `0x180065177` | `getFlag` |
+
+`getFlag` is the settings index's historical label for `FUN_18002DE50`. Disassembly shows
+that `FUN_18002DE50` is the accessor behind the exported `getConfigVar<bool>`
+(`0x180073880` → `0x1800738BF`), so the 19 confirmed ids are Map A config-bool tags. The
+index's labels for `FUN_18002DE50` and `FUN_18008F420` are swapped; see
+[settings-registry.md](settings-registry.md).
+
+`CHECKBOX_UNDEAFEN_ON_PAUSE` is spelled `UNDEAFEN` in the shipped table; that is not a
+transcription mistake.
+
+### Evidence that this is `OPTIONS_BOOL`
+
+`FUN_180043970` (the profile loader) passes `&DAT_180800DB8` together with the literal
+`OPTIONS_BOOL` to `FUN_180045800` at `0x180043DFA` (literal at `0x18053FBFB`, length 12).
+The same block routes `OPTIONS_BYTES` (`0x180800DF8`), `OPTIONS_FLOAT` (`0x180800E38`) and
+`OPTIONS_INT`/`OPTIONS_UINT` (both `0x180800E78`) to their loaders; the bool/bytes/float/int
+maps sit 0x40 bytes apart. So `0x180800DB8` is the default boolean-option map, not a UI row
+list.
+
+The values corroborate it: 19 of the 21 ids appear in `_settings.tsv` with accessor
+`getFlag` (Map A, `FUN_18002DE50`). The two absent ids (236, 225) are not read through the
+six indexed accessors, which is consistent with the index's known undercount.
+
 ## Method
 
 1. `pe_disasm.py 0x180062940 --size 0x2B00` established the function bounds and the entry
@@ -142,6 +208,10 @@ registry. All 85 labels resolve; none are guesses.
    `HACK_NO_SHAKE`, `HACK_NO_TRAIL`, `HACK_PLACE_OVER`, `HACK_SAFE_MODE`.
    `HACK_NO_C_MARK` is the literal the compiler builds (`"HACK_NO_"` + write at offset 6
    `"O_C_MARK"`); it is not a truncation artefact.
+5. The same simulator was re-run over `0x180064993`-`0x180065190` for the second table. All
+   21 labels resolve; 20 are heap strings and `NO_LEGACY_SYNC` is an SSO immediate. The
+   0x28 stride, the value slot at `+0x20`, and the cleanup bound (`0x320 / 0x28 + 1 = 21`)
+   are the same as the first table.
 
 ## Independent checks
 
@@ -154,56 +224,81 @@ registry. All 85 labels resolve; none are guesses.
   `0x18063F0C8` (index 12), so this runs during CRT init, not from gameplay code.
 - **String xrefs.** `_xrefs.tsv` attributes 247 string references / 132 distinct strings to
   `FUN_180062940`; the extra strings belong to the later tables the same initializer builds.
-- **No reader found.** A full `.text` scan for RIP-relative references to `0x180800D78`
-  returns four sites, all on the construction/destruction path: the ctor (`0x1800648D4`),
-  the insert loop (`0x1800648F0`), the destructor thunk (`0x1800427A0`), and one occurrence
-  inside an unwind routine (`0x18006716B`). No `find`/lookup call against this map was found.
+- **Reader found through the map's internals.** A scan for references to the map's *base*
+  `0x180800D78` finds only the ctor (`0x1800648D4`), the insert loop (`0x1800648F0`), the
+  destructor thunk (`0x1800427A0`) and one unwind reference (`0x18006716B`). That scan was
+  incomplete: `FUN_180043970` accesses the map's fields directly — sentinel `DAT_180800D80`,
+  bucket table `DAT_180800D90`, mask `DAT_180800DA8` — and calls `FUN_18008B490` with the
+  node's value (`0x180043D19`-`0x180043D27`). The base address never appears because the
+  compiler addresses the fields, not the object. The ctor confirms the field map: it writes
+  the sentinel at `[map+8]` (`0x1800490C3`), the bucket table at `[map+0x18]`
+  (`0x180049131`) and the mask `7` at `[map+0x30]` (`0x1800490DB`).
+- **The second map does have a reader.** The profile loader `FUN_180043970` references
+  `0x180800DB8` at `0x180043DEB` and passes it with the `OPTIONS_BOOL` literal, which is
+  independent evidence that the 21-entry table is a live default map, not dead data.
 
-## What is the integer? Not settled
+## What is the integer? Two maps, both resolved
 
-Three observations pull in different directions:
+The 21-entry `OPTIONS_BOOL` table is the **Map A** config-value default map. 19/21 values
+are read by `FUN_18002DE50`, which disassembly shows is the accessor behind the exported
+`getConfigVar<bool>` (`0x180073880` → `0x1800738BF`). The settings index labels that
+function `getFlag`; the labels are swapped (see [settings-registry.md](settings-registry.md)).
+The two absent ids (236, 225) are inferred from the table's uniformity but not
+accessor-confirmed.
 
-| Observation | Count | Implication |
-| --- | ---: | --- |
-| Value equals an id in `_settings.tsv` (accessor-read tags) | 14 / 85 | supports "value is a `hackpro::Tag`" |
-| Value equals an enumerated `FUN_180120A40` UI row id | 10 / 18 | supports "value is a UI row id" |
-| `HACK_RESPAWN_TIME` = 245, while setting tag 245 suppresses the New Best label | 1 | argues against a single tag space |
+The 85-entry `HACK_*` table is the **Map B** hack-enable name→tag map. This is a call-chain
+result, not a range coincidence:
 
-The 14 accessor hits are all `getConfigVar<bool>`:
-`HACK_AUTO_SAFE_MODE` (481), `HACK_FRAME_STEPPER` (302), `HACK_NOCLIP` (72),
-`HACK_NOCLIP_LIMITS` (83), `HACK_NO_TRANSITION` (449), `HACK_PITCH_SHIFTER` (459),
-`HACK_RESPAWN_TIME` (245), `HACK_SAFE_MODE` (482), `HACK_SHOW_HITBOXES` (192),
-`HACK_SHOW_HITBOXES_ON_DEATH` (216), `HACK_SHOW_HITBOXES_TRAIL` (224),
-`HACK_SOLID_WAVE_TRAIL` (396), `HACK_STARTPOS_SWITCHER` (130),
-`HACK_THREAD_PRIORITY` (454).
+- `FUN_180043970` hashes each profile name and probes the map's internals
+  (`DAT_180800D80`, `DAT_180800D90`, `DAT_180800DA8`), then calls `FUN_18008B490` with the
+  node's value at `+0x30` (`0x180043B90`-`0x180043D27`).
+- The exported `setHackEnabled` (`0x180073070`) is `tagFor` + `FUN_18008B490`
+  (`0x1800730B5`).
+- The exported `isHackEnabled` (`0x180072FF0`) is `tagFor` + `FUN_18008F420`
+  (`0x18007302F`).
+- `FUN_18008B490` and `FUN_18008F420` both probe the mask at `+0x160` (Map B);
+  `FUN_18002DE50` and `FUN_180027C30` probe `+0xD8` (Map A).
+- 14 of the 85 values are also read by `FUN_18008F420`; all 14 are Map B reads. The index
+  labels `FUN_18008F420` `getConfigVar<bool>`, which is the swap noted above.
 
-The UI row-id list is the 18 ids recorded in [definition-keys.md](definition-keys.md):
-32, 394-399, 402, 411, 414, 422, 432-434, 436, 442, 445, 448. The 10 present here are 32,
-394-399, 402, 411 and 414.
+The 10/18 numeric overlap with the `FUN_180120A40` UI row ids is not decisive: the two
+namespaces can share a number, and one value (396) is both a row id and a Map B tag. The
+call chain, not the overlap, decides the map's purpose.
 
-Note that `hackpro.json` (the observed install) stores hack enablement as **names in the
-profile list**, `PROFILES/DEFAULT`, not as typed boolean keys. It contains no `"tag"`
-fields. Whatever the integers mean, they are not needed to parse that file's typed buckets.
+For tag 245 the two notes now agree: the static map names 245 `HACK_RESPAWN_TIME`, and the
+New Best path reads 245 with `FUN_18008F420` (Map B). Enabling the Respawn Time cheat
+suppressing a New Best label is coherent, so 245 is the hack's enable tag, not a separate
+"suppress New Best" setting. UNVERIFIED: the exact UI effect at runtime, and whether other
+cheat tags suppress the label the same way.
+
+`hackpro.json` stores enablement as **names in the profile list**, `PROFILES/DEFAULT`, not
+as typed boolean keys. The profile loader resolves those names through this map, so the
+integers are exactly what turns a profile name into a Map B flag.
 
 **UNVERIFIED:**
-- whether the value is a `hackpro::Tag`, a UI row id, or a third id space. The `245`
-  collision rules out assuming a single global tag space but does not rule out per-map tags.
-- how the map is consumed. No read site exists in `_original.dll`, so the table may be
-  written and reaped without a static reader (an API path that resolves the global at
-  runtime, or dead data from an earlier UI).
-- whether the 85 labels are exactly the set of hacks the release's UI can display. The
-  observed profile lists 53 enabled hacks; 34 of those appear here and 19 do not.
+- whether the 19 profile names absent from the 85-map are handled through Map A config
+  values, ignored, or resolved by another path.
+- why 85 labels were compiled in when the runtime registry is built from `hackpro.json`
+  and only 53 names are enabled in the observed profile.
+- whether other Map B tags are read only through paths the index does not cover; 71/85 are
+  not read by `FUN_18008F420`, though the profile loader can write any of the 85.
 
 ## Why this matters for M3
 
-This is the first statically enumerated link between 85 `HACK_*` names and numeric ids.
-It does **not** close M3's per-feature mapping: a label and an integer are not an
-implementing function, a default, or a set of interactions. The rows in
+This is the first statically enumerated link between 106 `HACK_*`/`CHECKBOX_*` names and
+numeric ids: 85 hack labels (Map B enable-state tags, established via the profile loader)
+and 21 boolean-option labels (Map A config tags, 19 accessor-confirmed). Neither closes
+M3's per-feature mapping: a label and an integer are not an implementing function, a
+default, or a set of interactions. The rows in
 [feature-inventory.md](feature-inventory.md) stay `cluster`.
 
 ## Open questions
 
-- Which id space the integers belong to, and which code reads `DAT_180800D78`.
-- Why 85 labels were compiled in when the runtime registry is built from `hackpro.json`.
-- Whether the table is related to the profile-enabled list (string membership) or to the
-  UI's numeric row builders.
+- Whether the 19 profile names absent from the 85-map are handled through Map A config
+  values, ignored, or resolved by another path.
+- The runtime UI effect of tag 245 (`HACK_RESPAWN_TIME`) is still unverified; the tag
+  identity and the getter path are established.
+- Why 85 hack labels and 21 option labels were compiled in when the runtime registry is
+  built from `hackpro.json`.
+- Whether `hackpro.json` can add Map A or Map B names that are not in the static tables, and
+  how their tags are assigned.

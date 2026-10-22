@@ -158,10 +158,10 @@ Counts re-derived from `scripts/settings_index.py`:
 | `_settings.tsv` data rows | **188** |
 | typed accessors | **6** |
 
-The six accessors: `FUN_18008F420` (`getConfigVar<bool>`), `FUN_18002DE50` (`getFlag`),
-`FUN_180003D80` (`getConfigVar<scalar>`), `FUN_18002E4C0` (`getConfigVar<int>`),
-`FUN_18002D710` (`getConfigVar<std::string>`), `FUN_18002EE40`
-(`getConfigVar<hackpro::Bytes>`). `FUN_18002EE40` is identified by the literal it emits on a
+The six accessors: `FUN_18008F420` (`isHackEnabled`, Map B), `FUN_18002DE50`
+(`getConfigVar<bool>`, Map A), `FUN_180003D80` (`getConfigVar<scalar>`),
+`FUN_18002E4C0` (`getConfigVar<int>`), `FUN_18002D710` (`getConfigVar<std::string>`),
+`FUN_18002EE40` (`getConfigVar<hackpro::Bytes>`). `FUN_18002EE40` is identified by the literal it emits on a
 miss — the requested type's own name, `"hackpro::Bytes"` — and by the type byte `4`
 (`V_BYTES`) it requires at `node + 0x38`.
 

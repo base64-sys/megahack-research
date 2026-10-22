@@ -51,6 +51,9 @@ From [import-dt.md](import-dt.md):
 - UNVERIFIED: the exact GD-side fields carrying
   `(level, startPercent) -> bestEndPercent`. They are not recoverable from
   Mega Hack's binary.
-- UNVERIFIED: which settings keys correspond to tags 245, 247, 501 and 502.
+- UNVERIFIED: which settings keys correspond to tags 247, 501 and 502.
+  245 is the Map B hack-flag tag `HACK_RESPAWN_TIME` (static label map plus the
+  `isHackEnabled` getter path); its runtime effect on the label is still to confirm. See
+  [static-hack-label-map.md](static-hack-label-map.md).
 - UNVERIFIED: whether `STATUS/BEST_RUN/DROPDOWN/PREFIX` is the reused row's
   persisted display state or a separate setting.

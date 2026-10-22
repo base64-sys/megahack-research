@@ -4,10 +4,11 @@ Several notes carry settings as bare numbers - 245, 247, 501, 502, 761, 762,
 801 - because they were read straight off a `mov edx, <id>` before a call into the
 config accessor. This turns those scattered numbers into one table.
 
-Two accessors are recognised:
+Two bool accessors are recognised (labels swapped relative to the exports; see the comment
+above ACCESSORS):
 
-    FUN_18008f420(this, id) -> bool     getConfigVar<bool>
-    FUN_18002de50(this, id) -> bool     a second boolean accessor
+    FUN_18008f420(this, id) -> bool     Map B hack-flag getter (isHackEnabled)
+    FUN_18002de50(this, id) -> bool     getConfigVar<bool> (Map A)
 
 There is also a key-based form, FUN_18007cb60(this, out, "KEY"), which indexes
 string keys rather than numeric ids; both are emitted.
@@ -45,6 +46,11 @@ FUNCTIONS = REPO / "recovered" / "functions"
 # guessed accessor list is a sample of one, not a registry. Enumerate, do not
 # assume.
 ACCESSORS = {
+    # Label swap (2026-10-23): the export wrappers show FUN_18002de50 is the
+    # getConfigVar<bool> accessor (0x180073880 -> 0x1800738BF, Map A mask +0xD8) and
+    # FUN_18008f420 is the isHackEnabled accessor (0x180072FF0 -> 0x18007302F, Map B mask
+    # +0x160). The emitted labels are kept as historical identifiers so existing tables
+    # stay stable; read them through this mapping, not as export names.
     "FUN_18008f420": (1, "getConfigVar<bool>"),
     "FUN_18002de50": (1, "getFlag"),
     "FUN_180003d80": (1, "getConfigVar<scalar>"),

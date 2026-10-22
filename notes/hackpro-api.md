@@ -165,11 +165,14 @@ These are inferences from the signatures, not verified behaviour.
   that lookups are interned.
 - **Change notification is per-key and typed.** `registerListener<T>(key, fn)` binds to one
   key and one type; the callback gets `(Tag, T const&)`.
-- **Enable state is a separate axis from config values.** `isHackEnabled` /
-  `setHackEnabled` / `registerHackListener` mirror the config triple but are distinctly
-  named and separately exported, and `setHackEnabled` takes `bool` **by value** while
-  `setConfigVar<bool>` takes `bool const&`. So "is this hack on" is not just a config value
-  — it is likely derived from several settings plus runtime context (safe mode, level type).
+- **Enable state is a separate axis from config values.** `isHackEnabled` (`0x180072FF0`)
+  is `tagFor` + `FUN_18008F420`; `setHackEnabled` (`0x180073070`) is `tagFor` +
+  `FUN_18008B490`. The config pair uses different accessors: `getConfigVar<bool>`
+  (`0x180073880`) calls `FUN_18002DE50`, and `setConfigVar<bool>` (`0x180073800`) calls
+  `FUN_180027C30`. The two pairs probe different maps (Map B mask `+0x160` vs Map A mask
+  `+0xD8`). `setHackEnabled` also takes `bool` **by value** while `setConfigVar<bool>` takes
+  `bool const&`. "Is this hack on" is therefore a Map B flag, not a Map A config value;
+  which higher-level code decides to set that flag is still UNVERIFIED.
 - **`registerTab(std::istream&, Delegate*)` is deserialisation-driven.** A tab is registered
   by reading a stream and handing it a `Delegate`. That implies a serialised tab-description
   format — worth recovering next, because it is the input side of the UI and therefore the

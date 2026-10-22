@@ -136,7 +136,7 @@ Reading that against the disassembly and the `.rdata` dump:
 
 | Detail | Value |
 | ------ | ----- |
-| `FUN_18008f420(this, 0xF5)` | `getConfigVar<bool>` for setting id **245**; if set, the whole path is suppressed |
+| `FUN_18008f420(this, 0xF5)` | Map B hack flag **245** (`HACK_RESPAWN_TIME`); if set, the whole path is suppressed |
 | `DAT_180575A00` | the string **`0052`** — a numeric language-definition key, stored immediately after `PlayLayer::showNewBest\0` |
 | key absent | tail-call with `0x3FF0000000000000` = **1.0** |
 | key present | tail-call with `0x3FE0000000000000` = **0.5** |
@@ -187,9 +187,12 @@ _symbols.tsv` plus a string inventory should find it.
   is not a text/keyed distinction in this binary; it is the value-comparison change noted
   above. UNVERIFIED: the exact comparison value, which is GD-side (see the thunk resolution
   above).
-- (Partially resolved 2026-10-20.) 245 (`0xF5`), 247 (`0xF7`), 501 (`0x1F5`) and 502
-  (`0x1F6`) are read in `FUN_18017F000` and in the cheat helpers; their hackpro.json keys
-  are still unknown. See notes/definition-keys.md.
+- (Partially resolved 2026-10-23.) 245 (`0xF5`) is the Map B hack-flag tag
+  `HACK_RESPAWN_TIME`: the static label map names the value, and the New Best path reads
+  Map B tag 245 through `FUN_18008F420`, the same getter `isHackEnabled` uses
+  (`0x18007302F`). Enabling the Respawn Time cheat is therefore the toggle the New Best
+  path sees. UNVERIFIED at runtime; 247, 501 and 502 still have no key. See
+  [static-hack-label-map.md](static-hack-label-map.md).
 - (Resolved 2026-10-20.) `FUN_180148610` is a lazy thunk into Geometry Dash
   (`FUN_18010DDC0() + 0x183110`), so its return value (used to choose the 1.0 vs 0.5 delay
   in `FUN_18017F000`) is GD-side behaviour, not a Mega Hack key lookup. UNVERIFIED: the GD
