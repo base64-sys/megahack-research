@@ -250,7 +250,7 @@ Exit criteria:
 - [ ] Every feature listed in `changelog.md` accounted for: implemented, alias, or dead.
 - [ ] Each feature mapped to its implementing function(s) with VAs, its settings keys, its
       default, and its interactions.
-- [ ] High-value clusters documented as patterns rather than 160 isolated notes: input
+- [x] High-value clusters documented as patterns rather than 160 isolated notes: input
       hooks, render hooks, gameplay rewrites, UI add-ons, save-data features.
 - [ ] Reconstructed modules validated against release behaviour for the sampled clusters.
 
