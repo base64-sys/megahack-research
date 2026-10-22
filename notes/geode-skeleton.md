@@ -32,6 +32,18 @@
    - `FUN_180002240` when the game reports ready;
    - `FUN_180006070` as the guarded, possibly deferred, load-once path.
 
+## Compile-time skeleton now present
+
+The reconstruction now builds a shared library that exports `geodeImplicitEntry`
+(`reconstruction/CMakeLists.txt`, target `megahack.skeleton`, output
+`megahack.skeleton.dll`). Its `mod.json` is at
+`reconstruction/geode_skeleton/mod.json` and targets Geode 5.6.1 / GD 2.2081
+with `early-load: true`.
+
+The DLL exports `geodeImplicitEntry` (verified with `dumpbin /exports`) and
+reuses the reconstructed core (`config.cpp`, `extensions.cpp`, `entry.cpp`).
+The existing reconstruction tests still pass.
+
 ## Validation status
 
 UNVERIFIED / blocked: no matching Geode 5.6.1 SDK is available in this
@@ -43,7 +55,8 @@ not safe.
 
 The reconstruction's compile-time stand-ins (`geode::Mod`, `geode::Loader`,
 `geode::async::Runtime`, and the `geodeImplicitEntry` stub) exercise the
-control flow but do not constitute a loader-validated skeleton.
+control flow but do not constitute a loader-validated skeleton. The new
+shared library is a compile-time skeleton only.
 
 ## Conclusion
 

@@ -12,6 +12,17 @@ add_library(hackpro_core STATIC
     src/entry.cpp
 )
 
+add_library(megahack_skeleton SHARED
+    src/config.cpp
+    src/extensions.cpp
+    src/entry.cpp
+)
+target_compile_definitions(megahack_skeleton PRIVATE HACKPRO_BUILD_DLL)
+set_target_properties(megahack_skeleton PROPERTIES
+    OUTPUT_NAME "megahack.skeleton"
+    PREFIX ""
+)
+
 add_executable(test_reconstruction
     tests/test_reconstruction.cpp
 )

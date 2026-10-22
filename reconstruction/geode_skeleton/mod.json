@@ -1,0 +1,12 @@
+{
+    "geode": "5.6.1",
+    "gd": {
+        "win": "2.2081"
+    },
+    "id": "megahack.skeleton",
+    "name": "Mega Hack Skeleton",
+    "version": "v0.0.1",
+    "developer": "reconstruction",
+    "description": "Compile-time Geode-compatible skeleton for the reconstructed core.",
+    "early-load": true
+}
