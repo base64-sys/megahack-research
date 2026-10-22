@@ -212,7 +212,7 @@ menu/interface layer, hook dispatch, save lifecycle.
 
 Exit criteria:
 
-- [ ] Module entry and `early-load` path reconstructed as compiling C++. Root is
+- [x] Module entry and `early-load` path reconstructed as compiling C++. Root is
       `geodeImplicitEntry` at `0x180072B60`, confirmed by disassembly — see
       [hackpro-api.md](../notes/hackpro-api.md).
 - [x] Settings registry reconstructed: typed keys, defaults, load/save, and the boolean

@@ -2,50 +2,50 @@
 <rect width="900" height="494" fill="#0d1117"/>
 <rect x="0.5" y="0.5" width="899" height="493" fill="none" stroke="#30363d" rx="10"/>
 <text x="28" y="40" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="19" font-weight="600" fill="#e6edf3">Recent work — what moved, newest first</text>
-<text x="28" y="61" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#8b949e">14 most recent commits · exit criteria currently 17/34</text>
-<circle cx="38.0" cy="94.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="98.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">FIXED README IMAGES NOT UPDATING BY ADDING ?RAW=TRUE AFTER THEIR FILE LOCATIONS IN README.md</text>
-<text x="872.0" y="98.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">other</text>
+<text x="28" y="61" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#8b949e">14 most recent commits · exit criteria currently 18/34</text>
+<circle cx="38.0" cy="94.0" r="4" fill="#3fb950"/>
+<text x="52.0" y="98.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">feat(reconstruction): implement settings registry load/save and action intercept</text>
+<text x="872.0" y="98.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#3fb950" text-anchor="end">feat</text>
 <circle cx="38.0" cy="118.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="122.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(roadmap): mark M2 in progress; refresh progress SVGs</text>
-<text x="872.0" y="122.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
-<circle cx="38.0" cy="142.0" r="4" fill="#484f58"/>
-<text x="52.0" y="146.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">chore: remove .devcontainer and refresh progress SVGs</text>
-<text x="872.0" y="146.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#484f58" text-anchor="end">chore</text>
-<circle cx="38.0" cy="166.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="170.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(roadmap): reference entry-path note in M1 lifecycle criterion</text>
-<text x="872.0" y="170.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
+<text x="52.0" y="122.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">FIXED README IMAGES NOT UPDATING BY ADDING ?RAW=TRUE AFTER THEIR FILE LOCATIONS IN README.md</text>
+<text x="872.0" y="122.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">other</text>
+<circle cx="38.0" cy="142.0" r="4" fill="#8b949e"/>
+<text x="52.0" y="146.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(roadmap): mark M2 in progress; refresh progress SVGs</text>
+<text x="872.0" y="146.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
+<circle cx="38.0" cy="166.0" r="4" fill="#484f58"/>
+<text x="52.0" y="170.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">chore: remove .devcontainer and refresh progress SVGs</text>
+<text x="872.0" y="170.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#484f58" text-anchor="end">chore</text>
 <circle cx="38.0" cy="190.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="194.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(re): map module entry and early-load path (geodeImplicitEntry to tab registration)</text>
+<text x="52.0" y="194.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(roadmap): reference entry-path note in M1 lifecycle criterion</text>
 <text x="872.0" y="194.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <circle cx="38.0" cy="214.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="218.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs: agent documentation audit for the migrated codebase</text>
+<text x="52.0" y="218.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(re): map module entry and early-load path (geodeImplicitEntry to tab registration)</text>
 <text x="872.0" y="218.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
-<circle cx="38.0" cy="238.0" r="4" fill="#484f58"/>
-<text x="52.0" y="242.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">chore(migration): curated codebase on migration/curated-codebase</text>
-<text x="872.0" y="242.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#484f58" text-anchor="end">chore</text>
-<circle cx="38.0" cy="262.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="266.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs: fix note count and list (25 notes)</text>
-<text x="872.0" y="266.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
+<circle cx="38.0" cy="238.0" r="4" fill="#8b949e"/>
+<text x="52.0" y="242.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs: agent documentation audit for the migrated codebase</text>
+<text x="872.0" y="242.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
+<circle cx="38.0" cy="262.0" r="4" fill="#484f58"/>
+<text x="52.0" y="266.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">chore(migration): curated codebase on migration/curated-codebase</text>
+<text x="872.0" y="266.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#484f58" text-anchor="end">chore</text>
 <circle cx="38.0" cy="286.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="290.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(re): close remaining M1 binary residuals (shutdown, Octavus path verified)</text>
+<text x="52.0" y="290.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs: fix note count and list (25 notes)</text>
 <text x="872.0" y="290.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <circle cx="38.0" cy="310.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="314.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(re): M1 integrity verification; correct ordinal import count and note count</text>
+<text x="52.0" y="314.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(re): close remaining M1 binary residuals (shutdown, Octavus path verified)</text>
 <text x="872.0" y="314.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <circle cx="38.0" cy="334.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="338.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(re): close M1 â€” settings contents, GD Best Run fields, lifecycle, address map</text>
+<text x="52.0" y="338.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(re): M1 integrity verification; correct ordinal import count and note count</text>
 <text x="872.0" y="338.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <circle cx="38.0" cy="358.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="362.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs: record second batch of user inputs and Octavus path discrepancy</text>
+<text x="52.0" y="362.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(re): close M1 â€” settings contents, GD Best Run fields, lifecycle, address map</text>
 <text x="872.0" y="362.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <circle cx="38.0" cy="382.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="386.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs: record M1 residual inputs and plan (GD path, hackpro.json)</text>
+<text x="52.0" y="386.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs: record second batch of user inputs and Octavus path discrepancy</text>
 <text x="872.0" y="386.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <circle cx="38.0" cy="406.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="410.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(re): close M1 on binary side; mark residuals, declare done</text>
+<text x="52.0" y="410.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs: record M1 residual inputs and plan (GD path, hackpro.json)</text>
 <text x="872.0" y="410.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <line x1="28.0" y1="450.0" x2="872.0" y2="450.0" stroke="#30363d" stroke-width="1"/>
 <text x="28.0" y="464.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="10" fill="#8b949e">regenerated on every watchdog start, so a turn's work shows up here · image 4 of 4</text>
-<text x="872.0" y="464.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">git 5d6c0d1</text>
+<text x="872.0" y="464.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">git a09b4ba</text>
 </svg>

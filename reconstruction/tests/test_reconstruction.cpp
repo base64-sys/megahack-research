@@ -183,9 +183,49 @@ void test_action_intercept() {
     std::cout << "ok    boolean setter intercepts action tags and leaves stored state untouched\n";
 }
 
+void test_entry_early_load() {
+    using namespace hackpro;
+
+    resetEarlyLoadState();
+    geodeImplicitEntry();
+    auto* mod = getMod();
+    assert(mod != nullptr);
+    assert(asyncTaskRan() == true);
+
+    // Tabs are not registered by entry itself; they are lazy early-load callbacks.
+    assert(tabRegistrationCount() == 0);
+
+    setGameReady(true);
+    CoreDirector& readyDirector = coreDirector();
+    onReady(readyDirector);
+    assert(tabRegistrationCount() == 1);
+
+    // loadOnce defers when the game is not ready, then realises later.
+    resetEarlyLoadState();
+    setGameReady(false);
+    CoreDirector& deferredDirector = coreDirector();
+    loadOnce(deferredDirector);
+    assert(deferredDirector.loaded == false);
+    assert(hasPendingLoad() == true);
+
+    setGameReady(true);
+    flushPendingLoads();
+    assert(deferredDirector.loaded == true);
+    assert(tabRegistrationCount() == 1);
+
+    // setup() is the lambda driver (FUN_180072AA0) and converges on tab registration.
+    resetEarlyLoadState();
+    setGameReady(true);
+    setup();
+    assert(tabRegistrationCount() == 1);
+
+    std::cout << "ok    module entry caches mod, runs async task, and drives early-load callbacks\n";
+}
+
 int main() {
     std::cout << "=== Running Mega Hack Reconstructed Core Tests ===\n";
     test_entry_point();
+    test_entry_early_load();
     test_key_tag_mapping();
     test_typed_config_vars();
     test_listeners();
