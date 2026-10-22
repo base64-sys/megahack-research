@@ -160,13 +160,13 @@ Exit criteria:
       Three GD function RVAs and `PlayLayer+0x3230` are verified from two angles each.
       Mega Hack does **not** use `node-ids` for this, so verified offsets change on any
       GD re-baseline.
-- [x] Output: `notes/` map files, one per subsystem, each fact cited by VA. **Twenty-four
+- [x] Output: `notes/` map files, one per subsystem, each fact cited by VA. **Twenty-five
       written**: `provenance`, `hackpro-api`, `host-abi`, `host-methods`, `hook-dispatch`,
       `hook-wrapper-layer`, `tab-registration`, `init-table`, `string-inventory`,
       `sso-decoder`, `fnv-hash-probe`, `settings-registry`, `rtti-classes`,
       `gd-structures`, `persistence`, `definition-keys`, `new-best-label`, `android-abi`,
       `finding-code`, `not-investigated-licence-path`, `m1-audit`, `settings-contents`,
-      `address-map`, `m1-residuals`. Every M1 subsystem has
+      `address-map`, `m1-residuals`, `m1-verification`. Every M1 subsystem has
       one, and every address claim in them is VA-anchored; the notes that record an open
       subject say so in the note. `m1-audit` is the 2026-10-21 audit of M1 itself: every
       count in this tracker, in the README and in these notes was re-checked against
