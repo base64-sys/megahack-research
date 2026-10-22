@@ -4,48 +4,48 @@
 <text x="28" y="40" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="19" font-weight="600" fill="#e6edf3">Recent work — what moved, newest first</text>
 <text x="28" y="61" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#8b949e">14 most recent commits · exit criteria currently 29/34</text>
 <circle cx="38.0" cy="94.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="98.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(re): map Show Hitboxes feature cluster</text>
+<text x="52.0" y="98.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(re): map Replay feature cluster</text>
 <text x="872.0" y="98.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <circle cx="38.0" cy="118.0" r="4" fill="#8b949e"/>
 <text x="52.0" y="122.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(progress): refresh progress graphics</text>
 <text x="872.0" y="122.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <circle cx="38.0" cy="142.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="146.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(re): map NoClip feature cluster</text>
+<text x="52.0" y="146.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(re): map Show Hitboxes feature cluster</text>
 <text x="872.0" y="146.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <circle cx="38.0" cy="166.0" r="4" fill="#8b949e"/>
 <text x="52.0" y="170.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(progress): refresh progress graphics</text>
 <text x="872.0" y="170.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <circle cx="38.0" cy="190.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="194.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(re): map status labels feature cluster</text>
+<text x="52.0" y="194.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(re): map NoClip feature cluster</text>
 <text x="872.0" y="194.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <circle cx="38.0" cy="214.0" r="4" fill="#8b949e"/>
 <text x="52.0" y="218.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(progress): refresh progress graphics</text>
 <text x="872.0" y="218.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <circle cx="38.0" cy="238.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="242.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(re): map Iconic feature cluster</text>
+<text x="52.0" y="242.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(re): map status labels feature cluster</text>
 <text x="872.0" y="242.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <circle cx="38.0" cy="262.0" r="4" fill="#8b949e"/>
 <text x="52.0" y="266.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(progress): refresh progress graphics</text>
 <text x="872.0" y="266.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <circle cx="38.0" cy="286.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="290.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(re): add M3 validation matrix</text>
+<text x="52.0" y="290.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(re): map Iconic feature cluster</text>
 <text x="872.0" y="290.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <circle cx="38.0" cy="310.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="314.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(roadmap): mark M5 ARM64 mapping criterion complete</text>
+<text x="52.0" y="314.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(progress): refresh progress graphics</text>
 <text x="872.0" y="314.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <circle cx="38.0" cy="334.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="338.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(progress): refresh progress graphics</text>
+<text x="52.0" y="338.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(re): add M3 validation matrix</text>
 <text x="872.0" y="338.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <circle cx="38.0" cy="358.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="362.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(re): map Android ARM64 string parity</text>
+<text x="52.0" y="362.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(roadmap): mark M5 ARM64 mapping criterion complete</text>
 <text x="872.0" y="362.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <circle cx="38.0" cy="382.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="386.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(re): map Android ARM64 symbol parity</text>
+<text x="52.0" y="386.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(progress): refresh progress graphics</text>
 <text x="872.0" y="386.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <circle cx="38.0" cy="406.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="410.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(progress): refresh progress graphics</text>
+<text x="52.0" y="410.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(re): map Android ARM64 string parity</text>
 <text x="872.0" y="410.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <line x1="28.0" y1="450.0" x2="872.0" y2="450.0" stroke="#30363d" stroke-width="1"/>
 <text x="28.0" y="464.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="10" fill="#8b949e">regenerated on every watchdog start, so a turn's work shows up here · image 4 of 4</text>
-<text x="872.0" y="464.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">git 1d4be9b</text>
+<text x="872.0" y="464.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">git e5739fd</text>
 </svg>
