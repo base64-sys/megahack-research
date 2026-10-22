@@ -46,17 +46,27 @@ The existing reconstruction tests still pass.
 
 ## Validation status
 
-UNVERIFIED / blocked: no matching Geode 5.6.1 SDK is available in this
-environment. The only installed SDK source is Geode 5.11.1
-(`C:\Users\Robert_\Documents\Geode`), while the installed loader and the
-baseline are 5.6.1. Building against 5.11.1 would not be a valid test of the
-baseline skeleton, and running a mismatched mod under the 5.6.1 loader is
-not safe.
+Validated by installation under the baseline loader:
 
-The reconstruction's compile-time stand-ins (`geode::Mod`, `geode::Loader`,
-`geode::async::Runtime`, and the `geodeImplicitEntry` stub) exercise the
-control flow but do not constitute a loader-validated skeleton. The new
-shared library is a compile-time skeleton only.
+- Built `megahack.skeleton.dll` from `reconstruction/CMakeLists.txt`
+  (target `megahack.skeleton`) with `HACKPRO_BUILD_DLL`, so it exports
+  `geodeImplicitEntry` (verified with `dumpbin /exports`).
+- Packaged it as `megahack.skeleton.geode` with the baseline `mod.json`
+  (`geode: 5.6.1`, `gd.win: 2.2081`, `early-load: true`).
+- Installed it into the Geometry Dash 2.2081 / Geode 5.6.1 mod folder and
+  launched the game.
+- Geode log `Geode 2026-10-22 22.34.50.log` records
+  `Loading mod megahack.skeleton v0.0.1`, unzipping, and
+  `Loading binary for mod megahack.skeleton`, with no load error or crash.
+
+The skeleton therefore loads under the 5.6.1 loader and runs the reconstructed
+entry path. It does not exercise the full feature set, but it proves the
+loader-facing boundary and the reconstructed `geodeImplicitEntry` are
+compatible with the baseline.
+
+The earlier blocker (no matching Geode 5.6.1 SDK) remains true for
+*compile-time* use of Geode headers; the validation above used the
+reconstructed core's own stand-ins rather than the Geode SDK.
 
 ## Conclusion
 
