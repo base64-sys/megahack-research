@@ -138,8 +138,11 @@ Exit criteria:
       the native Best Run field mapping are still outstanding.
 - [x] Entry and lifecycle order, partially: `geodeImplicitEntry` at `0x180072B60` is the
       root, and the load-time sequence registering Mega Hack's two tabs plus resolving the
-      `Import .dt` action tag is mapped in `notes/tab-registration.md`. TLS callbacks,
-      `early-load` ordering and the shutdown path still outstanding.
+      `Import .dt` action tag is mapped in `notes/tab-registration.md` and
+      `notes/entry-path.md` (early-load callbacks `FUN_180002240`/`FUN_180006070`,
+      CoreDirector virtual #20, descriptor install via `FUN_1800FDCE0`). TLS callbacks
+      (none) and shutdown path (`atexit(FUN_180001370)`) are now mapped; `early-load`
+      ordering as compiling C++ still outstanding.
 - [x] Geometry Dash structures Mega Hack touches documented with verified offsets
       (`GJGameLevel+0x148`, `+0x14C`, `+0x158`, `+0x198`, `+0x1B8` verified from two
       angles each; `+0x2C4`/`+0x35C` UNVERIFIED as GJGameLevel offsets — see Residuals).
