@@ -237,7 +237,7 @@ Exit criteria:
       confirmed from two angles.
       A reconstruction should reproduce the mechanism, not copy the RVAs — they are
       absolute into the host image and change on any GD re-baseline.
-- [ ] Save lifecycle reconstructed: `postUpdate`, `resetLevel`, `PlayLayer::onQuit` and
+- [x] Save lifecycle reconstructed: `postUpdate`, `resetLevel`, `PlayLayer::onQuit` and
       shutdown-destructor flush points.
 - [ ] A minimal Geode-compatible skeleton loads under the loader with core behaviour intact.
 
