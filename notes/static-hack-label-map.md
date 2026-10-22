@@ -141,32 +141,32 @@ the last, `NO_LEGACY_SYNC`.
 
 | # | Label | Value | Hex | Store VA | `_settings.tsv` accessor |
 | ---: | --- | ---: | --- | --- | --- |
-| 0 | `CHECKBOX_DEAFEN_IN_PRACTICE` | 281 | `0x119` | `0x1800649E8` | `getFlag` |
-| 1 | `CHECKBOX_DEAFEN_WITH_STARTPOS` | 282 | `0x11a` | `0x180064A3A` | `getFlag` |
-| 2 | `CHECKBOX_FILL_HITBOX` | 211 | `0x0d3` | `0x180064A88` | `getFlag` |
-| 3 | `CHECKBOX_HAZARDS_HITBOX` | 198 | `0x0c6` | `0x180064ADD` | `getFlag` |
-| 4 | `CHECKBOX_HIDE_INTERFACE` | 169 | `0x0a9` | `0x180064B32` | `getFlag` |
-| 5 | `CHECKBOX_HITBOXES_PLAYER` | 206 | `0x0ce` | `0x180064B8A` | `getFlag` |
-| 6 | `CHECKBOX_JUMPSCARE_ONLY_0` | 295 | `0x127` | `0x180064BF1` | `getFlag` |
+| 0 | `CHECKBOX_DEAFEN_IN_PRACTICE` | 281 | `0x119` | `0x1800649E8` | `getConfigVar<bool>` |
+| 1 | `CHECKBOX_DEAFEN_WITH_STARTPOS` | 282 | `0x11a` | `0x180064A3A` | `getConfigVar<bool>` |
+| 2 | `CHECKBOX_FILL_HITBOX` | 211 | `0x0d3` | `0x180064A88` | `getConfigVar<bool>` |
+| 3 | `CHECKBOX_HAZARDS_HITBOX` | 198 | `0x0c6` | `0x180064ADD` | `getConfigVar<bool>` |
+| 4 | `CHECKBOX_HIDE_INTERFACE` | 169 | `0x0a9` | `0x180064B32` | `getConfigVar<bool>` |
+| 5 | `CHECKBOX_HITBOXES_PLAYER` | 206 | `0x0ce` | `0x180064B8A` | `getConfigVar<bool>` |
+| 6 | `CHECKBOX_JUMPSCARE_ONLY_0` | 295 | `0x127` | `0x180064BF1` | `getConfigVar<bool>` |
 | 7 | `CHECKBOX_LEGACY_CALCULATION` | 236 | `0x0ec` | `0x180064C58` | — |
-| 8 | `CHECKBOX_NOCLIP_ACCURACY_LIMIT` | 85 | `0x055` | `0x180064CBF` | `getFlag` |
-| 9 | `CHECKBOX_NOCLIP_DEATH_LIMIT` | 87 | `0x057` | `0x180064D26` | `getFlag` |
-| 10 | `CHECKBOX_NOCLIP_DISABLE_PROGRESS` | 73 | `0x049` | `0x180064D8D` | `getFlag` |
-| 11 | `CHECKBOX_NOCLIP_PLAYER_1` | 77 | `0x04d` | `0x180064DF7` | `getFlag` |
-| 12 | `CHECKBOX_NOCLIP_PLAYER_2` | 78 | `0x04e` | `0x180064E61` | `getFlag` |
-| 13 | `CHECKBOX_NOCLIP_TINT` | 75 | `0x04b` | `0x180064EC4` | `getFlag` |
-| 14 | `CHECKBOX_PASSABLE_HITBOX` | 204 | `0x0cc` | `0x180064F2E` | `getFlag` |
-| 15 | `CHECKBOX_SOLIDS_HITBOX` | 195 | `0x0c3` | `0x180064F8E` | `getFlag` |
-| 16 | `CHECKBOX_SPECIALS_HITBOX` | 201 | `0x0c9` | `0x180064FEE` | `getFlag` |
-| 17 | `CHECKBOX_SWITCH_AFTER_DEATH` | 168 | `0x0a8` | `0x180065055` | `getFlag` |
+| 8 | `CHECKBOX_NOCLIP_ACCURACY_LIMIT` | 85 | `0x055` | `0x180064CBF` | `getConfigVar<bool>` |
+| 9 | `CHECKBOX_NOCLIP_DEATH_LIMIT` | 87 | `0x057` | `0x180064D26` | `getConfigVar<bool>` |
+| 10 | `CHECKBOX_NOCLIP_DISABLE_PROGRESS` | 73 | `0x049` | `0x180064D8D` | `getConfigVar<bool>` |
+| 11 | `CHECKBOX_NOCLIP_PLAYER_1` | 77 | `0x04d` | `0x180064DF7` | `getConfigVar<bool>` |
+| 12 | `CHECKBOX_NOCLIP_PLAYER_2` | 78 | `0x04e` | `0x180064E61` | `getConfigVar<bool>` |
+| 13 | `CHECKBOX_NOCLIP_TINT` | 75 | `0x04b` | `0x180064EC4` | `getConfigVar<bool>` |
+| 14 | `CHECKBOX_PASSABLE_HITBOX` | 204 | `0x0cc` | `0x180064F2E` | `getConfigVar<bool>` |
+| 15 | `CHECKBOX_SOLIDS_HITBOX` | 195 | `0x0c3` | `0x180064F8E` | `getConfigVar<bool>` |
+| 16 | `CHECKBOX_SPECIALS_HITBOX` | 201 | `0x0c9` | `0x180064FEE` | `getConfigVar<bool>` |
+| 17 | `CHECKBOX_SWITCH_AFTER_DEATH` | 168 | `0x0a8` | `0x180065055` | `getConfigVar<bool>` |
 | 18 | `CHECKBOX_UNCAPPED_LENGTH_IN_EDITOR` | 225 | `0x0e1` | `0x1800650C2` | — |
-| 19 | `CHECKBOX_UNDEAFEN_ON_PAUSE` | 280 | `0x118` | `0x180065129` | `getFlag` |
-| 20 | `NO_LEGACY_SYNC` | 328 | `0x148` | `0x180065177` | `getFlag` |
+| 19 | `CHECKBOX_UNDEAFEN_ON_PAUSE` | 280 | `0x118` | `0x180065129` | `getConfigVar<bool>` |
+| 20 | `NO_LEGACY_SYNC` | 328 | `0x148` | `0x180065177` | `getConfigVar<bool>` |
 
-`getFlag` is the settings index's historical label for `FUN_18002DE50`. Disassembly shows
-that `FUN_18002DE50` is the accessor behind the exported `getConfigVar<bool>`
-(`0x180073880` → `0x1800738BF`), so the 19 confirmed ids are Map A config-bool tags. The
-index's labels for `FUN_18002DE50` and `FUN_18008F420` are swapped; see
+`getConfigVar<bool>` is the settings index label for `FUN_18002DE50`, the accessor behind
+the exported `getConfigVar<bool>` (`0x180073880` → `0x1800738BF`); the 19 confirmed ids are
+Map A config-bool tags. The index's old `getFlag` label for this function was swapped with
+`FUN_18008F420`'s and was corrected on 2026-10-23; see
 [settings-registry.md](settings-registry.md).
 
 `CHECKBOX_UNDEAFEN_ON_PAUSE` is spelled `UNDEAFEN` in the shipped table; that is not a
@@ -182,8 +182,8 @@ maps sit 0x40 bytes apart. So `0x180800DB8` is the default boolean-option map, n
 list.
 
 The values corroborate it: 19 of the 21 ids appear in `_settings.tsv` with accessor
-`getFlag` (Map A, `FUN_18002DE50`). The two absent ids (236, 225) are not read through the
-six indexed accessors, which is consistent with the index's known undercount.
+`getConfigVar<bool>` (Map A, `FUN_18002DE50`). The two absent ids (236, 225) are not read
+through the six indexed accessors, which is consistent with the index's known undercount.
 
 ## Method
 
@@ -242,7 +242,7 @@ six indexed accessors, which is consistent with the index's known undercount.
 The 21-entry `OPTIONS_BOOL` table is the **Map A** config-value default map. 19/21 values
 are read by `FUN_18002DE50`, which disassembly shows is the accessor behind the exported
 `getConfigVar<bool>` (`0x180073880` → `0x1800738BF`). The settings index labels that
-function `getFlag`; the labels are swapped (see [settings-registry.md](settings-registry.md)).
+function `getConfigVar<bool>` (the old `getFlag` label was the swap, corrected 2026-10-23).
 The two absent ids (236, 225) are inferred from the table's uniformity but not
 accessor-confirmed.
 
@@ -259,7 +259,7 @@ result, not a range coincidence:
 - `FUN_18008B490` and `FUN_18008F420` both probe the mask at `+0x160` (Map B);
   `FUN_18002DE50` and `FUN_180027C30` probe `+0xD8` (Map A).
 - 14 of the 85 values are also read by `FUN_18008F420`; all 14 are Map B reads. The index
-  labels `FUN_18008F420` `getConfigVar<bool>`, which is the swap noted above.
+  labels `FUN_18008F420` `isHackEnabled`.
 
 The 10/18 numeric overlap with the `FUN_180120A40` UI row ids is not decisive: the two
 namespaces can share a number, and one value (396) is both a row id and a Map B tag. The

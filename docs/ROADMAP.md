@@ -256,8 +256,10 @@ Exit criteria:
       default, and its interactions.
       **New 2026-10-23:** the CRT initializer `FUN_180062940` statically enumerates 85
       `HACK_*` names (Map B hack-flag tags, consumed by the profile loader) and 21
-      `CHECKBOX_*` boolean options (Map A config tags, 19 accessor-confirmed). A name→tag
-      map is not an implementing function, so the criterion stays open. See
+      `CHECKBOX_*` boolean options (Map A config tags, 19 accessor-confirmed). The settings
+      index's two bool accessors now carry their export identities (`isHackEnabled` for
+      Map B, `getConfigVar<bool>` for Map A). A name→tag map is not an implementing
+      function, so the criterion stays open. See
       [static-hack-label-map.md](../notes/static-hack-label-map.md).
 - [x] High-value clusters documented as patterns rather than 160 isolated notes: input
       hooks, render hooks, gameplay rewrites, UI add-ons, save-data features.

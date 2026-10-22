@@ -21,14 +21,14 @@ type), all registry-in / tag-in shaped:
 | `FUN_18002D710` | `getConfigVar<std::string>` (Map A, type 3) | writes through an out-pointer; miss logs `hackpro::String` |
 | `FUN_18002EE40` | `getConfigVar<hackpro::Bytes>` (Map A, type 4) | out-pointer form; miss logs `hackpro::Bytes` |
 
-**Correction 2026-10-23 — the two bool labels are swapped.** `settings_index.py` names
-`FUN_18008F420` `getConfigVar<bool>` and `FUN_18002DE50` `getFlag`. The export wrappers show
-the opposite: `getConfigVar<bool>` (`0x180073880`) calls `FUN_18002DE50` (`0x1800738BF`)
-and probes the Map A mask at `+0xD8`; `isHackEnabled` (`0x180072FF0`) calls `FUN_18008F420`
-(`0x18007302F`) and probes the Map B mask at `+0x160`. `setConfigVar<bool>`
+**Correction 2026-10-23 — the two bool labels were swapped and are now fixed.** The index
+used to name `FUN_18008F420` `getConfigVar<bool>` and `FUN_18002DE50` `getFlag`. The export
+wrappers show the opposite: `getConfigVar<bool>` (`0x180073880`) calls `FUN_18002DE50`
+(`0x1800738BF`) and probes the Map A mask at `+0xD8`; `isHackEnabled` (`0x180072FF0`) calls
+`FUN_18008F420` (`0x18007302F`) and probes the Map B mask at `+0x160`. `setConfigVar<bool>`
 (`0x180073800`) calls `FUN_180027C30` (Map A), while `setHackEnabled` (`0x180073070`) calls
-`FUN_18008B490` (Map B). The `_settings.tsv` labels are historical names, not export names;
-the tag sets and the Map A/Map B split remain correct.
+`FUN_18008B490` (Map B). `_settings.tsv` has been regenerated with the correct labels; the
+tag sets and the Map A/Map B split are unchanged.
 
 A fourth call form also exists: `FUN_18007CB60(manager, out, key)`. This is a **keyed lookup in
 an FNV-1a-64 chained hash map**, and it has been mislabelled twice here. Recorded once, settled
@@ -136,7 +136,8 @@ recovered functions    : 18825
 distinct tags          : 184
 total tag reads        : 233
 tag range              : 1..883
-accessors recognised   : 6  (FUN_18008F420 bool, FUN_18002DE50 flag, FUN_18002E4C0 int,
+accessors recognised   : 6  (FUN_18008F420 hack flag, FUN_18002DE50 config bool,
+                            FUN_18002E4C0 int,
                             FUN_180003D80 decimal, FUN_18002D710 string,
                             FUN_18002EE40 hackpro::Bytes)
 ```
@@ -149,11 +150,11 @@ Most-read ids:
 
 | Id | Reads | Accessor |
 | -- | ----: | -------- |
-| 445 | 9 | `getConfigVar<bool>` |
-| 447 | 5 | `getFlag` |
-| 446 | 4 | `getFlag` |
-| 502 | 4 | `getConfigVar<bool>` |
-| 869 | 4 | `getFlag` |
+| 445 | 9 | `isHackEnabled` |
+| 447 | 5 | `getConfigVar<bool>` |
+| 446 | 4 | `getConfigVar<bool>` |
+| 502 | 4 | `isHackEnabled` |
+| 869 | 4 | `getConfigVar<bool>` |
 | 487, 500, 501, 868 | 3 each | mixed |
 
 Ids are not contiguous. There are gaps — for instance nothing reads 823 through 868 except
@@ -175,7 +176,7 @@ All seven are present and located:
 | 245 | 2 | `FUN_180169EB0`, `FUN_180169F20` | suppress the New Best label |
 | 247 | 1 | — | gate on the label scale path |
 | 501 | 3 | `getConfigVar<scalar>` | label opacity scale |
-| 502 | 4 | `getConfigVar<bool>` | master switch for the scale path |
+| 502 | 4 | `isHackEnabled` | master switch for the scale path |
 | 761 | 1 | `FUN_18024E8D0` | include a term in the `cps` display |
 | 762 | 1 | `FUN_18024E8D0` | include a second term |
 | 801 | 1 | `FUN_18024E8D0` | include the `jump` token |
@@ -207,7 +208,7 @@ lVar5 = ((... FNV-1a-64 ...) * 0x100000001b3 & *(ulonglong *)(param_1 + 0xd8)) *
 lVar4 = *(longlong *)(*(longlong *)(param_1 + 0xc0) + 8 + lVar5);
 ```
 
-Same shape as `getConfigVar<bool>`, but over a **different map layout** — not the
+Same shape as `isHackEnabled`, but over a **different map layout** — not the
 `BasicConfig` maps at `+0x20`/`+0x30`/`+0x48` or `+0x138`/`+0x148`/`+0x160`. So this is a
 second registry, not a fourth accessor on the first.
 
@@ -256,7 +257,7 @@ feature. With 184 tags read by 233 sites, that cannot be answered from the table
 ### Corrected: `FUN_18002EE40` is `getConfigVar<hackpro::Bytes>`, not a second registry
 
 An earlier draft of this section called `FUN_18002EE40` "a second registry's accessor",
-because its map sits at a different offset from `getConfigVar<bool>`'s. **That was wrong**,
+because its map sits at a different offset from `isHackEnabled`'s. **That was wrong**,
 and the evidence against it is one line of the function itself:
 
 ```
@@ -501,7 +502,7 @@ not on the constructor path — `FUN_1800A28C0` builds an instance of the same c
 ### A correction to my own reasoning
 
 The "second registry" claim was made because `FUN_18002EE40`'s offsets differ from
-`getConfigVar<bool>`'s. The offsets do differ — but that is now explicable without a second
+`isHackEnabled`'s. The offsets do differ — but that is now explicable without a second
 object, because `FUN_18008A510()` returns **a fixed `+0xD8` into a global whose extent and
 layout were unknown at the time**. Comparing an offset read through one accessor against an
 offset read through another was never a valid comparison without the base. It happened to
@@ -974,7 +975,7 @@ rather than an extension of either.
 ## Conclusion
 
 1. The registry lives on `hackpro::BasicConfig`; `hackpro::Config` derives from it at
-   `+0x128` and its `vtable[2]` is a `getConfigVar<bool>` forwarder.
+   `+0x128` and its `vtable[2]` is an `isHackEnabled` forwarder.
 2. Settings are keyed by **`hackpro::Tag`, a 64-bit value**, not by a small number. The
    184 values in `_settings.tsv` are what this build uses, not the interface's type.
 3. Tag names exist only in a runtime map on the registry, and tag ↔ name is a **bijection**
@@ -1022,15 +1023,15 @@ rather than an extension of either.
 
 The second map is `OPTIONS_BOOL`: the profile loader `FUN_180043970` passes
 `&DAT_180800DB8` with that literal at `0x180043DFA`, and 19/21 of its values are read by
-`FUN_18002DE50` (index label `getFlag`, the exported `getConfigVar<bool>`; Map A). Those 19
-are confirmed Map A tags; the two absent ids (236, 225) are inferred from the table's
-uniformity but are not accessor-confirmed.
+`FUN_18002DE50` (index label `getConfigVar<bool>`; Map A). Those 19 are confirmed Map A
+tags; the two absent ids (236, 225) are inferred from the table's uniformity but are not
+accessor-confirmed.
 
 The 85-entry table is the **Map B** hack-flag name→tag map. `FUN_180043970` reads the
 map's internals and passes each matched node's value to `FUN_18008B490` (`0x180043D27`),
 the same setter `setHackEnabled` uses (`0x1800730B5`). The 14 ids that also appear in
 `_settings.tsv` are read by `FUN_18008F420` (Map B; the index labels it
-`getConfigVar<bool>`). The earlier "245 collision" is resolved: 245 is a Map B hack-flag
+`isHackEnabled`). The earlier "245 collision" is resolved: 245 is a Map B hack-flag
 tag, and the New Best path reads the same Map B tag. `HACK_RESPAWN_TIME = 245` means the
 Respawn Time cheat is the toggle the New Best path sees. UNVERIFIED: the exact UI effect at
 runtime.
@@ -1069,7 +1070,7 @@ and a Map B tag. Full tables in
 
 - **Comparing struct offsets read through different `this` bases.** This produced **two**
   false claims in this file. The first was "`FUN_18002EE40` is a second registry", from its
-  offsets differing from `getConfigVar<bool>`'s. The second was "`+0xB0` is claimed twice",
+  offsets differing from `isHackEnabled`'s. The second was "`+0xB0` is claimed twice",
   from the serialiser and the accessor both writing `+0xB0`. In both cases the offsets were
   read through differently-based pointers — one via `FUN_18008A510()` (`object + 0xD8`), one
   via virtual dispatch (`object + 0x128`) — and neither was the same field.

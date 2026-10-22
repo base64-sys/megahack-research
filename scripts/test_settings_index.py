@@ -79,7 +79,15 @@ def check_splitter(failures: list[str]) -> None:
     # that was guessed before.
     check(
         ACCESSORS["FUN_18008f420"][0] == 1,
-        "getConfigVar<bool> takes the tag second",
+        "isHackEnabled takes the tag second",
+    )
+    check(
+        ACCESSORS["FUN_18008f420"][1] == "isHackEnabled",
+        "FUN_18008f420 is isHackEnabled (Map B)",
+    )
+    check(
+        ACCESSORS["FUN_18002de50"][1] == "getConfigVar<bool>",
+        "FUN_18002de50 is getConfigVar<bool> (Map A)",
     )
     check(
         ACCESSORS["FUN_18002ee40"][0] == 2,

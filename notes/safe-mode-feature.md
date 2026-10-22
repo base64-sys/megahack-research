@@ -22,9 +22,10 @@ From [hook-dispatch.md](hook-dispatch.md):
 - `FUN_18019B5F0` (`0x18019B5F0`) is the shared predicate consulted by the
   `resetLevel`, `levelComplete` and `savePercentage` hooks.
 - It checks for a current level, then three conditions:
-  1. config tag `0x1E2` (`0x18008F420` / `getConfigVar<bool>`);
-  2. config tag `0x1E1` plus cached safe-mode flag `DAT_18080CBD8`;
-  3. config tag `0x49` (`getFlag`) plus `FUN_180199520() >= 1.0`.
+  1. hack flag `0x1E2` (482, `HACK_SAFE_MODE`; `0x18008F420` / `isHackEnabled`);
+  2. hack flag `0x1E1` (481, `HACK_AUTO_SAFE_MODE`) plus cached safe-mode flag
+     `DAT_18080CBD8`;
+  3. config tag `0x49` (`0x18002DE50` / `getConfigVar<bool>`) plus `FUN_180199520() >= 1.0`.
 - `FUN_18019B330` (`0x18019B330`) caches
   `mega::utils::safe_mode::areCheatsEnabled()` into `DAT_18080CBD8` and runs
   after every `resetLevel`.

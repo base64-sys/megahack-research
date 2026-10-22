@@ -273,7 +273,7 @@ registry rather than another accessor on the first", and concluded that
   the **same** registry. The literal it emits on a miss is the requested type's name
   (`hackpro::Bytes`), and the map it probes (sentinel node `object + 0x188`, bucket array
   `object + 0x198`, mask `object + 0x1B0`) lives inside that same registry object. The
-  offsets differ from `getConfigVar<bool>`'s because the two readers use different bases
+  offsets differ from the bool getter's because the two readers use different bases
   over one object, not because the objects differ.
 
   **Correction (2026-10-21 audit).** An earlier draft of this line called the probed map

@@ -31,8 +31,8 @@ All VAs are in Mega Hack's image unless marked GD. RVAs (GD) are relative to
 | `0x18007C700` | intern (tag, name) |
 | `0x18007CB60` | string-keyed lookup (name → tag), container at `registry + 0x130` |
 | `0x18002EE40` | `getConfigVar<hackpro::Bytes>` (tag arg index 2) |
-| `0x18008F420` | `getConfigVar<bool>` (tag arg index 1) |
-| `0x18002DE50` | `getFlag` (tag arg index 1) |
+| `0x18008F420` | `isHackEnabled` / Map B hack-flag getter (tag arg index 1) |
+| `0x18002DE50` | `getConfigVar<bool>` / Map A config getter (tag arg index 1) |
 | `0x180003D80` | `getConfigVar<scalar>` (tag arg index 1) |
 | `0x18002E4C0` | `getConfigVar<int>` (tag arg index 1) |
 | `0x18002D710` | `getConfigVar<std::string>` (tag arg index 2) |
