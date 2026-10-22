@@ -28,12 +28,23 @@
 
 - Runtime comparison of reconstructed hook callbacks against the release's
   observable behaviour.
-- Cluster-level accounting is now complete: every changelog feature row in
-  [feature-inventory.md](feature-inventory.md) is marked `mapped` with a link to
-  its cluster note (2026-10-23).
+- Cluster assignment exists but is only a lead: all 389 changelog rows in
+  [feature-inventory.md](feature-inventory.md) are status `cluster`, not `mapped`.
+  A keyword check finds **185 of 389** rows whose linked note never mentions the
+  feature at all (method below).
 - Per-feature settings-key and default mapping for the 389 changelog features
   remains open.
 - Alias/dead classification for features absent from the current build remains open.
+
+### Cluster-assignment check (2026-10-23)
+
+Each row's changelog wording was tokenised (words longer than three characters,
+common verbs and connectives removed) and searched case-insensitively in the text of
+the note the row links to. 204 rows share at least one token with their note; **185
+share none**. A shared token is not proof of coverage either — words like "show" and
+"level" appear in almost every note — so even the 204 are leads, not findings. The
+check measures how thin the cluster assignment is; it does not certify any row as
+mapped.
 
 ## Conclusion
 

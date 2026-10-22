@@ -248,6 +248,10 @@ Mega Hack ships 160+ toggles. Map each to the code that implements it.
 Exit criteria:
 
 - [ ] Every feature listed in `changelog.md` accounted for: implemented, alias, or dead.
+      **Measured 2026-10-23:** all 389 changelog rows are assigned to a subsystem note,
+      but the status is `cluster`, not `mapped` — for **185 of 389** the linked note never
+      mentions the feature. No row yet has per-feature settings/default/code evidence, so
+      the criterion stays open. See [m3-validation.md](../notes/m3-validation.md).
 - [ ] Each feature mapped to its implementing function(s) with VAs, its settings keys, its
       default, and its interactions.
 - [x] High-value clusters documented as patterns rather than 160 isolated notes: input
