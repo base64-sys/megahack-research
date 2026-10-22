@@ -223,7 +223,7 @@ Exit criteria:
 - [x] `nxUI` menu reconstructed well enough to explain how rows, tags and languages
       interact — including why a packed interface has no spare row and a definition hook
       substitutes a label per language dictionary load.
-- [ ] Hook dispatch mechanism recovered, so new hooks are mechanical rather than bespoke.
+- [x] Hook dispatch mechanism recovered, so new hooks are mechanical rather than bespoke.
       **Recovered.** Mega Hack takes `GetModuleHandleA(NULL)` — the GD executable's base,
       `FUN_18010DDC0`, 278 direct callers — and treats hard-coded RVAs into it as GD
       function addresses, wrapping each in a Geode hook under a convention its debug types
