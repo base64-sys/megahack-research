@@ -86,7 +86,7 @@ UNVERIFIED: the directory segment between `%LOCALAPPDATA%` and `Octavus`.
 `_xrefs.tsv` contains **no** reference to the literal `GeometryDash` anywhere in the binary,
 so that segment is not a hard-coded string here; it is either supplied by Geode's
 directory abstraction or derived at runtime. Confirming it needs the Geode host contract for
-save-data paths — see [references/](references/).
+save-data paths — see [references/](../references/).
 
 ### 3. Nothing else found
 

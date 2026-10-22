@@ -65,7 +65,7 @@ All work targets one pinned triple. Do not mix baselines.
 `mod.json` declares `"early-load": true`, so Mega Hack initialises before other mods and
 relies on `node-ids` for stable hook addresses.
 
-Target binaries and their roles are listed in [docs/GOALS.md](docs/GOALS.md#target-binaries).
+Target binaries and their roles are listed in [docs/GOALS.md](docs/GOALS.md#scope).
 
 ## PE layout (`_original.dll`)
 
@@ -98,7 +98,7 @@ megahack-research/
 │   ├── GOALS.md         # mission, scope, non-goals, definition of done
 │   └── ROADMAP.md       # milestone tracker with exit criteria
 ├── notes/               # durable findings, one file per subsystem
-├── references/          # external docs: Geode, GD host API, third-party research
+├── references/          # reserved for external docs (see references/README.md)
 ├── samples/             # GITIGNORED — captured binaries and Absolllute's tooling
 │   └── absolllute.hackmega/
 │       ├── tools/       # pe_*.py, build/validate, ghidra_scripts/
@@ -113,7 +113,7 @@ may require a tracked file inside `samples/` to exist.
 Consequence worth knowing: **the tooling in `samples/.../tools/` is not version-controlled
 either.** A fresh clone has no analysis tooling until the sample set is restored. Promoting
 the genuinely original parts into `scripts/` is tracked as open work in
-[docs/ROADMAP.md](docs/ROADMAP.md#m1--binary-inventory-and-host-abi-surface-in-progress).
+[docs/ROADMAP.md](docs/ROADMAP.md#m1--binary-inventory-and-host-abi-surface-done).
 
 ## Recovered source
 
@@ -418,7 +418,8 @@ A second interpreter exists for the bundled GUI launcher:
 (3.12.14). Use the 3.14 one for analysis; both satisfy the tooling.
 
 Every tool in `samples/absolllute.hackmega/tools/` does
-`sys.path.insert(0, ".analysis_tools")`, so **run them from the mod root**:
+`sys.path.insert(0, ".analysis_tools")`, so **run them from the mod root**
+(`samples/absolllute.hackmega/`, the directory that holds `.analysis_tools/`):
 
 ```powershell
 Set-Location samples/absolllute.hackmega
@@ -463,7 +464,8 @@ findings belong in `notes/`.
 6. **Only then** propose code. Anything derived goes in `scripts/`, and any binary a script
    emits must be reproducible from that script alone.
 
-Before pushing anything that touches geometry or state:
+Before pushing anything that touches geometry or state (run from
+`samples/absolllute.hackmega/`, where `.analysis_tools/` lives):
 
 ```powershell
 & $py .\tools\validate_persistence_patch.py

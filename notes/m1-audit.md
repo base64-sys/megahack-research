@@ -137,7 +137,7 @@ itself does not. All 497 pass both.
 | A | Settings registry map | open | **OPEN for the right reason** — the *contents* are data, not code. Mechanism re-verified; two claims corrected. |
 | B | Save/load file formats | open | **OPEN** — mechanism and file identities mapped; schema still unknown. |
 | C | GD structures | open | **OPEN** — 5 of 7 offsets verified from two angles each; `+0x2C4`/`+0x35C` UNVERIFIED as GJGameLevel offsets. |
-| D | Output (`notes/`) | ticked | **VERIFIED** — 24 notes, every address claim VA-anchored; corrections applied. |
+| D | Output (`notes/`) | ticked | **VERIFIED** – 24 notes at audit time, 25 in total (`m1-verification.md` was added in the same commit; `docs/ROADMAP.md` now lists twenty-five), every address claim VA-anchored; corrections applied. |
 
 ### A. Settings registry — mechanism verified, two claims corrected
 
@@ -249,9 +249,11 @@ pointer at `+0x208`. `+0x2C4` is additionally read at three different widths (by
 qword) across the image, which is only possible across different structures, and the only
 comparison against it anywhere is `cmp edx, dword ptr [rcx + 0x2c4]` at `0x1800F1B55`.
 
-### D. Output — 24 notes, corrected
+### D. Output – the notes count, corrected
 
-`notes/` holds 24 files, one per subsystem, every M1 subsystem covered.
+`notes/` holds 25 files, one per subsystem, every M1 subsystem covered (24 when this
+section was corrected from 20; `m1-verification.md` was added in the same commit, and
+`docs/ROADMAP.md` now lists twenty-five).
 The audit changed nine of them and two documents; the list is in "Contradictions found and
 fixed" below.
 

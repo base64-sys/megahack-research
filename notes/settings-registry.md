@@ -205,7 +205,7 @@ second registry, not a fourth accessor on the first.
 `scripts/settings_index.py` did not recognise it, and **tag `0x11D` (285) was therefore
 missing from `_settings.tsv`** — the index jumped from 284 to 292 across the gap. It is read
 from the `PlayLayer::onQuit` hook body; see
-[hook-dispatch.md](hook-dispatch.md#a-settings-accessor-this-repos-index-misses).
+[hook-dispatch.md](hook-dispatch.md#the-settings-accessor-this-note-used-to-call-missing).
 
 This is the second time the same lesson has cost a specific setting: the first was tag 501
 missing from the original two-accessor sweep.
@@ -911,7 +911,7 @@ with `FOLDERID_LocalAppData`, and `FUN_180042FB0` appends `Octavus` directly, so
 contains **no** reference to the literal `GeometryDash` anywhere, so the `GeometryDash`
 directory is not hard-coded as a string in this binary — it is either supplied by Geode's
 directory abstraction or derived at runtime. Confirming it needs the Geode host contract for
-save-data paths; see [references/](references/).
+save-data paths; see [references/](../references/).
 
 These two stores are the reason M4's `best_runs.bin` work is a third, separate mechanism
 rather than an extension of either.

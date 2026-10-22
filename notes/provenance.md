@@ -1,6 +1,6 @@
 # Provenance and baseline pinning
 
-Closes the first open exit criterion of [M1](../docs/ROADMAP.md#m1--binary-inventory-and-host-abi-surface-in-progress).
+Closes the first open exit criterion of [M1](../docs/ROADMAP.md#m1--binary-inventory-and-host-abi-surface-done).
 
 - **Question** — which bytes are we actually reading, and can they be re-derived from
   something other than one extracted folder?

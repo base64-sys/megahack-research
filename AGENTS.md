@@ -119,13 +119,17 @@ powershell -File scripts\notify.ps1 -Kind Question -Task "<task>" `
 
 ## Investigating
 
-- Run tools from the mod root: every script does `sys.path.insert(0, ".analysis_tools")`,
-  which is relative to the cwd.
+- Sample tools under `samples/absolllute.hackmega/tools/` do `sys.path.insert(0,
+  ".analysis_tools")` relative to the cwd, so run them from `samples/absolllute.hackmega/`
+  (the mod root). Tracked tools under `scripts/` need no vendored packages and resolve the
+  sample set as `samples/...` paths, so run those from the repository root.
 - `python` is a Store stub on this machine. Use
   `C:\Users\Robert_\AppData\Local\Python\bin\python3.exe` (3.14.6).
 - Prefer the purpose-built tool over ad-hoc scripting: `pe_xrefs.py` for strings,
-  `pe_disasm.py` for raw truth, `pe_caves.py` for space, `DumpDecompile.java` /
-  `FindAsciiReferences.java` for structure.
+  `pe_disasm.py` for raw truth, `pe_caves.py` for space (all in
+  `samples/absolllute.hackmega/tools/`), `DumpDecompile.java` / `FindAsciiReferences.java`
+  for structure (in its `tools/ghidra_scripts/`). These live in the sample set, so they are
+  absent on a fresh clone.
 - Never convert an RVA to a file offset by linear subtraction. Use `scripts/pe_rva.py`,
   which is tracked and dependency-free. `pefile.get_offset_from_rva` has the same bug: for an
   RVA past a section's `SizeOfRawData` it returns an offset inside a *later* section. Two

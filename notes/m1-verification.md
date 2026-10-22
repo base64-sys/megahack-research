@@ -46,7 +46,7 @@
 
 | # | Claim | Where | Finding | Resolution |
 |---|-------|-------|---------|------------|
-| 1 | "20 notes" | `notes/m1-audit.md` (two sites) | `notes/` holds 24 `.md` files; `docs/ROADMAP.md` lists 24 by name | Corrected `m1-audit.md` → 24 notes |
+| 1 | "20 notes" | `notes/m1-audit.md` (two sites) | `notes/` holds 24 `.md` files; `docs/ROADMAP.md` lists 24 by name | Corrected `m1-audit.md` → 24 notes (the 25th file is this note, added in the same commit; `docs/ROADMAP.md` now lists twenty-five) |
 | 2 | "0 ordinal-only imports" | `notes/m1-audit.md` | Raw PE import table has **27** ordinal imports, all `WS2_32.dll`. `pefile` reports 0 because its `ordlookup` resolves ordinals to names. Both readings are defensible; the raw-bytes reading is 27 | Recorded both readings; `m1-audit.md` now states 27 by ordinal and 0 unnamed |
 | 3 | M1 heading "(in progress)" | `docs/ROADMAP.md` line 44 | Table row 14 marks M1 `done` and the section ends "M1 is complete (2026-10-22)" | Corrected heading to "(done)" |
 | 4 | Mangled-name count vs exports | `notes/hackpro-api.md` | 30 named exports confirmed; 26 in the API block + 3 `safe_mode` + 1 `define` | Consistent, no change |
@@ -107,7 +107,7 @@ edge counts, note counts, offset claims).
 | Save/load (binary side) | `notes/persistence.md` | VERIFIED on binary side; JSON schemas are user data |
 | Entry / lifecycle (partial) | `notes/tab-registration.md` | VERIFIED (partial, as documented) |
 | GD structures | `notes/gd-structures.md` | VERIFIED for 5 of 7; `+0x2C4`/`+0x35C` UNVERIFIED |
-| Output (notes) | `notes/` (24 files) | VERIFIED |
+| Output (notes) | `notes/` (24 files at verification time; 25 after this note was saved) | VERIFIED |
 
 The four criteria the task singled out (settings registry, save/load, GD structures, output)
 are ticked in `docs/ROADMAP.md` and the evidence supports keeping them ticked: the residuals

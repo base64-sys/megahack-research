@@ -44,8 +44,9 @@ The boundary is about the entitlement check specifically, not the whole neighbou
 
 - `mega::utils::CompressedBuffer` is compression, not licensing. If the persistence work ever
   needs it, it is in scope.
-- Save/load formats for level data, progress and the `best_runs.bin` sidecar are in scope, and
-  are covered by M1 and M4.
+- Save/load formats for level data and progress are in scope and covered by M1 and M4. The
+  `best_runs.bin` sidecar is the local patch's format, not the release's (see
+  [persistence.md](persistence.md)); M4's sidecar criteria were removed on 2026-10-18.
 - The login endpoint's *existence* is already recorded, and stays a static observation. Nothing
   in this project should ever be pointed at a live service.
 
