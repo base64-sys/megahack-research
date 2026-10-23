@@ -64,8 +64,9 @@ FUN_1801462c0(param_1, param_2, param_3, param_4);   // original
   frame of a cheat segment, and its last entry is updated on the first clean frame after
   one.
 - At the end of the frame it sets `DAT_18080CB69 = DAT_18080CB68` and then clears
-  `DAT_18080CB68`; the delayed copy is `CB69`, not `CB68`. No assignment of `1` appears in
-  the recovered tree.
+  `DAT_18080CB68`; the delayed copy is `CB69`, not `CB68`. The `= 1` writer is
+  `0x1801993FD`, inside the `PlayLayer::destroyPlayer` callback
+  ([safe-mode-feature.md](safe-mode-feature.md#the-cheat-frame-setter-playlayerdestroyplayer)).
 - No file I/O occurs here. The "postUpdate" flush point in the release is the
   anti-cheat progress accounting, not a disk write.
 
@@ -122,6 +123,7 @@ void FUN_180174de0(void) {
   virtual slot at `0x180547890`.
 - UNVERIFIED: whether `FUN_180042D70`'s second caller is a migration path or a
   re-read.
-- UNVERIFIED: what sets `DAT_18080CB68` to `1` (the cheat-attributed-frame flag).
+- UNVERIFIED: what `PlayLayer+0x3788` is — the field the `destroyPlayer` callback
+  compares against before setting the cheat-attributed flag.
 - UNVERIFIED: the exact meaning of setting tag `0x11D` (`getConfigVar<hackpro::Bytes>`)
   consumed by the onQuit path.

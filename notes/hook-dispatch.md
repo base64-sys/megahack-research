@@ -334,10 +334,11 @@ The value lives in `hackpro.json`, which this repo does not read.
   when the non-cheat share falls below 1.0, i.e. on any cheat-attributed frame. `param_2`
   is the float delta passed to the `PlayLayer::postUpdate` hook, i.e. frame time.
   `FUN_1801992B0` clears `DAT_18080CB68` every frame and copies it to `DAT_18080CB69`, so
-  `CB69` is the one-frame-delayed copy, not the other way round. No assignment of `1` to
-  `CB68` appears in the recovered tree, so its setter is not in the recovered set (or is
-  reached through a pointer). UNVERIFIED: what sets `DAT_18080CB68` and whether it is the
-  cheat-attributed-frame marker.
+  `CB69` is the one-frame-delayed copy, not the other way round. The setter is
+  `0x1801993FD` (`mov byte [0x18080CB68], 1`) inside the `PlayLayer::destroyPlayer`
+  callback `LAB_1801993F0`; see
+  [safe-mode-feature.md](safe-mode-feature.md#the-cheat-frame-setter-playlayerdestroyplayer).
+  UNVERIFIED: what `PlayLayer+0x3788` is, and therefore the exact trigger condition.
 - (Resolved 2026-10-20.) `FUN_1800AB850` versus `FUN_18019A0C0`: both call
   `createConvention` then register, but they are different helper variants distinguished by
   callback signature/arity, not by semantics. `FUN_18019A0C0` is the variant used by

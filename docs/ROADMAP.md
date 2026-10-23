@@ -262,8 +262,10 @@ Exit criteria:
       Map B, `getConfigVar<bool>` for Map A). Three changelog rows now have per-feature
       evidence: Safe Mode (tag 482), Auto Safe Mode (tag 481 plus the `hasCheatedInAttempt`
       cache) and Disable Progress to Noclip (tag 73), all through the gate
-      `FUN_18019B5F0` and the `savePercentage`/`levelComplete` wrappers. The other 386
-      rows keep the criterion open. See
+      `FUN_18019B5F0` and the `savePercentage`/`levelComplete` wrappers. The cheat-attributed
+      time that tag 73's gate compares against now has a writer: `0x1801993FD` in the
+      `PlayLayer::destroyPlayer` callback, which sets `DAT_18080CB68` for the frame. The
+      other 386 rows keep the criterion open. See
       [static-hack-label-map.md](../notes/static-hack-label-map.md) and
       [safe-mode-feature.md](../notes/safe-mode-feature.md).
 - [x] High-value clusters documented as patterns rather than 160 isolated notes: input

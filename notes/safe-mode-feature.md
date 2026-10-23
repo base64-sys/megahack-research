@@ -30,9 +30,11 @@ attempt-level cache, not a live config query; its writers are listed below.
 
 A second registration function, `FUN_1801990B0` (`0x1801990B0`), installs another
 `PlayLayer::resetLevel` callback (`FUN_180199250`), the `PlayLayer::postUpdate`
-accumulator (`FUN_1801992B0`), and four collision/init callbacks. So `resetLevel` has two
-Mega Hack hooks: one refreshes the safe-mode cache, the other clears the progress
-accumulators. Neither calls the gate.
+accumulator (`FUN_1801992B0`), and four callbacks on `PlayLayer::destroyPlayer`,
+`GJBaseGameLayer::init`, `PlayerObject::collidedWithObjectInternal` and
+`PlayerObject::collidedWithSlopeInternal`. So `resetLevel` has two Mega Hack hooks: one
+refreshes the safe-mode cache, the other clears the progress accumulators. Neither calls
+the gate. The `destroyPlayer` callback is the cheat-frame setter described below.
 
 `FUN_180199250` calls the resetLevel thunk `FUN_1801A4300`, then zeroes
 `DAT_18080CB68`, `DAT_18080CB69`, `DAT_18080CB70`, `DAT_18080CB78`, the checkpoint vector
@@ -101,10 +103,51 @@ positive, otherwise `1.0`. It is the **non-cheat share of level time**. The gate
 branch fires when that share is **below 1.0** — any cheat-attributed frame — not when it
 reaches 1.0. The earlier note had this comparison inverted.
 
-No assignment of `1` to `DAT_18080CB68` appears in the recovered tree; only
-`FUN_1801992B0` and `FUN_180199250` write the flag, and both write 0. The code that marks
-a frame as cheat-attributed is therefore not in the recovered set (or is reached through a
-pointer).
+### The cheat-frame setter: `PlayLayer::destroyPlayer`
+
+A whole-image RIP-relative xref scan finds three stores to `DAT_18080CB68`: two write `0`,
+and the only store of `1` is at `0x1801993FD` (`c6 05 64 37 67 00 01`,
+`mov byte ptr [rip + 0x673764], 1`), inside the callback `LAB_1801993F0`. `FUN_1801990B0` registers that callback for `PlayLayer::destroyPlayer`
+(RVA `0x3B39D0`, hook argument `0xFFFFF428`). The lazy thunk `FUN_1801A3D20`
+independently resolves the same double as `FUN_18010DDC0() + 0x3B39D0` and tail-calls the
+cached original at `DAT_18080FD28`, so the RVA has two angles.
+
+Read in full (`0x1801993F0`–`0x18019941A`):
+
+| VA | Instruction | Effect |
+| --- | --- | --- |
+| `0x1801993F0` | `cmp r8, [rcx + 0x3788]` | compare the third argument slot with the layer field |
+| `0x1801993F7` | `je 0x1801A3D20` | equal: call the original, no marking |
+| `0x1801993FD` | `mov byte [0x18080CB68], 1` | mark the frame cheat-attributed |
+| `0x180199404` | `mov rax, r8` | candidate pointer = the argument |
+| `0x180199407` | `test r8, r8` | |
+| `0x18019940A` | `jne 0x180199413` | |
+| `0x18019940C` | `mov rax, [0x18080CB88]` | null argument: fall back to the last collided object |
+| `0x180199413` | `mov [0x18080CB80], rax` | record the death-causing pointer |
+| `0x18019941A` | `jmp 0x1801A3D20` | tail-call the original |
+
+`DAT_18080CB80` and `DAT_18080CB88` are therefore a death-object pair. The two collision
+callbacks (`FUN_180199440`, `FUN_1801994B0`) store their `r8` in `CB88` and clear it after
+the original returns; `LAB_180199420` (`GJBaseGameLayer::init`) clears both;
+`FUN_1801995B0` is a plain getter for `CB80` with two callers at `0x180204053` and
+`0x18020405D`. That call site tests `PlayLayer+0x309C` and `+0x324A`, then tag `0xDA`
+and tag `0xD9`, before forwarding the cached pointer to `FUN_180203070`. Neither tag is in
+the 85-entry label map, so their names are open.
+
+UNVERIFIED: the semantics of the comparison. `PlayLayer+0x3788` is not identified in this
+repo, and two readings fit the bytes:
+
+1. **`m_player1`** — the callback marks a cheat frame only when the destroyed player is
+   not player 1. `FUN_180198B00` and `FUN_180198B70` dereference the same field and
+   compare `+0x40C` against 8, which fits a `PlayerObject` (gamemode 8) but does not
+   prove it.
+2. **a `GameObject*` field** — the comparison is against a recorded death object, and
+   `+0x40C` would be a `GameObject` id (8 is the spike id).
+
+Reading 1 also requires `destroyPlayer`'s third argument to be the player rather than the
+object; the GD 2.2081 signature is not verified here. What is established is the writer:
+any frame in which this comparison fails sets the cheat-attributed flag once, and
+`postUpdate` attributes that frame's delta to `CB78`.
 
 ## Evidence — settings keys
 
@@ -159,7 +202,10 @@ binding from the message callback to `FUN_18019A780`.
 
 ## Open questions
 
-- UNVERIFIED: what sets `DAT_18080CB68` to 1.
+- UNVERIFIED: what `PlayLayer+0x3788` is, and therefore the exact condition that makes the
+  `destroyPlayer` callback mark a frame cheat-attributed (see above).
+- UNVERIFIED: tags `0xD9`/`0xDA`, read by the `CB80` getter's caller at `0x180204053`;
+  neither is in the 85-entry label map.
 - UNVERIFIED: what triggers `FUN_18019B670`; it has no direct caller or registration
   reference in the recovered tree. `FUN_18019B2F0` is the tag-478 listener registered by
   `FUN_18019B050`.
