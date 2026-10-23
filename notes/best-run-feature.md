@@ -55,5 +55,27 @@ From [import-dt.md](import-dt.md):
   245 is the Map B hack-flag tag `HACK_RESPAWN_TIME` (static label map plus the
   `isHackEnabled` getter path); its runtime effect on the label is still to confirm. See
   [static-hack-label-map.md](static-hack-label-map.md).
+
+## Evidence — Accurate Percentage (recovered 2026-10-23 via REA/Ghidra 12.1.2)
+
+`FUN_180165040` (`0x180165040`) registers `FUN_180165110` (`0x180165110`)
+as a hook on `PlayLayer::updateProgressbar` (RVA `0x3B23C0`).
+
+`FUN_180165110` formats the progress bar percentage:
+- Reads decimal places from tag 0x1AE (430) via `FUN_18002E4C0` (uint/int accessor).
+- If decimal places == 0 OR `isHackEnabled(tag 0x1AD = 429)` is true: formats
+  with the configured decimal places using `"{{:.{}f}}%"`.
+- Computes the percentage from `FUN_1801A4CB0(param_1)` (a position/percentage
+  value), applies `pow(10, decimals)` rounding, and clamps to [0, 100].
+
+### Tag map
+
+| Tag (hex) | Tag (dec) | Accessor | Static-map name | Role |
+| --- | --- | --- | --- | --- |
+| 0x1AD | 429 | `isHackEnabled` (Map B) | (not in static list — runtime-assigned) | "Accurate Percentage" toggle |
+| 0x1AE | 430 | `FUN_18002E4C0` (uint/int accessor) | (not in static list) | Decimal places (0–N)
+
+UNVERIFIED: which JSON keys bind to tags 0x1AD and 0x1AE; whether this is the
+"Accurate Percentage" feature or "Accurate Percentage Better Calculation".
 - UNVERIFIED: whether `STATUS/BEST_RUN/DROPDOWN/PREFIX` is the reused row's
   persisted display state or a separate setting.

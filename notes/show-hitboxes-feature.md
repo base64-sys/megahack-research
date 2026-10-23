@@ -63,11 +63,150 @@ From [settings-contents.md](settings-contents.md):
   - "CBS Tick Highlighting in Show Hitbox Trail"
   - "Requires Show Hitboxes option to Show Hitbox Trail"
 
-## Open questions
+## Evidence — implementation (recovered 2026-10-23 via REA/Ghidra 12.1.2)
 
-- UNVERIFIED: which functions read each Show Hitboxes setting tag and draw
-  the hitboxes.
-- UNVERIFIED: whether the trail and on-death variants share the same
-  rendering helper.
+The draw entry point is `FUN_180203F60` (`0x180203F60`). Three render paths call it
+(`0x180158740`, `0x180158830`, `0x1801588F0`), each looking up the draw node by ID
+`0x1E6813A` on the layer at `PlayLayer+0x3770`. Each caller clears/refreshes first,
+then calls `FUN_180203F60(playLayer, drawNode)`.
+
+### Gate — `FUN_180203EE0` (`0x180203EE0`)
+
+Returns 1 (draw) when either:
+
+1. `isHackEnabled(HACK_SHOW_HITBOXES = 192, 0xC0)` is true (master toggle), OR
+2. `isHackEnabled(HACK_SHOW_HITBOXES_ON_DEATH = 216, 0xD8)` is true AND
+   `PlayLayer+0x309C == 0` AND
+   (`PlayLayer+0x324A != 0` OR
+    (`getConfigVar<bool>(tag 0xD9 = 217)` is true AND `FUN_1801994D0()` != 0)).
+
+`FUN_1801994D0` returns `DAT_18080CB69` (the previous frame's cheat-attributed flag),
+so branch 2 fires on the frame after a cheat-attributed death, or when `+0x324A` is set.
+
+### Draw — `FUN_180203F60` (`0x180203F60`)
+
+1. `CCDrawNode::clear(drawNode)`.
+2. If the gate above is false, return.
+3. Call `FUN_180204000(playLayer, drawNode)` then `FUN_180204150(playLayer, drawNode)`.
+
+### `FUN_180204000` (`0x180204000`) — main hitbox pass
+
+- If on-death mode (`HACK_SHOW_HITBOXES_ON_DEATH` on, `+0x309C == 0`,
+  `+0x324A != 0` OR (tag 0xD9 on AND `FUN_1801994D0()` != 0)) AND
+  `getConfigVar<bool>(tag 0xDA = 218)` is true AND `FUN_1801995B0()` != 0
+  (death object pointer exists): draw that single death object via `FUN_180203070`.
+  - `FUN_1801995B0` returns `DAT_18080CB80`, the death-causing object pointer
+    recorded by the `destroyPlayer` callback (`0x1801993F0`).
+- Else if `getConfigVar<bool>(tag 0xC1 = 193)` is true: iterate the selected-object
+  vectors at `PlayLayer+0x31A0`/`+0x31A8` and `+0x31C0`/`+0x31C8`, calling
+  `FUN_180203070` for each.
+- Else (fill/axis-aligned off): call `FUN_180204230` with the four values at
+  `PlayLayer+0x308C..+0x3098` (colour/opacity/stroke parameters).
+
+### `FUN_180204150` (`0x180204150`) — player hitbox pass
+
+If `getConfigVar<bool>(CHECKBOX_HITBOXES_PLAYER = 206, 0xCE)` is true:
+- Draw `PlayLayer+0xDA0` (player 1) via `FUN_180202BD0`.
+- If `PlayLayer+0xDA8 != 0` AND `PlayLayer+0x422 == 1` (player 2 enabled):
+  draw `PlayLayer+0xDA8` as well.
+
+### Tag map for this feature
+
+| Tag (hex) | Tag (dec) | Accessor | Static-map name | Role |
+| --- | --- | --- | --- | --- |
+| 0xC0 | 192 | `isHackEnabled` (Map B) | `HACK_SHOW_HITBOXES` | Master toggle |
+| 0xD8 | 216 | `isHackEnabled` (Map B) | `HACK_SHOW_HITBOXES_ON_DEATH` | On-death variant |
+| 0xC1 | 193 | `getConfigVar<bool>` (Map A) | (not in 21-entry static list — runtime-assigned) | Fill/axis-aligned box toggle |
+| 0xCE | 206 | `getConfigVar<bool>` (Map A) | `CHECKBOX_HITBOXES_PLAYER` | Player hitbox toggle |
+| 0xD9 | 217 | `getConfigVar<bool>` (Map A) | (not in static list — runtime-assigned) | "Only Death Object" / cheat-frame gate |
+| 0xDA | 218 | `getConfigVar<bool>` (Map A) | (not in static list — runtime-assigned) | "Death Object Only" |
+
+Tags 0xC1, 0xD9, 0xDA are read through the Map A accessor but are absent from the
+21-entry `CHECKBOX_*` static table in `FUN_180062940`; they are therefore runtime-assigned
+Map A tags (likely from `hackpro.json`), not compiled-in defaults. UNVERIFIED: which
+JSON keys / UI rows bind to these three tags.
+
+### PlayLayer fields used
+
+| Offset | Type | Role |
+| --- | --- | --- |
+| `+0x308C..+0x3098` | 4 × int | Axis-aligned box colour/opacity/stroke parameters (passed to `FUN_180204230`) |
+| `+0x309C` | char | Editor/selected-objects mode flag (gates on-death path) |
+| `+0x31A0`/`+0x31A8` | pointer pair | Selected-objects vector (begin/end) |
+| `+0x31C0`/`+0x31C8` | pointer pair | Second selected-objects vector |
+| `+0x324A` | char | On-death state flag |
+| `+0x3770` | pointer | Layer node (CCNode), used to look up draw node `0x1E6813A` |
+| `+0xDA0` | pointer | Player 1 node |
+| `+0xDA8` | pointer | Player 2 node |
+| `+0x422` | char | Player 2 enabled flag |
+
+### Open questions
+
+- UNVERIFIED: which JSON keys bind to tags 0xC1 (193), 0xD9 (217), 0xDA (218).
 - UNVERIFIED: the exact colour encoding (observed values are integers).
-- UNVERIFIED: whether `HIDE_USED` affects rendering or only the UI.
+- UNVERIFIED: whether `HIDE_USED` (settings key `LEVEL/SHOW_HITBOXES/DROPDOWN/HIDE_USED`)
+  affects rendering or only the UI.
+- UNVERIFIED: whether the trail variant (`HACK_SHOW_HITBOXES_TRAIL = 224`) shares
+  `FUN_180203070` or has its own draw path.
+- UNVERIFIED: the semantics of `PlayLayer+0x309C` and `+0x324A`.
+
+## Evidence — Hitbox Trail draw node (recovered 2026-10-23 via REA/Ghidra 12.1.2)
+
+`FUN_1801589F0` (`0x1801589F0`) creates three draw nodes on the layer at
+`PlayLayer+0x3770`:
+
+1. "hitbox" (ID `0x1E6813A`) — always created, added at z-order 0x5DC.
+2. "hitbox-trail" (ID `0x1E6813B`) — always created, added at z-order 0x5DD.
+3. "hitbox-trail" (ID `0x1E6813C`) — created with blend func 0x302/0x303, its
+   visibility set via vtable +0x140 based on `isHackEnabled(tag 0x168 = 360)`.
+
+Tag 0x168 is a runtime-assigned Map B tag (not in the 85-entry static list).
+It controls whether the third draw node (trail overlay) is visible.
+
+The main trail drawing is in `FUN_1801809A0` (tag 224 = `HACK_SHOW_HITBOXES_TRAIL`),
+which draws into node 0x1E6813A. The node 0x1E6813C (controlled by tag 360) is a
+separate trail overlay.
+
+### Tag map
+
+| Tag (hex) | Tag (dec) | Accessor | Static-map name | Role |
+| --- | --- | --- | --- | --- |
+| 0x168 | 360 | `isHackEnabled` (Map B) | (not in static list — runtime-assigned) | Hitbox trail overlay visibility toggle
+
+UNVERIFIED: which JSON key binds to tag 0x168; the difference between node
+0x1E6813B and 0x1E6813C; the exact rendering path for the trail overlay.
+
+## Evidence — Show Hitbox Trail implementation (recovered 2026-10-23)
+
+The trail draw entry point is `FUN_1801809A0` (`0x1801809A0`), called from the
+same three render paths as the main hitbox draw (node ID `0x1E6813A`).
+
+### Gate
+
+1. `isHackEnabled(HACK_SHOW_HITBOXES_TRAIL = 224, 0xE0)` must be true; otherwise
+   the function returns immediately.
+2. If `getConfigVar<bool>(tag 0xE3 = 227)` is true ("Requires Show Hitboxes"):
+   `FUN_180203EE0(playLayer)` must return non-zero (i.e. Show Hitboxes gate open).
+   Tag 0xE3 is a runtime-assigned Map A tag (not in the 21-entry static list).
+
+### Draw
+
+- Reads opacity via `FUN_180003D80(settings, tag 0xE4 = 228)` (a double accessor),
+  divides by 100.0.
+- Iterates a global trail point buffer (`DAT_18080C7D8` base pointer,
+  `DAT_18080C7F0` count, `DAT_18080C7F8` remaining) and draws each point via
+  `FUN_180202BD0(drawNode, &point, opacity, colourByte)`.
+- Each point carries position (x, y), colour bytes, and a boolean flag that
+  switches between two point layouts (with/without extended fields).
+
+### Tag map (trail)
+
+| Tag (hex) | Tag (dec) | Accessor | Static-map name | Role |
+| --- | --- | --- | --- | --- |
+| 0xE0 | 224 | `isHackEnabled` (Map B) | `HACK_SHOW_HITBOXES_TRAIL` | Master toggle |
+| 0xE3 | 227 | `getConfigVar<bool>` (Map A) | (not in static list — runtime-assigned) | "Requires Show Hitboxes" gate |
+| 0xE4 | 228 | `FUN_180003D80` (double accessor) | (not in static list) | Trail opacity (0–100) |
+
+UNVERIFIED: which JSON keys bind to tags 0xE3 and 0xE4; the exact type of
+`FUN_180003D80` (likely `getConfigVar<double>` or a spinner accessor); the
+structure of the global trail buffer and its producer.

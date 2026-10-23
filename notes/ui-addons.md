@@ -95,3 +95,75 @@ family through one helper.
   hooks or incidental registrations.
 - UNVERIFIED: whether any of these hooks can veto the original call, or only
   observe it.
+
+## Evidence — Transition Customiser (recovered 2026-10-23 via REA/Ghidra 12.1.2)
+
+`FUN_18018B7F0` (`0x18018B7F0`) is hooked on `cocos2d::CCTransitionFade::create`
+(registered by `FUN_18018AEB0` at `0x18018AEB0` via `FUN_180189FB0` with enum arg
+`0xFFFFF428`):
+
+- If `isHackEnabled(HACK_NO_TRANSITION = 449, 0x1C1)` is true: calls
+  `cocos2d::CCTransitionFade::create(param_1, param_2)` directly (no custom
+  opacity/duration).
+- If false: reads opacity from tag 0x1D8 (472) via `FUN_180003D80` (double
+  accessor) and duration from tag 0x1D6 (470) via `FUN_18002E4C0` (uint/int
+  accessor), then calls `FUN_18018B930(duration, opacity, scene)`.
+
+### Tag map
+
+| Tag (hex) | Tag (dec) | Accessor | Static-map name | Role |
+| --- | --- | --- | --- | --- |
+| 0x1C1 | 449 | `isHackEnabled` (Map B) | `HACK_NO_TRANSITION` | Master toggle (disables custom transitions) |
+| 0x1D8 | 472 | `FUN_180003D80` (double accessor) | (not in static list) | Transition opacity (0–100) |
+| 0x1D6 | 470 | `FUN_18002E4C0` (uint/int accessor) | (not in static list) | Transition duration
+
+UNVERIFIED: which JSON keys bind to tags 0x1D6 and 0x1D8; the behaviour of
+`FUN_18018B930`; whether the toggle is "disable all transitions" or "use
+default transition".
+
+## Evidence — Interface tab / hide UI changes (recovered 2026-10-23 via REA/Ghidra 12.1.2)
+
+`FUN_1801985A0` (`0x1801985A0`) registers `FUN_1801985F0` (`0x1801985F0`)
+as a hook on `EndLevelLayer::customSetup` (RVA `0x132E50`).
+
+`FUN_1801985F0` modifies the end-level screen:
+- If `isHackEnabled(tag 0x1F0 = 496)` is true: returns immediately (no UI changes).
+- If false: finds "main-layer" and "background" nodes, adds a "v9.1.3" label
+  (`CCLabelBMFont::create("v9.1.3", "chatFont.fnt")`) and a "." label, modifying
+  the end-level screen appearance.
+
+So tag 0x1F0 (496) is the "disable Mega Hack UI changes" toggle: when enabled,
+the version branding label is not added.
+
+### Tag map
+
+| Tag (hex) | Tag (dec) | Accessor | Static-map name | Role |
+| --- | --- | --- | --- | --- |
+| 0x1F0 | 496 | `isHackEnabled` (Map B) | (not in static list — runtime-assigned) | "Disable Mega Hack UI changes" toggle
+
+UNVERIFIED: which JSON key binds to tag 0x1F0; whether this is the "Interface tab"
+feature or a different UI-change toggle; the full set of UI modifications gated
+by this tag (only the EndLevelLayer one was observed).
+
+## Evidence — Language-key-driven toggle (recovered 2026-10-23 via REA/Ghidra 12.1.2)
+
+`FUN_180197DA0` (`0x180197DA0`) registers two hooks:
+
+1. `FUN_180197EA0` on `GameManager::setGameVariable` (RVA `0x182EB0`): when
+   the language dictionary is loaded and key "0025" is found, toggles hack tag
+   0x1ED (493) (XOR with 1). When key "0170" is found, sets config tag
+   0x1EE (494) if it differs.
+2. `FUN_180197F40` as a change listener for tag 0x1EE (494): when the value
+   changes, if `FUN_1800BB170()` is true and the language key "0025" state
+   differs, sets the language key and calls `FUN_18014E6A0` (UI update).
+
+### Tag map
+
+| Tag (hex) | Tag (dec) | Accessor | Static-map name | Role |
+| --- | --- | --- | --- | --- |
+| 0x1ED | 493 | `isHackEnabled` (Map B) | (not in static list — runtime-assigned) | Toggled by language key "0025" |
+| 0x1EE | 494 | `FUN_180027ED0` (config write) / listener | (not in static list) | Set by language key "0170"; drives UI update
+
+UNVERIFIED: which feature this corresponds to (candidate: multi-lingual support);
+the semantics of `FUN_1800BB170` and `FUN_18014E6A0`; the language keys
+"0025" and "0170" and what they represent.

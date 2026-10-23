@@ -41,3 +41,31 @@ From [settings-contents.md](settings-contents.md):
 - UNVERIFIED: how `loadStartPosObject` is modified (observe, modify, or veto).
 - UNVERIFIED: whether the Android build omits the feature entirely or only the
   quick-switch UI.
+
+## Evidence — StartPos Switcher gate (recovered 2026-10-23 via REA/Ghidra 12.1.2)
+
+`FUN_180185710` (`0x180185710`) is the gate function. Returns 0 (allow switch)
+or 1 (block switch):
+
+1. If `isHackEnabled(HACK_STARTPOS_SWITCHER = 130, 0x82)` is false → returns
+   `FUN_18015A2F0() ^ 1` (a level-state check).
+2. If `getConfigVar<bool>(tag 0xA6 = 166)` is false (not "only current StartPos"):
+   adjusts the StartPos index fields at `PlayLayer+0x878` (+0x388, +0x38C, +0x390).
+3. If `getConfigVar<bool>(tag 0xA7 = 167)` is true ("switch after death") AND
+   `PlayLayer+0x31F0 != 0`: returns `FUN_18015A2F0() ^ 1`.
+4. Otherwise (default): returns 0 (allow).
+
+Callers: `FUN_1801857F0` (switches to next StartPos) and `FUN_180185910`
+(switches to previous), both gated by this function. `FUN_180184BA0` is a
+larger function that also calls the gate.
+
+### Tag map
+
+| Tag (hex) | Tag (dec) | Accessor | Static-map name | Role |
+| --- | --- | --- | --- | --- |
+| 0x82 | 130 | `isHackEnabled` (Map B) | `HACK_STARTPOS_SWITCHER` | Master toggle |
+| 0xA6 | 166 | `getConfigVar<bool>` (Map A) | (not in static list — runtime-assigned) | "Only current StartPos" |
+| 0xA7 | 167 | `getConfigVar<bool>` (Map A) | (not in static list — runtime-assigned) | "Switch after death"
+
+UNVERIFIED: which JSON keys bind to tags 0xA6 and 0xA7; the semantics of
+`PlayLayer+0x31F0` and `FUN_18015A2F0`.

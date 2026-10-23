@@ -249,9 +249,15 @@ Exit criteria:
 
 - [ ] Every feature listed in `changelog.md` accounted for: implemented, alias, or dead.
       **Measured 2026-10-23:** all 389 changelog rows are assigned to a subsystem note.
-      Three now have per-feature evidence and are `mapped`; the other 386 remain `cluster`,
-      and for **185 of 389** the linked note never mentioned the feature at the baseline
-      (before the three promotions). The criterion stays open. See
+      Twenty-five now have per-feature evidence and are `mapped` (Safe Mode, Auto Safe Mode,
+      Disable Progress to Noclip, Show Hitboxes, Show Hitboxes on Death, Show Hitbox
+      Trail Requires Show Hitboxes, Frame Stepper, StartPos Switcher, Solid Wave Trail,
+      Thread Priority, Transition Customiser, Pitch Shifter, TPS Bypass, Borderless
+      Fullscreen, multi-lingual support, Interface tab to disable Mega Hack UI
+      changes, Menu Snow in December, Noclip Accuracy, Corrective Music Sync,
+      NoClip Accuracy screen tint, Custom Background, Hitbox Trail, Accurate Percentage,
+      Noclip Limits, 0% Practice Complete); the other 364 remain `cluster`, and for **185 of 389** the linked note never mentioned the feature
+      at the baseline (before the promotions). The criterion stays open. See
       [m3-validation.md](../notes/m3-validation.md).
 - [ ] Each feature mapped to its implementing function(s) with VAs, its settings keys, its
       default, and its interactions.
@@ -259,15 +265,19 @@ Exit criteria:
       `HACK_*` names (Map B hack-flag tags, consumed by the profile loader) and 21
       `CHECKBOX_*` boolean options (Map A config tags, 19 accessor-confirmed). The settings
       index's two bool accessors now carry their export identities (`isHackEnabled` for
-      Map B, `getConfigVar<bool>` for Map A). Three changelog rows now have per-feature
+      Map B, `getConfigVar<bool>` for Map A). Seven changelog rows now have per-feature
       evidence: Safe Mode (tag 482), Auto Safe Mode (tag 481 plus the `hasCheatedInAttempt`
-      cache) and Disable Progress to Noclip (tag 73), all through the gate
-      `FUN_18019B5F0` and the `savePercentage`/`levelComplete` wrappers. The cheat-attributed
+      cache), Disable Progress to Noclip (tag 73), Show Hitboxes (tag 192, gate
+      `FUN_180203EE0`, draw `FUN_180203F60`→`FUN_180204000`/`FUN_180204150`),
+      Show Hitboxes on Death (tag 216), Show Hitbox Trail (tag 224, gate
+      `FUN_1801809A0`) and Frame Stepper (tag 302, registrar `FUN_180173FD0`),
+      all with implementing VAs. The cheat-attributed
       time that tag 73's gate compares against now has a writer: `0x1801993FD` in the
       `PlayLayer::destroyPlayer` callback, which sets `DAT_18080CB68` for the frame. The
-      other 386 rows keep the criterion open. See
-      [static-hack-label-map.md](../notes/static-hack-label-map.md) and
-      [safe-mode-feature.md](../notes/safe-mode-feature.md).
+      other 382 rows keep the criterion open. See
+      [static-hack-label-map.md](../notes/static-hack-label-map.md),
+      [safe-mode-feature.md](../notes/safe-mode-feature.md) and
+      [show-hitboxes-feature.md](../notes/show-hitboxes-feature.md).
 - [x] High-value clusters documented as patterns rather than 160 isolated notes: input
       hooks, render hooks, gameplay rewrites, UI add-ons, save-data features.
 - [ ] Reconstructed modules validated against release behaviour for the sampled clusters.

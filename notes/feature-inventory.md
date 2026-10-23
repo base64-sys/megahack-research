@@ -13,9 +13,18 @@
 | `mapped` | The feature has its own evidence: a note that names it, its settings key(s) and default, and/or its implementing function(s) with VAs. |
 | `alias` / `dead` | A restatement of an earlier feature / absent from this build, with the evidence for that call. |
 
-All 389 rows below were `cluster` at the 2026-10-23 baseline. Three now have per-feature
-evidence and are `mapped`: **Added Safe Mode**, **Added Auto Safe Mode** and **Added
-Disable Progress to Noclip** (see below). The other 386 remain `cluster`. A keyword check
+All 389 rows below were `cluster` at the 2026-10-23 baseline. Twenty-five now have per-feature
+evidence and are `mapped`: **Added Safe Mode**, **Added Auto Safe Mode**,
+**Added Disable Progress to Noclip**, **Added Show Hitboxes**, **Added Show Hitboxes on Death**,
+**Added "Requires Show Hitboxes" option to Show Hitbox Trail**, **Added Frame Stepper**,
+**Added StartPos Switcher**, **Added Solid Wave Trail**, **Added Thread Priority**,
+**Added Transition Customiser (with duration)**, **Added Pitch Shifter**,
+**Added TPS Bypass**, **Added Borderless Fullscreen**, **Added multi-lingual support**,
+**Added Interface tab to disable Mega Hack UI changes**, **Added Menu Snow in December**,
+**Added Noclip Accuracy**, **Added Corrective Music Sync**,
+**Added NoClip Accuracy screen tint**, **Added Custom Background (successor to Transparent BG)**,
+**Added Hitbox Trail**, **Added Accurate Percentage**, **Added Noclip Limits** and
+**Added 0% Practice Complete** (see below). The other 364 remain `cluster`. A keyword check
 at the baseline found that **185 of 389** rows point at a note that never mentions the
 feature at all, so for those even the cluster assignment is only a lead. That count
 predates the three promotions; the method is recorded in
@@ -28,6 +37,28 @@ predates the three promotions; the method is recorded in
 | Added Safe Mode | tag 482 (`0x1E2`, `HACK_SAFE_MODE`) read by `FUN_18019B5F0`; the gate vetoes `GJGameLevel::savePercentage` (`FUN_180199DF0`) and marks `PlayLayer::levelComplete` (`FUN_180199E30`). See [safe-mode-feature.md](safe-mode-feature.md). |
 | Added Auto Safe Mode | tag 481 (`0x1E1`, `HACK_AUTO_SAFE_MODE`) plus `DAT_18080CBD8`, the `hasCheatedInAttempt` cache refreshed by `FUN_18019B330` after `resetLevel` (`FUN_180199E80`). See [safe-mode-feature.md](safe-mode-feature.md). |
 | Added Disable Progress to Noclip | tag 73 (`0x49`, `CHECKBOX_NOCLIP_DISABLE_PROGRESS`) enters the same gate when `FUN_180199520() < 1.0`; the progress accumulators are in `FUN_1801992B0`. See [noclip-feature.md](noclip-feature.md). |
+| Added Show Hitboxes | tag 192 (`0xC0`, `HACK_SHOW_HITBOXES`) master toggle; gate `FUN_180203EE0`, draw `FUN_180203F60`→`FUN_180204000`/`FUN_180204150`; per-object draw `FUN_180203070`. Tag 0xC1 (193), 0xD9 (217), 0xDA (218) are runtime-assigned Map A. See [show-hitboxes-feature.md](show-hitboxes-feature.md). |
+| Added Show Hitboxes on Death | tag 216 (`0xD8`, `HACK_SHOW_HITBOXES_ON_DEATH`); gate `FUN_180203EE0` branch 2, death-object draw via `FUN_180204000` using `DAT_18080CB80` from the `destroyPlayer` callback. See [show-hitboxes-feature.md](show-hitboxes-feature.md). |
+| Added Show Hitbox Trail (Requires Show Hitboxes) | tag 224 (`0xE0`, `HACK_SHOW_HITBOXES_TRAIL`) master toggle; gate `FUN_1801809A0`, trail draw via `FUN_180202BD0` over global point buffer; opacity tag 0xE4 (228). See [show-hitboxes-feature.md](show-hitboxes-feature.md). |
+| Added Frame Stepper | tag 302 (`0x12E`, `HACK_FRAME_STEPPER`); registrar `FUN_180173FD0` toggles two UILayer hooks (`onPause` RVA 0x4CDF50, `handleKeypress` RVA 0x4CD830). Tag 357 (0x165, runtime-assigned Map B) is an alternate enable. See [gameplay-hooks.md](gameplay-hooks.md). |
+| Added StartPos Switcher | tag 130 (`0x82`, `HACK_STARTPOS_SWITCHER`); gate `FUN_180185710` controls next/prev switching via `FUN_1801857F0`/`FUN_180185910`. Tags 0xA6/0xA7 (166/167) are runtime-assigned Map A. See startpos-switcher-feature.md. |
+| Added Solid Wave Trail | tag 396 (`0x18C`, `HACK_SOLID_WAVE_TRAIL`); blend-func toggle in `FUN_1801EECA0` (solid 0x30300000001 vs blended 0x100000302). See cosmetic-feature.md. |
+| Added Thread Priority | tag 454 (`0x1C6`, `HACK_THREAD_PRIORITY`); `FUN_18018ADF0`/`FUN_18018AE50` call `SetThreadPriority`. Tag 0x1C7 (455) is the priority level. See render-hooks.md. |
+| Added Transition Customiser (with duration) | tag 449 (`0x1C1`, `HACK_NO_TRANSITION`); hooks `CCTransitionFade::create` via `FUN_18018B7F0` (registered by `FUN_18018AEB0`). Tags 0x1D6 (470, duration) and 0x1D8 (472, opacity) are runtime-assigned. See ui-addons.md. |
+| Added Pitch Shifter | tag 459 (`0x1CB`, `HACK_PITCH_SHIFTER`); listener `FUN_18018A740` (tag 0x1CC = 460) calls `FUN_18018A800` → `FUN_18020DA00` (applies pitch to FMOD channels 0–4). See audio-sync-feature.md. |
+| Added TPS Bypass | tag 490 (0x1EA); hooks `GJBaseGameLayer::getModifiedDelta` (RVA 0x2377B0) via `FUN_180196CA0` (registered by `FUN_180196C30`). Tags 0x1E6 (486, TPS value) and 0x1E7 (487, sub-toggle) are runtime-assigned. See gameplay-hooks.md. |
+| Added Borderless Fullscreen | tag 492 (0x1EC, runtime-assigned Map B); `FUN_1801968F0` (vtable 0x180831A2C) calls `FUN_1801964D0(1)` which toggles window border via `SetWindowLongPtrW` + NOP-patch. See render-hooks.md. |
+| Added multi-lingual support | language-key-driven: `FUN_180197DA0` registers `FUN_180197EA0` on `GameManager::setGameVariable` (RVA 0x182EB0) toggling hack 0x1ED (493) on key "0025" and setting config 0x1EE (494) on key "0170". Listener `FUN_180197F40` updates UI. See ui-addons.md. |
+| Added Interface tab to disable Mega Hack UI changes | tag 496 (0x1F0, runtime-assigned Map B); `FUN_1801985F0` hooks `EndLevelLayer::customSetup` (RVA 0x132E50) and adds "v9.1.3" label unless tag is enabled. See ui-addons.md. |
+| Added Menu Snow in December | tag 498 (0x1F2, runtime-assigned Map B); `FUN_180154AD0` checks December via `_time64`, registers snow particle creator `FUN_180154C10` on `MenuLayer::init` and listener `FUN_1801550F0`. See cosmetic-feature.md. |
+| Added Noclip Accuracy | tag 497 (0x1F1, runtime-assigned Map B); `FUN_180152010` hooks `EndLevelLayer::showLayer` (RVA 0x134CA0) and draws "Noclip: {:.2f}%" unless tag enabled. Also reads `HACK_NOCLIP` (tag 72). See noclip-feature.md. |
+| Added Corrective Music Sync | tag 502 (0x1F6, runtime-assigned Map B); `FUN_18019C420` registers listener for tag 0x1F7 (503) and hooks `FMOD::ChannelControl::setPitch` + `FMODAudioEngine::setMusicTimeMS`. `FUN_18019C6D0` scales pitch by `DAT_1807F9420`. See audio-sync-feature.md. |
+| Added NoClip Accuracy screen tint | tag 75 (`CHECKBOX_NOCLIP_TINT`); `FUN_18017A290` hooks `PlayLayer::destroyPlayer` (RVA 0x3B39D0) and applies tint overlay via `DAT_18080C710`. Tags 77/78 (player 1/2) and 0x4C (colour) are runtime-assigned. See noclip-feature.md. |
+| Added Custom Background (successor to Transparent BG) | tag 463 (0x1CF, runtime-assigned Map B); `FUN_180186D10` registers listener for tag 0x1D0 (464) and hooks `CCTransitionScene::initWithDuration`. `FUN_180186FC0` calls `FUN_180187030` to hide background when enabled. See cosmetic-feature.md. |
+| Added Hitbox Trail | tag 360 (0x168, runtime-assigned Map B); `FUN_1801589F0` creates draw node 0x1E6813C with visibility controlled by tag. Main trail draw is `FUN_1801809A0` (tag 224). See show-hitboxes-feature.md. |
+| Added Accurate Percentage | tag 429 (0x1AD, runtime-assigned Map B); `FUN_180165110` hooks `PlayLayer::updateProgressbar` (RVA 0x3B23C0) and formats percentage with configurable decimals (tag 0x1AE = 430). See best-run-feature.md. |
+| Added Noclip Limits | tag 83 (`HACK_NOCLIP_LIMITS`); `FUN_18017A290` implements accuracy limit (tag 0x55/0x54) and death limit (tag 0x57/0x56) gating tint overlay. See noclip-feature.md. |
+| Added 0% Practice Complete | tag 296 (`HACK_0_PRACTICE_COMPLETE`, static map entry #0); read via `hackpro::Config` vtable (`FUN_1800917B0` at 0x180544FF0). No gameplay code reads it directly. See gameplay-hooks.md. |
 
 | Version | Feature (changelog wording) | Status | Notes |
 | --- | --- | --- | --- |
@@ -51,7 +82,7 @@ predates the three promotions; the method is recorded in
 | v9.1.0-beta.1 | Added Show Hitboxes Player Rotation option | cluster | [show-hitboxes-feature.md](show-hitboxes-feature.md) |
 | v9.1.0-beta.1 | Added Velocity & Death options to Status labels | cluster | [status-labels-feature.md](status-labels-feature.md) |
 | v9.1.0-beta.1 | Added show/hide animations to dropdowns and tabs | cluster | [ui-addons.md](ui-addons.md) |
-| v9.0.11 | Added "Requires Show Hitboxes" option to Show Hitbox Trail | cluster | [render-hooks.md](render-hooks.md) |
+| v9.0.11 | Added "Requires Show Hitboxes" option to Show Hitbox Trail | mapped | [show-hitboxes-feature.md](show-hitboxes-feature.md) | tag 0xE3 (227, runtime-assigned Map A); gates trail draw on `FUN_180203EE0`. See show-hitboxes-feature.md. |
 | v9.0.10 | Added Icon Randomiser | cluster | [iconic-feature.md](iconic-feature.md) |
 | v9.0.10 | Added positions top-centre and bottom-centre Status label positions | cluster | [status-labels-feature.md](status-labels-feature.md) |
 | v9.0.10 | Added Vanilla Progress Bar to Iconic | cluster | [iconic-feature.md](iconic-feature.md) |
@@ -84,10 +115,10 @@ predates the three promotions; the method is recorded in
 | v9.0.1 | Added Accurate Percentage toggle in Best Run | cluster | [best-run-feature.md](best-run-feature.md) |
 | v9.0.1 | Added Cheat Indicator Hide when Legit option | cluster | [ui-addons.md](ui-addons.md) |
 | v9.0.1 | Added Catppuccin theme | cluster | [cosmetic-feature.md](cosmetic-feature.md) |
-| v9.0.1 | Added Interface tab to disable Mega Hack UI changes | cluster | [ui-addons.md](ui-addons.md) |
+| v9.0.1 | Added Interface tab to disable Mega Hack UI changes | mapped | [ui-addons.md](ui-addons.md) | tag 496 (0x1F0, runtime-assigned Map B); `FUN_1801985F0` hooks `EndLevelLayer::customSetup` (RVA 0x132E50) and adds "v9.1.3" label unless tag is enabled. See ui-addons.md. |
 | v9.0.1 | Added Smart StartPos toggles (Gamemode, Speed, Size, Mirror) | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v9.0.0 | Added Iconic (built-in Icon Effects to the Garage) | cluster | [iconic-feature.md](iconic-feature.md) |
-| v9.0.0 | Added Accurate Percentage | cluster | [best-run-feature.md](best-run-feature.md) |
+| v9.0.0 | Added Accurate Percentage | mapped | [best-run-feature.md](best-run-feature.md) | tag 429 (0x1AD, runtime-assigned Map B); `FUN_180165110` hooks `PlayLayer::updateProgressbar` (RVA 0x3B23C0) and formats percentage with configurable decimals (tag 0x1AE = 430). See best-run-feature.md. |
 | v9.0.0 | Added Advanced Formatting to Statuses | cluster | [status-labels-feature.md](status-labels-feature.md) |
 | v9.0.0 | Added Allow Pause Buffering | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v9.0.0 | Added Auto Kill | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
@@ -97,7 +128,7 @@ predates the three promotions; the method is recorded in
 | v9.0.0 | Added Click Between Frames toggle | cluster | [input-hooks.md](input-hooks.md) |
 | v9.0.0 | Added Compact Lists | cluster | [cosmetic-feature.md](cosmetic-feature.md) |
 | v9.0.0 | Added Confirm Exit (shortcut for the in-game setting) | cluster | [ui-addons.md](ui-addons.md) |
-| v9.0.0 | Added Custom Background (successor to Transparent BG) | cluster | [cosmetic-feature.md](cosmetic-feature.md) |
+| v9.0.0 | Added Custom Background (successor to Transparent BG) | mapped | [cosmetic-feature.md](cosmetic-feature.md) | tag 463 (0x1CF, runtime-assigned Map B); `FUN_180186D10` registers listener for tag 0x1D0 (464) and hooks `CCTransitionScene::initWithDuration`. `FUN_180186FC0` calls `FUN_180187030` to hide background when enabled. See cosmetic-feature.md. |
 | v9.0.0 | Added EndLayer extras (StartPos, Checkpoints, Noclip) | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v9.0.0 | Added Frame Extrapolation | cluster | [render-hooks.md](render-hooks.md) |
 | v9.0.0 | Added Force Ice | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
@@ -110,13 +141,13 @@ predates the three promotions; the method is recorded in
 | v9.0.0 | Added No Orb Ring | cluster | [render-hooks.md](render-hooks.md) |
 | v9.0.0 | Added No Particles Classic (for pre-v9 behaviour) | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v9.0.0 | Added No Portal Circle | cluster | [render-hooks.md](render-hooks.md) |
-| v9.0.0 | Added Menu Snow in December | cluster | [cosmetic-feature.md](cosmetic-feature.md) |
+| v9.0.0 | Added Menu Snow in December | mapped | [cosmetic-feature.md](cosmetic-feature.md) | tag 498 (0x1F2, runtime-assigned Map B); `FUN_180154AD0` checks December via `_time64`, registers snow particle creator `FUN_180154C10` on `MenuLayer::init` and listener `FUN_1801550F0`. See cosmetic-feature.md. |
 | v9.0.0 | Added Player on Top | cluster | [render-hooks.md](render-hooks.md) |
 | v9.0.0 | Added Pause During Complete | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v9.0.0 | Added Shipcopter | cluster | [render-hooks.md](render-hooks.md) |
 | v9.0.0 | Added Show Total Attempts | cluster | [status-labels-feature.md](status-labels-feature.md) |
 | v9.0.0 | Added Show Trajectory | cluster | [show-trajectory-feature.md](show-trajectory-feature.md) |
-| v9.0.0 | Added Transition Customiser (with duration) | cluster | [ui-addons.md](ui-addons.md) |
+| v9.0.0 | Added Transition Customiser (with duration) | mapped | [ui-addons.md](ui-addons.md) | tag 449 (`HACK_NO_TRANSITION`); hooks `CCTransitionFade::create` via `FUN_18018B7F0` (registered by `FUN_18018AEB0`). Tags 0x1D6 (470, duration) and 0x1D8 (472, opacity) are runtime-assigned. See ui-addons.md. |
 | v9.0.0 | Added Transparent Lists | cluster | [cosmetic-feature.md](cosmetic-feature.md) |
 | v9.0.0 | Added Active Only option to Show Hitboxes | cluster | [show-hitboxes-feature.md](show-hitboxes-feature.md) |
 | v9.0.0 | Added Death Object Only option to Show Hitboxes | cluster | [show-hitboxes-feature.md](show-hitboxes-feature.md) |
@@ -131,7 +162,7 @@ predates the three promotions; the method is recorded in
 | v9.0.0 | Added Trail customisation | cluster | [iconic-feature.md](iconic-feature.md) |
 | v9.0.0 | Added Particle customisation | cluster | [iconic-feature.md](iconic-feature.md) |
 | v9.0.0 | Added Ghost Trail customisation | cluster | [iconic-feature.md](iconic-feature.md) |
-| v9.0.0 | Added multi-lingual support | cluster | [ui-addons.md](ui-addons.md) |
+| v9.0.0 | Added multi-lingual support | mapped | [ui-addons.md](ui-addons.md) | language-key-driven: `FUN_180197DA0` registers `FUN_180197EA0` on `GameManager::setGameVariable` (RVA 0x182EB0) which toggles hack 0x1ED (493) on key "0025" and sets config 0x1EE (494) on key "0170". Listener `FUN_180197F40` updates UI. See ui-addons.md. |
 | v9.0.0 | Added extensions v3 support | cluster | [ui-addons.md](ui-addons.md) |
 | v9.0.0 | Added themes for re-colouring every aspect of the interface (not just accents) | cluster | [ui-addons.md](ui-addons.md) |
 | v9.0.0 | Added cursor showing/hiding opening the menu in-level | cluster | [ui-addons.md](ui-addons.md) |
@@ -165,10 +196,10 @@ predates the three promotions; the method is recorded in
 | v8.0.1-alpha.3 | Added Icon Randomiser with editor support | cluster | [iconic-feature.md](iconic-feature.md) |
 | v8.0.1-alpha.3 | Added Icon Effects with editor support | cluster | [iconic-feature.md](iconic-feature.md) |
 | v8.0.1-alpha.3 | Added Same Dual Colour | cluster | [iconic-feature.md](iconic-feature.md) |
-| v8.0.1-alpha.2 | Added Pitch Shifter | cluster | [audio-sync-feature.md](audio-sync-feature.md) |
+| v8.0.1-alpha.2 | Added Pitch Shifter | mapped | [audio-sync-feature.md](audio-sync-feature.md) | tag 459 (`HACK_PITCH_SHIFTER`); listener `FUN_18018A740` (tag 0x1CC = 460) calls `FUN_18018A800` → `FUN_18020DA00` (applies pitch to FMOD channels 0–4). See audio-sync-feature.md. |
 | v8.0.0-alpha13b | Added Main Menu Gameplay | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
-| v8.0.0-alpha13b | Added TPS Bypass | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
-| v8.0.0-alpha13b | Added Hitbox Trail | cluster | [show-hitboxes-feature.md](show-hitboxes-feature.md) |
+| v8.0.0-alpha13b | Added TPS Bypass | mapped | [gameplay-hooks.md](gameplay-hooks.md) | tag 490 (`HACK` TPS Bypass); hooks `GJBaseGameLayer::getModifiedDelta` (RVA 0x2377B0) via `FUN_180196CA0` (registered by `FUN_180196C30`). Tags 0x1E6 (486, TPS value) and 0x1E7 (487, sub-toggle) are runtime-assigned. See gameplay-hooks.md. |
+| v8.0.0-alpha13b | Added Hitbox Trail | mapped | [show-hitboxes-feature.md](show-hitboxes-feature.md) | tag 360 (0x168, runtime-assigned Map B) controls trail overlay draw node 0x1E6813C visibility via `FUN_1801589F0`. Main trail draw is `FUN_1801809A0` (tag 224). See show-hitboxes-feature.md. |
 | v8.0.0-alpha13b | Added No Pulse | cluster | [render-hooks.md](render-hooks.md) |
 | v8.0.0-alpha13b | Added Real Time to Lock Delta | cluster | [render-hooks.md](render-hooks.md) |
 | v8.0.0-alpha12 | Added Replay | cluster | [replay-feature.md](replay-feature.md) |
@@ -183,7 +214,7 @@ predates the three promotions; the method is recorded in
 | v8.0.0-alpha12 | Added Confirm Practice | cluster | [ui-addons.md](ui-addons.md) |
 | v8.0.0-alpha12 | Added Hide Player | cluster | [render-hooks.md](render-hooks.md) |
 | v8.0.0-alpha12 | Added Hide Pause Button | cluster | [render-hooks.md](render-hooks.md) |
-| v8.0.0-alpha12 | Added Thread Priority | cluster | [render-hooks.md](render-hooks.md) |
+| v8.0.0-alpha12 | Added Thread Priority | mapped | [render-hooks.md](render-hooks.md) | tag 454 (`HACK_THREAD_PRIORITY`); `FUN_18018ADF0`/`FUN_18018AE50` call `SetThreadPriority` when enabled. Tag 0x1C7 (455) is the priority level. See render-hooks.md. |
 | v8.0.0-alpha12 | Added Switch After Death to StartPos Switcher | cluster | [startpos-switcher-feature.md](startpos-switcher-feature.md) |
 | v8.0.0-alpha12 | Added support for NodeIDs (Geode) | cluster | [ui-addons.md](ui-addons.md) |
 | v8.0.0-alpha10b | Added Wave Trail Fix | cluster | [render-hooks.md](render-hooks.md) |
@@ -203,21 +234,21 @@ predates the three promotions; the method is recorded in
 | v8.0.0-alpha9 | Added Show Triggers | cluster | [render-hooks.md](render-hooks.md) |
 | v8.0.0-alpha9 | Added Jumpscare | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v8.0.0-alpha9 | Added Replay Last Checkpoint | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
-| v8.0.0-alpha9 | Added 0% Practice Complete | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
+| v8.0.0-alpha9 | Added 0% Practice Complete | mapped | [gameplay-hooks.md](gameplay-hooks.md) | tag 296 (`HACK_0_PRACTICE_COMPLETE`, static map entry #0); read via `hackpro::Config` vtable (`FUN_1800917B0` at 0x180544FF0). No gameplay code reads it directly; accessed through exported `isHackEnabled` API. See gameplay-hooks.md. |
 | v8.0.0-alpha9 | Added Uncomplete Level | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v8.0.0-alpha9 | Added Trigger Value Bypass | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v8.0.0-alpha9 | Added Hide Pause Menu | cluster | [render-hooks.md](render-hooks.md) |
 | v8.0.0-alpha9 | Added Hide UI | cluster | [render-hooks.md](render-hooks.md) |
 | v8.0.0-alpha9 | Added Restart, Practice & folder shortcuts | cluster | [ui-addons.md](ui-addons.md) |
-| v8.0.0-alpha8 | Added Show Hitboxes | cluster | [show-hitboxes-feature.md](show-hitboxes-feature.md) |
-| v8.0.0-alpha8 | Added Show Hitboxes on Death | cluster | [show-hitboxes-feature.md](show-hitboxes-feature.md) |
+| v8.0.0-alpha8 | Added Show Hitboxes | mapped | [show-hitboxes-feature.md](show-hitboxes-feature.md) | tag 192 (`HACK_SHOW_HITBOXES`); gate `FUN_180203EE0`, draw `FUN_180203F60`→`FUN_180204000`/`FUN_180204150`; per-object draw `FUN_180203070`. See show-hitboxes-feature.md. |
+| v8.0.0-alpha8 | Added Show Hitboxes on Death | mapped | [show-hitboxes-feature.md](show-hitboxes-feature.md) | tag 216 (`HACK_SHOW_HITBOXES_ON_DEATH`); gate `FUN_180203EE0` branch 2, death-object draw via `FUN_180204000` (uses `DAT_18080CB80` from `destroyPlayer` callback). See show-hitboxes-feature.md. |
 | v8.0.0-alpha8 | Added Wave Pulse Size | cluster | [render-hooks.md](render-hooks.md) |
 | v8.0.0-alpha8 | Added No (C) Mark | cluster | [render-hooks.md](render-hooks.md) |
 | v8.0.0-alpha8 | Added No Shake | cluster | [render-hooks.md](render-hooks.md) |
 | v8.0.0-alpha8 | Added Clock | cluster | [status-labels-feature.md](status-labels-feature.md) |
 | v8.0.0-alpha7 | Added Classic Particles | cluster | [render-hooks.md](render-hooks.md) |
-| v8.0.0-alpha7 | Added Noclip Accuracy | cluster | [noclip-feature.md](noclip-feature.md) |
-| v8.0.0-alpha7 | Added Noclip Limits | cluster | [noclip-feature.md](noclip-feature.md) |
+| v8.0.0-alpha7 | Added Noclip Accuracy | mapped | [noclip-feature.md](noclip-feature.md) | tag 497 (0x1F1, runtime-assigned Map B); `FUN_180152010` hooks `EndLevelLayer::showLayer` (RVA 0x134CA0) and draws "Noclip: {:.2f}%" unless tag enabled. Also reads `HACK_NOCLIP` (tag 72). See noclip-feature.md. |
+| v8.0.0-alpha7 | Added Noclip Limits | mapped | [noclip-feature.md](noclip-feature.md) | tag 83 (`HACK_NOCLIP_LIMITS`); `FUN_18017A290` implements accuracy limit (tag 0x55/0x54) and death limit (tag 0x57/0x56) gating tint overlay. See noclip-feature.md. |
 | v8.0.0-alpha7 | Added Cheat Indicator with breakdown | cluster | [ui-addons.md](ui-addons.md) |
 | v8.0.0-alpha7 | Added FPS & CPS Statuses | cluster | [status-labels-feature.md](status-labels-feature.md) |
 | v8.0.0-alpha7 | Added Message, Percentage & Level Time Statuses | cluster | [status-labels-feature.md](status-labels-feature.md) |
@@ -229,7 +260,7 @@ predates the three promotions; the method is recorded in
 | v8.0.0-alpha5 | Added Allow Low Volume | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v8.0.0-alpha5 | Added No Particles | cluster | [render-hooks.md](render-hooks.md) |
 | v8.0.0-alpha5 | Added No Wave Trail | cluster | [render-hooks.md](render-hooks.md) |
-| v8.0.0-alpha5 | Added Solid Wave Trail | cluster | [render-hooks.md](render-hooks.md) |
+| v8.0.0-alpha5 | Added Solid Wave Trail | mapped | [cosmetic-feature.md](cosmetic-feature.md) | tag 396 (`HACK_SOLID_WAVE_TRAIL`); blend-func toggle in `FUN_1801EECA0` (solid 0x30300000001 vs blended 0x100000302). See cosmetic-feature.md. |
 | v8.0.0-alpha5 | Added No Respawn Flash | cluster | [render-hooks.md](render-hooks.md) |
 | v8.0.0-alpha5 | Added Force StartPos Reset Camera | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v8.0.0-alpha5 | Added StartPos Switcher keybind options | cluster | [startpos-switcher-feature.md](startpos-switcher-feature.md) |
@@ -274,7 +305,7 @@ predates the three promotions; the method is recorded in
 | v7.1 (Full) | Added Editor Support for Smart StartPos | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v7.1 (Full) | Added Fast Practice Respawn Time Modifier | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v7.1 (Full) | Added Force Objects Invisible | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
-| v7.1 (Full) | Added Frame Stepper | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
+| v7.1 (Full) | Added Frame Stepper | mapped | [gameplay-hooks.md](gameplay-hooks.md) | tag 302 (`HACK_FRAME_STEPPER`); registrar `FUN_180173FD0` toggles two UILayer hooks (`onPause` RVA 0x4CDF50, `handleKeypress` RVA 0x4CD830). Tag 357 (0x165, runtime-assigned Map B) is an alternate enable. See gameplay-hooks.md. |
 | v7.1 (Full) | Added Hide Checkpoints | cluster | [render-hooks.md](render-hooks.md) |
 | v7.1 (Full) | Added Hide Level Complete Screen | cluster | [render-hooks.md](render-hooks.md) |
 | v7.1 (Full) | Added Icon Randomiser Unlocked Icons Option | cluster | [iconic-feature.md](iconic-feature.md) |
@@ -346,7 +377,7 @@ predates the three promotions; the method is recorded in
 | v7.0 (Full) | Added Show Password to Copy Level Screen | cluster | [ui-addons.md](ui-addons.md) |
 | v7.0 (Full) | Added Show Level Layout | cluster | [render-hooks.md](render-hooks.md) |
 | v7.0 (Full) | Added SongID Copy | cluster | [ui-addons.md](ui-addons.md) |
-| v7.0 (Full) | Added StartPos Switcher | cluster | [startpos-switcher-feature.md](startpos-switcher-feature.md) |
+| v7.0 (Full) | Added StartPos Switcher | mapped | [startpos-switcher-feature.md](startpos-switcher-feature.md) | tag 130 (`HACK_STARTPOS_SWITCHER`); gate `FUN_180185710` controls next/prev switching via `FUN_1801857F0`/`FUN_180185910`. Tags 0xA6/0xA7 (166/167) are runtime-assigned Map A. See startpos-switcher-feature.md. |
 | v7.0 (Full) | Added Transition Customiser | cluster | [ui-addons.md](ui-addons.md) |
 | v7.0 (Full) | Added UI Transition Time Customisation | cluster | [ui-addons.md](ui-addons.md) |
 | v7.0 (Full) | Added Unfocus Mute | cluster | [render-hooks.md](render-hooks.md) |
@@ -357,13 +388,13 @@ predates the three promotions; the method is recorded in
 | v6.3.0 (Full) | Added Auto Practice Mode | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v6.3.0 (Full) | Added Auto-Deafen | cluster | [audio-sync-feature.md](audio-sync-feature.md) |
 | v6.3.0 (Full) | Added Clicks per Second counter | cluster | [status-labels-feature.md](status-labels-feature.md) |
-| v6.3.0 (Full) | Added Corrective Music Sync | cluster | [audio-sync-feature.md](audio-sync-feature.md) |
+| v6.3.0 (Full) | Added Corrective Music Sync | mapped | [audio-sync-feature.md](audio-sync-feature.md) | tag 502 (0x1F6, runtime-assigned Map B); `FUN_18019C420` registers listener for tag 0x1F7 (503) and hooks `FMOD::ChannelControl::setPitch` + `FMODAudioEngine::setMusicTimeMS`. `FUN_18019C6D0` scales pitch by `DAT_1807F9420`. See audio-sync-feature.md. |
 | v6.3.0 (Full) | Added Glow Customisation | cluster | [cosmetic-feature.md](cosmetic-feature.md) |
 | v6.3.0 (Full) | Added Hitbox Viewer | cluster | [show-hitboxes-feature.md](show-hitboxes-feature.md) |
 | v6.3.0 (Full) | Added Legacy Mode to Speedhack | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v6.3.0 (Full) | Added Level Uncompleter | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v6.3.0 (Full) | Added Music-synced Icons | cluster | [audio-sync-feature.md](audio-sync-feature.md) |
-| v6.3.0 (Full) | Added NoClip Accuracy screen tint | cluster | [noclip-feature.md](noclip-feature.md) |
+| v6.3.0 (Full) | Added NoClip Accuracy screen tint | mapped | [noclip-feature.md](noclip-feature.md) | tag 75 (`CHECKBOX_NOCLIP_TINT`); `FUN_18017A290` hooks `PlayLayer::destroyPlayer` (RVA 0x3B39D0) and applies tint overlay via `DAT_18080C710`. Tags 77/78 (player 1/2) and 0x4C (colour) are runtime-assigned. See noclip-feature.md. |
 | v6.3.0 (Full) | Added options menu shortcut | cluster | [ui-addons.md](ui-addons.md) |
 | v6.3.0 (Full) | Added Playtest Zoom Bypass | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v6.3.0 (Full) | Added Small Grid Size modifier | cluster | [creator-feature.md](creator-feature.md) |
@@ -375,7 +406,7 @@ predates the three promotions; the method is recorded in
 | v6.2.1 (Full) | Added Disable All button | cluster | [ui-addons.md](ui-addons.md) |
 | v6.2.0 (Full) | Added Extensions | cluster | [ui-addons.md](ui-addons.md) |
 | v6.2.0 (Full) | Added Accurate Leaderboard integration | cluster | [ui-addons.md](ui-addons.md) |
-| v6.2.0 (Full) | Added Borderless Fullscreen | cluster | [render-hooks.md](render-hooks.md) |
+| v6.2.0 (Full) | Added Borderless Fullscreen | mapped | [render-hooks.md](render-hooks.md) | tag 492 (0x1EC, runtime-assigned Map B); `FUN_1801968F0` (vtable entry 0x180831A2C) calls `FUN_1801964D0(1)` which toggles window border via `SetWindowLongPtrW` + NOP-patch. See render-hooks.md. |
 | v6.2.0 (Full) | Added Coins Show as Uncollected mod | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v6.2.0 (Full) | Added Col1, Col2, & Wave Trail to RGB Icons | cluster | [render-hooks.md](render-hooks.md) |
 | v6.2.0 (Full) | Added ColourID Bypass | cluster | [ui-addons.md](ui-addons.md) |

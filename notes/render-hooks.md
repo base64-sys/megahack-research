@@ -62,3 +62,51 @@
 - UNVERIFIED: whether `CCCircleWave::draw` and `GJBaseGameLayer::lightningFlash`
   are feature hooks or incidental registrations.
 - UNVERIFIED: whether any of these hooks can veto rendering, or only observe it.
+
+## Evidence — Thread Priority (recovered 2026-10-23 via REA/Ghidra 12.1.2)
+
+`FUN_18018ADF0` (`0x18018ADF0`) and `FUN_18018AE50` (`0x18018AE50`) implement
+Thread Priority:
+
+- `FUN_18018ADF0`: If `isHackEnabled(HACK_THREAD_PRIORITY = 454, 0x1C6)` is
+  true, reads tag 0x1C7 (455) via `FUN_18002E4C0` (a uint/int accessor). If the
+  value is < 5, sets the current thread's priority to `value - 2` (range -2..2).
+  Calls `SetThreadPriority(GetCurrentThread(), priority)`.
+- `FUN_18018AE50`: If enabled, takes priority from `*param_2` (if < 5,
+  `*param_2 - 2`) and calls `SetThreadPriority`.
+
+Both are vtable entries (0x180831048, 0x180831054), so they are virtual methods
+of some class. UNVERIFIED: which class owns the vtable.
+
+### Tag map
+
+| Tag (hex) | Tag (dec) | Accessor | Static-map name | Role |
+| --- | --- | --- | --- | --- |
+| 0x1C6 | 454 | `isHackEnabled` (Map B) | `HACK_THREAD_PRIORITY` | Master toggle |
+| 0x1C7 | 455 | `FUN_18002E4C0` (uint/int accessor) | (not in static list — runtime-assigned) | Priority level (0–4 → -2..2)
+
+UNVERIFIED: which JSON key binds to tag 0x1C7; the vtable's owning class.
+
+## Evidence — Borderless Fullscreen (recovered 2026-10-23 via REA/Ghidra 12.1.2)
+
+`FUN_1801968F0` (`0x1801968F0`) is a vtable entry (0x180831A2C) that, when
+tag 0x1EC (492) is enabled, calls `FUN_1801964D0(1)`.
+
+`FUN_1801964D0` (`0x1801964D0`) toggles borderless fullscreen:
+1. Gets the current DC's window handle via `wglGetCurrentDC()` → `WindowFromDC()`.
+2. Checks `GetWindowLongPtrW(hWnd, GWL_STYLE)` for `WS_CAPTION` (0xCC0000) and
+   whether the window has a style at all.
+3. If the current border state doesn't match the requested state (`param_1`):
+   - Removes window style bits (borderless) or restores them.
+   - NOP-patches 6 bytes at a code location (0x90909090 + 0x9090) when enabling,
+     restoring the original bytes when disabling.
+   - Calls `FUN_1802048F0()` (likely `SetWindowPos` or similar).
+
+### Tag map
+
+| Tag (hex) | Tag (dec) | Accessor | Static-map name | Role |
+| --- | --- | --- | --- | --- |
+| 0x1EC | 492 | `isHackEnabled` (Map B) | (not in static list — runtime-assigned) | Master toggle (Borderless Fullscreen)
+
+UNVERIFIED: which JSON key binds to tag 0x1EC; the vtable's owning class; the
+exact GWL style bits modified; the code location being NOP-patched.

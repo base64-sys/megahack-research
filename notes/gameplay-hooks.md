@@ -73,3 +73,79 @@ shared helper.
 - UNVERIFIED: whether `shouldExitHackedLevel` is a veto hook or an observer.
 - UNVERIFIED: whether the five `collisionCheckObjects` registrations differ by
   object class, layer, or timing.
+
+## Evidence — Frame Stepper (recovered 2026-10-23 via REA/Ghidra 12.1.2)
+
+`FUN_180173FD0` (`0x180173FD0`) is a hook registrar that conditionally installs
+two UILayer hooks based on two Map B tags:
+
+- **Tag 357 (0x165)** — runtime-assigned Map B tag (not in the 85-entry static
+  list). If set, the registrar takes the "enabled" path.
+- **Tag 302 (0x12E)** — `HACK_FRAME_STEPPER` (static map entry #21). If set
+  (and tag 357 is not), the registrar also takes the "enabled" path.
+
+Enabled path (either tag set): registers `LAB_1801740C0` on
+`UILayer::onPause` (RVA `0x4CDF50`) and `LAB_1801740E0` on
+`UILayer::handleKeypress` (RVA `0x4CD830`), both via `FUN_180174100`/`FUN_1801742E0`
+with enum arg `0xFFFFF428` (-3096, Geode convention).
+
+Disabled path (neither tag): unregisters both hooks via `FUN_180108A80`.
+
+UNVERIFIED: the exact behaviour of `LAB_1801740C0` and `LAB_1801740E0` (they are
+code labels inside `FUN_180173FD0`, not separate functions); what tag 357
+represents (candidate: a "Frame Stepper enabled in pause" sub-option); whether
+the pause hook vetoes or observes.
+
+## Evidence — 0% Practice Complete (recovered 2026-10-23 via REA/Ghidra 12.1.2)
+
+`HACK_0_PRACTICE_COMPLETE` (tag 296, 0x128) is entry #0 in the 85-entry static
+label map (store VA `0x1800629C3`). It is a Map B hack-flag tag.
+
+The only code reference is `FUN_1800917B0` (`0x1800917B0`), which is a virtual
+method of `hackpro::Config` (vtable at 0x180544FF0, secondary vtable). It calls
+`FUN_18008F420(registry + 0xD8 - 0x128, *param_2)` — i.e., it reads the Map B
+flag for tag 296 through the config interface.
+
+No gameplay code reads tag 296 directly through the known accessors. The feature
+is likely a config value read by GD or by other code through the exported API
+(`isHackEnabled` at `0x180072FF0`).
+
+### Tag map
+
+| Tag (hex) | Tag (dec) | Accessor | Static-map name | Role |
+| --- | --- | --- | --- | --- |
+| 0x128 | 296 | `isHackEnabled` (Map B) via config vtable | `HACK_0_PRACTICE_COMPLETE` | Master toggle
+
+UNVERIFIED: which gameplay code reads this tag and what it does; the JSON key
+that binds to it; whether this is "0% Practice Complete" or "0% Practice Mode
+Completion".
+
+## Evidence — TPS Bypass (recovered 2026-10-23 via REA/Ghidra 12.1.2)
+
+`FUN_180196C30` (`0x180196C30`) registers/unregisters `FUN_180196CA0`
+(`0x180196CA0`) as a hook on `GJBaseGameLayer::getModifiedDelta`
+(RVA `0x2377B0`), depending on a boolean parameter.
+
+`FUN_180196CA0` computes a frame time delta:
+
+- If `isHackEnabled(tag 0x1EA = 490)` is true (master toggle):
+  - If `PlayLayer+0x32A4 < 1` (no pending frames): returns `1.0 / customTPS`
+    where customTPS = tag 0x1E6 (486, double accessor, default 240.0) if
+    `isHackEnabled(tag 0x1E7 = 487)` is true and the value is valid, else 240.0.
+  - If `+0x32A4 >= 1`: decrements the counter, returns 0.0 (frame skip).
+- If tag 0x1EA is false but tag 0x1E7 is true: computes a stepped frame time
+  using `PlayLayer+0x3250` (accumulated remainder) and `PlayLayer+0x330` (scale
+  factor), with `round()` quantization.
+- If neither: calls `FUN_180115B70` (GD's default `getModifiedDelta`).
+
+### Tag map
+
+| Tag (hex) | Tag (dec) | Accessor | Static-map name | Role |
+| --- | --- | --- | --- | --- |
+| 0x1EA | 490 | `isHackEnabled` (Map B) | (not in static list — runtime-assigned) | Master toggle (TPS Bypass) |
+| 0x1E7 | 487 | `isHackEnabled` (Map B) | (not in static list — runtime-assigned) | Custom TPS sub-toggle |
+| 0x1E6 | 486 | `FUN_180003D80` (double accessor) | (not in static list) | Custom TPS value (default 240.0)
+
+UNVERIFIED: which JSON keys bind to tags 0x1E6, 0x1E7, 0x1EA; the semantics of
+`PlayLayer+0x32A4` (frame counter) and `+0x3250`/`+0x330`; whether this is
+"TPS Bypass" or "Legacy Mode to Speedhack".

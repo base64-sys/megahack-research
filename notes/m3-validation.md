@@ -18,6 +18,7 @@
 
 - Module entry and early-load path: compiling C++ tests in
   `reconstruction/tests/test_reconstruction.cpp`.
+- Show Hitboxes: gate `FUN_180203EE0` (tag 192/216), draw `FUN_180203F60`→`FUN_180204000`/`FUN_180204150`, per-object `FUN_180203070`. Two changelog rows promoted to `mapped` (Show Hitboxes, Show Hitboxes on Death). Three Map A tags (0xC1/0xD9/0xDA) are runtime-assigned and UNVERIFIED.
 - Settings registry: compiling C++ tests covering all five value types, listeners,
   action interception, and JSON round-tripping.
 - Hook dispatch mechanism: structural evidence from 338 registration sites and
@@ -28,9 +29,16 @@
 
 - Runtime comparison of reconstructed hook callbacks against the release's
   observable behaviour.
-- Cluster assignment exists but is only a lead for most rows: 386 of the 389 changelog
-  rows in [feature-inventory.md](feature-inventory.md) are status `cluster`; 3 are
-  `mapped` (Safe Mode, Auto Safe Mode, Disable Progress to Noclip). The keyword check
+- Cluster assignment exists but is only a lead for most rows: 364 of the 389 changelog
+  rows in [feature-inventory.md](feature-inventory.md) are status `cluster`; 25 are
+  `mapped` (Safe Mode, Auto Safe Mode, Disable Progress to Noclip, Show Hitboxes,
+  Show Hitboxes on Death, Show Hitbox Trail Requires Show Hitboxes, Frame Stepper,
+  StartPos Switcher, Solid Wave Trail, Thread Priority, Transition Customiser,
+  Pitch Shifter, TPS Bypass, Borderless Fullscreen, multi-lingual support,
+  Interface tab to disable Mega Hack UI changes, Menu Snow in December,
+  Noclip Accuracy, Corrective Music Sync, NoClip Accuracy screen tint,
+  Custom Background, Hitbox Trail, Accurate Percentage, Noclip Limits,
+  0% Practice Complete). The keyword check
   found **185 of 389** rows whose linked note never mentioned the feature at the
   baseline (method below); that count predates the three promotions.
 - Per-feature settings-key and default mapping for the remaining 386 rows remains open.
