@@ -447,3 +447,48 @@ evidence-backed; semantics require reading the 92 callbacks, which is M3 work.
 - A hand-rolled MSVC mangling parser threw `IndexError` on symbols whose argument list is
   empty. It was replaced with `undname.exe` rather than patched, because a wrong demangling
   that still parses is worse than a crash.
+
+## Resolving the `FF 25` import thunks (2026-10-25)
+
+Most detours reach cocos2d and the CRT through one-instruction thunks near the end of
+`.text`:
+
+```
+0x180532410  jmp qword ptr [rip + 0x111312]   ; -> IAT slot 0x180643728
+```
+
+An address like that says nothing about the behaviour being hooked, and guessing from the
+argument shape is exactly how a plausible-but-wrong mechanism gets written down. Every one of
+them is resolvable statically, because the IAT slot is named in the import directory.
+
+`scripts/import_names.py` walks `IMAGE_DIRECTORY_ENTRY_IMPORT`, joins each `FirstThunk + n*8`
+slot to its DLL and symbol, then joins every `FF 25 <disp32>` site in `.text` to the slot it
+jumps through. Self-check on the baseline artifact:
+
+```
+imports: 1010 across 30 DLLs; FF 25 stubs found: 894
+```
+
+1,010 imports over 30 DLLs is the same figure this note recorded from `pefile` on 2026-10-20,
+so the parser agrees with the earlier tool on the total before being used for anything.
+701 of the 894 `FF 25` hits land on an import slot; the remaining 193 are byte pairs inside
+other instructions, which is why the tool reports a stub only when its slot resolves.
+
+Four examples, all from detours in this repository:
+
+| Thunk | Resolves to |
+| --- | --- |
+| `0x180532410` | `libcocos2d.dll!?count@CCArray@cocos2d@@QEBAIXZ` |
+| `0x1805330B0` | `libcocos2d.dll!?clear@CCDrawNode@cocos2d@@QEAAXXZ` |
+| `0x1805331B0` | `libcocos2d.dll!?drawPolygon@CCDrawNode@cocos2d@@QEAA_NPEAVCCPoint@2@IAEBU_ccColor4F@2@M1W4BorderAlignment@2@@Z` |
+| `0x1805323C0` | `libcocos2d.dll!?createWithVariableList@CCSequence@cocos2d@@SAPEAV12@PEAVCCFiniteTimeAction@2@PEAD@Z` |
+
+`scripts/test_import_names.py` pins the totals and those four resolutions, and skips itself
+when the sample set is absent.
+
+### Failure modes recorded
+
+- Reading the displacement as an absolute address rather than RIP-relative is wrong by the
+  instruction length; the stub above lands on `0x180643728`, not `0x180532410 + 0x111312`.
+- Treating every `FF 25` byte pair in `.text` as a thunk over-reports: 894 hits, 701 real
+  slots. A resolution failure is data, not an error to paper over.

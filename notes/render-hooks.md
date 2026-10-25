@@ -183,16 +183,86 @@ This is the first row promoted from the [hook-registrations.md](hook-registratio
 table on detour evidence, and it is `mapped` in
 [feature-inventory.md](feature-inventory.md).
 
-### Two more detours read, mechanisms not yet established
+### One detour left for the game-hooks note
 
-The same pass read the detours of four neighbouring toggles. Two of them (Hide Pause Button
-and Hide Pause Menu) were settled on 2026-10-25 and moved into their own section below;
-these two keep their targets but not a mechanism:
+The same pass read four detours. Hide Pause Button and Hide Pause Menu were settled below,
+Stop Triggers on Death is a gameplay hook and now lives in
+[gameplay-hooks.md](gameplay-hooks.md#evidence--stop-triggers-on-death-2026-10-25), and
+Wave Trail Fix is settled in the next section.
 
-| Toggle | Target (RVA) | Detour | What the bytes show | Status |
+## Evidence — Wave Trail Fix (2026-10-25)
+
+Tag 411 (`0x19B`, `HACK_WAVE_TRAIL_FIX`, static-map entry 83, store VA `0x180064855`) is
+registered at `0x1800B094A`. Callback `FUN_180166A80` installs one hook:
+
+| Target | RVA | Detour | Installer | Order |
+| --- | ---: | --- | --- | --- |
+| `HardStreak::updateStroke` | `0x2B8EF0` | `0x180166AF0` | `0x180167020` | `0xBD8` |
+
+The detour is a **complete replacement**: `.pdata` bounds it to `0x180166AF0..0x180166C33`
+(0x143 bytes) and the body never calls a gateway for `0x2B8EF0`, so the vanilla stroke code
+does not run on this path. It clears the draw node and rebuilds the geometry itself. The
+cocos2d calls were resolved from their thunks with
+[`scripts/import_names.py`](../scripts/import_names.py) (method in
+[host-abi.md](host-abi.md#resolving-the-ff-25-import-thunks-2026-10-25)); no name below is
+guessed from an address.
+
+```
+0x180166B0D  cmp  byte [rsi+0x1BA], 1        ; only this stroke type is redrawn
+0x180166B14  jne  0x180166C02                ; otherwise leave the frame alone
+0x180166B1D  call 0x1805330B0                ; CCDrawNode::clear()
+0x180166B22  mov  rcx, [rsi+0x1A0]           ; the stroke's CCArray
+0x180166B29  call 0x180532410                ; CCArray::count()
+0x180166B30  je   0x180166C02                ; nothing to draw
+0x180166B36  lea  rdi, [rsi+0x140]           ; embedded node sub-object
+0x180166B47  call [rax+0x20]                 ; slot +0x20 = a byte, 0 -> return
+0x180166B52  movss xmm6, [rsi+0x1B0]
+0x180166B5A  mulss xmm6, [rsi+0x1B4]         ; base width
+0x180166B6F  mov  ebx, eax                   ; that byte again
+0x180166B7B  call [rax+8]                    ; slot +8 -> pointer to a 3-byte colour
+0x180166B8C  call 0x1801F17E0                ; colour + alpha -> 16-byte ccColor4F
+0x180166B91  movss xmm1, [0x18054C698]       ; 6.0f  (bytes 00 00 c0 40)
+0x180166B99  mulss xmm1, xmm6                ; 6 x base width
+0x180166BA3  call 0x180166C40                ; draw ribbon 1 in the node's colour
+0x180166BA8  cmp  byte [rsi+0x1B8], 0
+0x180166BAF  jne  0x180166C02                ; second ribbon disabled
+0x180166BB1  call [rax+0x20]                 ; the byte again (opacity)
+0x180166BC1  cvtsi2ss xmm0, eax
+0x180166BC5  mulss xmm0, [0x180572B04]       ; 0.65f (bytes 66 66 26 3f)
+0x180166BCD  cvttss2si r8d, xmm0             ; alpha = (int)(0.65 x opacity)
+0x180166BD2  mov  word [rsp+0x25], 0xFFFF    ; white
+0x180166BD9  mov  byte [rsp+0x27], 0xFF
+0x180166BEB  call 0x1801F17E0                ; white + alpha -> ccColor4F
+0x180166BF0  addss xmm6, xmm6                ; 2 x base width
+0x180166BFD  call 0x180166C40                ; draw ribbon 2, white at 65% opacity
+```
+
+The drawing helper `0x180166C40` (`.pdata` `0x180166C40..0x180167015`, 956 bytes, exactly one
+caller — this detour) takes `(HardStreak* this, float width, ccColor4F const* fill)`. It walks
+the point array with `CCArray::objectAtIndex`, pairs consecutive points, computes each
+segment's normal, builds a four-vertex quad whose half-width is `width * 0.5` (`0x180534410`
+is `0x3F000000`), and issues `cocos2d::CCDrawNode::drawPolygon(verts, 4, fill, 0, transparent,
+0)`.
+
+Measured consequence: after clearing the node the detour emits **two** ribbons over the same
+polyline — one at `6 x base width` in the node's colour, and, when `[this+0x1B8] == 0`, one at
+`2 x base width` in white at `(int)(0.65 x opacity)` alpha. Because the helper halves the
+width, the visible half-widths are `3 x base` and `1 x base`.
+
+UNVERIFIED: what the gating bytes `+0x1BA` (must be 1) and `+0x1B8` (must be 0 for the white
+ribbon) mean; whether `+0x1B0 * +0x1B4` is the vanilla stroke width or a mod-set scale; the
+identity of the virtual slots `+0x8` and `+0x20` (their return shape matches `getColor()` and
+`getOpacity()`, and the second return is consumed as the alpha, but they are not named from
+this binary); and what the vanilla `updateStroke` did, since the host image is not part of the
+sample set. The wide-plus-core reading of the visual result is an inference from the two width
+constants, not an observation of the rendered trail.
+
+### Tag map
+
+| Tag (hex) | Tag (dec) | Accessor | Static-map name | Role |
 | --- | --- | --- | --- | --- |
-| Stop Triggers on Death | `GJBaseGameLayer::update` `0x237850` | `0x180172E50` | calls `0x1801ACDB0`; if the result equals `this`, skips the tail `jmp 0x1801149B0`, otherwise forwards | UNVERIFIED: which branch suppresses trigger updates, and which object `0x1801ACDB0` returns |
-| Wave Trail Fix | `HardStreak::updateStroke` `0x2B8EF0` | `0x180166AF0` | tests `byte [this+0x1BA] == 1`, then calls `0x1805330B0` and `0x180532410` before touching the streak vector at `+0x140` | UNVERIFIED: the whole body; only the entry condition was read |
+| 0x19B | 411 | `isHackEnabled` (Map B) | `HACK_WAVE_TRAIL_FIX` | Replace the wave trail's stroke redraw |
+
 
 ## Evidence — Hide Pause Button and Hide Pause Menu (2026-10-25)
 

@@ -395,11 +395,32 @@ The helper `0x18017F000` turns those seconds into a scheduled action:
 Measured facts: the configured value is tag **246**, divided by **1000.0**, clamped to a
 minimum of **2^-23**, multiplied by a factor that is **1.0** unless tags **502** and **247**
 are both enabled, in which case the factor is the double at tag **501**. The result is
-converted to `float` and handed to the action-construction calls `0x180532390` /
-`0x1805323A0` / `0x1800BADB0`, ending in `0x180532CE0`.
+converted to `float` and scheduled as a cocos2d action.
+
+The three "action constructors" this section first recorded as unnamed are resolvable through
+their `FF 25` thunks (`scripts/import_names.py`, method in
+[host-abi.md](host-abi.md#resolving-the-ff-25-import-thunks-2026-10-25)):
+
+```
+0x18017F062  call 0x180532CA0          ; CCNode::stopActionByTag(0x10)
+0x18017F088  call 0x180532390          ; CCCallFunc::create(this, 0x1801A4BE0)
+0x18017F093  call 0x1805323A0          ; CCDelayTime::create(seconds)
+0x18017F0A1  call 0x1800BADB0          ; varargs shim over CCSequence::createWithVariableList
+0x18017F0B4  call [rax+0x40]           ; setTag(0x10)
+0x18017F0CD  jmp  0x180532CE0          ; CCNode::runAction
+```
+
+So the detour cancels any previous respawn task tagged `0x10`, builds
+`CCSequence(CCDelayTime(seconds), CCCallFunc(callback 0x1801A4BE0))`, tags it `0x10` and runs
+it. `0x1801A4BE0` is mod code (the selector handed to `CCCallFunc::create`); what it does on
+the layer is not read yet.
 
 `FUN_18017EF50` hooks the same RVA (`0x3B39D0`) that No Death Effect also hooks, with the same
 `PlayLayer::destroyPlayer` friendly name — two features, one host function, different detours.
+
+*Correction (2026-10-25, later the same day).* The first write-up listed
+`0x180532390`/`0x1805323A0`/`0x1800BADB0` and `0x180532CE0` as unidentified constructors. They
+are named above; only the selector `0x1801A4BE0` and the tags remain open.
 
 ### Tag map
 
@@ -412,5 +433,83 @@ converted to `float` and handed to the action-construction calls `0x180532390` /
 | 0x0F7 | 247 | `FUN_18002DE50` (bool) | (runtime-assigned) | Second gate for the multiplier |
 
 UNVERIFIED: the names of tags 246, 247, 501 and 502; whether tags 502/247 are the
-"Ignore Speedhack option" named by the changelog; the identity of the action constructors;
-and the JSON keys.
+"Ignore Speedhack option" named by the changelog; what the `0x1801A4BE0` selector does; and
+the JSON keys.
+
+## Evidence — Stop Triggers on Death (2026-10-25)
+
+Tag 415 (`0x19F`, `HACK_STOP_TRIGGERS_ON_DEATH`, static-map entry 71, store VA
+`0x1800643C4`) is registered at `0x1800B1AF4`. Callback `FUN_180172DE0` installs one hook:
+
+| Target | RVA | Detour | Installer | Order |
+| --- | ---: | --- | --- | --- |
+| `GJBaseGameLayer::update` | `0x237850` | `0x180172E50` | `0x180172EC0` | `0xBD8` |
+
+`.pdata` bounds the detour to `0x180172E50..0x180172EBE` (0x6E bytes), and the last
+instruction is the five-byte tail jump, so the body below is the whole detour:
+
+```
+0x180172E60  call 0x1801ACDB0           ; host 0x17B4A0(), then [result+0x208]
+0x180172E65  cmp  rax, rsi              ; is that pointer this layer?
+0x180172E68  je   0x180172E7F           ; yes -> check the players
+0x180172E6A  mov  rcx, rsi              ; (forward path)
+0x180172E6D  movaps xmm1, xmm6          ; dt untouched
+0x180172E7A  jmp  0x1801149B0           ; gateway -> GJBaseGameLayer::update
+0x180172E7F  mov  rax, [rsi+0xDA0]      ; player slot 1
+0x180172E86  test rax, rax
+0x180172E89  je   0x180172E94           ; null -> try slot 2
+0x180172E8B  cmp  byte [rax+0x9C0], 0
+0x180172E92  jne  0x180172EA9           ; set -> skip the update
+0x180172E94  mov  rax, [rsi+0xDA8]      ; player slot 2
+0x180172E9E  je   0x180172E6A           ; null -> forward
+0x180172EA0  cmp  byte [rax+0x9C0], 1
+0x180172EA7  jne  0x180172E6A           ; != 1 -> forward
+0x180172EA9  mov  rcx, rsi
+0x180172EB9  jmp  0x180115B70           ; gateway -> GJBaseGameLayer::getModifiedDelta
+```
+
+The two tail targets are the mod's lazy call gateways, and their initialisers name the host
+entry point they wrap, which is how the branch is identified rather than assumed:
+
+```
+0x180114A20  call 0x18010DDC0           ; cached GetModuleHandleA(NULL)  (see host-abi.md)
+0x180114A25  lea  rcx, [rax + 0x237850] ; GJBaseGameLayer::update
+0x180114A2C  call 0x180114A80           ; build the callable gateway once
+0x180114A31  mov  [0x180805BB0], rax
+
+0x180115BE0  call 0x18010DDC0
+0x180115BE5  lea  rcx, [rax + 0x2377B0] ; GJBaseGameLayer::getModifiedDelta
+0x180115BEC  call 0x180115C40
+0x180115BF1  mov  [0x180806180], rax
+```
+
+RVA `0x2377B0` is named `GJBaseGameLayer::getModifiedDelta` in the mod's own hook records
+(`mov edx, 0x2377B0` at `0x180196C49` and `0x18019709B`, name string at `0x18057A894`), and
+`recovered/functions/_hook_sites.tsv` carries the same pairing from the Ghidra side. Two
+independent behaviours confirm the return shape: detour `0x180197250` caches the call's
+`xmm0` as a `double` (`movsd [rip+0x675807], xmm0`), and detour `0x180196CA0` returns its own
+`xmm0` after consulting tag `0x1EA`.
+
+Measured mechanism: while the current layer is the one the host singleton reports at
+`+0x208`, and a player slot's byte at `+0x9C0` passes the test above, `update` is **not
+called at all**. The frame instead runs `getModifiedDelta(this, dt)` and returns. The toggle
+therefore does not filter triggers inside the update — it substitutes a different host entry
+point for the whole level update on those frames. Note the asymmetry in the bytes: slot 1
+takes any non-zero value, slot 2 requires exactly `1`.
+
+`FUN_180157180` corroborates that `+0xDA0`/`+0xDA8` are the two player slots: it compares an
+incoming object pointer against both and maps it to index 3 or 4 before calling
+`FUN_180156400`.
+
+### Tag map
+
+| Tag (hex) | Tag (dec) | Accessor | Static-map name | Role |
+| --- | --- | --- | --- | --- |
+| 0x19F | 415 | `isHackEnabled` (Map B) | `HACK_STOP_TRIGGERS_ON_DEATH` | Skip the level update while a player is dead |
+
+UNVERIFIED: the meaning of the byte at `player+0x9C0` (it reads like a dead/destroyed flag —
+the mod also writes `1` into it at `0x1801818CA` and copies it at `0x180208E55` — but no host
+symbol names it); the identity of host RVA `0x17B4A0`, whose `+0x208` field is compared with
+`this`; and whether `getModifiedDelta` has side effects that matter when it stands in for
+`update`. Whether the freeze this produces is the whole intended effect, or only the intended
+visible part of it, cannot be settled without the host image.
