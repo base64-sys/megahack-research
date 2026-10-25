@@ -381,3 +381,69 @@ reaches the original handler; whether `dl=1` skips the transition. The binder an
 RVAs are described in
 [host-abi.md](host-abi.md#how-mega-hack-calls-host-functions-it-does-not-import).
 
+## Evidence — Auto Song Downloader (2026-10-25)
+
+Tag 323 (`0x143`, `HACK_AUTO_SONG_DOWNLOAD`, static-map entry 7, store VA `0x180062C24`)
+is registered at `0x1800B1FA4`. Callback `FUN_180175640` installs one hook, and both the
+callback and the detour live in code caves — `scripts/func_bounds.py` returns no `.pdata`
+record for either address:
+
+| Target | RVA | Detour | Installer | Order |
+| --- | ---: | --- | --- | --- |
+| `LevelInfoLayer::init` | `0x2F7340` | `0x1801756B0` | `0x18015EAB0` | `0xFFFFFFE0` |
+
+The detour is a **post-hook**: it runs the original first and only then does its own work,
+returning the original's bool unchanged.
+
+```
+0x1801756B6  mov  rsi, rcx
+0x1801756B9  call 0x1801A0E60          ; gateway -> host RVA 0x2F7340, the original init
+0x1801756BE  test al, al
+0x1801756C0  je   0x180175712          ; init failed -> return its false
+0x1801756C2  mov  rcx, [rsi+0x2D0]
+0x1801756C9  test rcx, rcx
+0x1801756CC  je   0x180175712          ; member not set -> nothing to do
+0x1801756CE  mov  rcx, [rcx+0x180]
+0x1801756D5  mov  rdx, [rcx]           ; vtable of that sub-object
+0x1801756D8  mov  ebx, eax             ; remember init's result
+0x1801756DA  call [rdx+0x148]          ; virtual predicate, result in cl
+0x1801756E4  test cl, cl
+0x1801756E6  je   0x180175712          ; predicate false -> stop
+0x1801756E8  mov  rcx, [rsi+0x2D0]
+0x1801756EF  mov  rsi, [rcx+0x180]     ; the same sub-object
+0x1801756F6  lea  rdx, [0x18010E630]   ; gateway -> host RVA 0xCABC0
+0x1801756FD  mov  r8, rsi              ; target and argument are the same object
+0x180175700  call 0x180533230          ; cocos2d::CCCallFuncO::create
+0x180175705  mov  rcx, rsi
+0x180175708  mov  rdx, rax
+0x18017570B  call 0x180532CE0          ; cocos2d::CCNode::runAction
+0x180175710  mov  eax, ebx
+0x180175712  add rsp, 0x28 ; pop rsi ; pop rbx ; ret
+```
+
+Read plainly: once the level-info layer has initialised, if `[layer+0x2D0]` is set and the
+sub-object at `+0x180` answers the virtual predicate at vtable slot `+0x148` with true, the
+mod queues `CCCallFuncO::create(subObject, <host RVA 0xCABC0>, subObject)` on that same
+sub-object and lets cocos2d run it on a later frame. The gateway's own initialiser names the
+callee it wraps: `0x18010E6A1 lea rcx, [rax+0xcabc0]`, followed by `call 0x18010E450` to
+build the gateway once and cache it at `0x180802EF0`.
+
+The callback's enable branch is the usual record layout: `mov edx, 0x2F7340`,
+`call 0x18010A370`, `lea r8` → detour, `lea r9` → `0x1805752BC` (the string
+`LevelInfoLayer::init` in `_host_methods.tsv`), `mov dword [rsp+0x20], 0xFFFFFFE0`, then
+`call 0x18015EAB0`. That installer is shared with Copy Hack (tag 43, callback
+`FUN_18015E920`, detours `0x18015E9F0` and `0x18015EA50`), which hooks the same RVA — it is a
+generic order-taking installer, not part of this feature.
+
+### Tag map
+
+| Tag (hex) | Tag (dec) | Accessor | Static-map name | Role |
+| --- | --- | --- | --- | --- |
+| 0x143 | 323 | `isHackEnabled` (Map B) | `HACK_AUTO_SONG_DOWNLOAD` | Deferred call into host RVA `0xCABC0` after `LevelInfoLayer::init` |
+
+UNVERIFIED: what `LevelInfoLayer+0x2D0` holds and what its `+0x180` sub-object is (the
+offsets are measured, but no host symbol names either field); what vtable slot `+0x148`
+returns for that class; and what host RVA `0xCABC0` does — no name string in the image refers
+to it, it is absent from `_host_methods.tsv`, and the only occurrence of the immediate is the
+gateway initialiser above. The "auto download" reading therefore rests on the changelog
+wording plus the deferred-call shape, not on an identified download routine.

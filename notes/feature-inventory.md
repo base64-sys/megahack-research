@@ -13,7 +13,7 @@
 | `mapped` | The feature has its own evidence: a note that names it, its settings key(s) and default, and/or its implementing function(s) with VAs. |
 | `alias` / `dead` | A restatement of an earlier feature / absent from this build, with the evidence for that call. |
 
-All 389 rows below were `cluster` at the 2026-10-23 baseline. **Sixty-nine are now
+All 389 rows below were `cluster` at the 2026-10-23 baseline. **Seventy are now
 `mapped`**; the [Mapped rows](#mapped-rows) table below is the authoritative list, with
 tag, registration site and hook address for each one.
 
@@ -46,7 +46,8 @@ byte is set, and the second replaces `HardStreak::updateStroke` outright with a 
 code-cave detours on the three `onPlay` entry points show a "Safe Mode" confirmation
 when `areCheatsEnabled()` is true and the suppression byte `0x18080CBB0` is clear. **Replay Last
 Checkpoint** closes the endscreen path: its single tag reroutes `EndLevelLayer::onReplay` to a
-different host procedure when a play-layer byte is set. The other 320 rows remain `cluster`.
+different host procedure when a play-layer byte is set. Auto Song Downloader closed on the same day from a post-hook that defers a
+`CCCallFuncO` into host RVA `0xCABC0`. The other 319 rows remain `cluster`.
 
 A keyword check at the baseline found that **185 of 389** rows point at a note that
 never mentions the feature at all, so for those even the cluster assignment is only a
@@ -127,6 +128,7 @@ reported as progress.
 | Added Wave Trail Fix | tag 411 (`0x19B`, `HACK_WAVE_TRAIL_FIX`, static map `0x180064855`); registered at `0x1800b094a`, callback `FUN_180166a80` hooks `HardStreak::updateStroke` (RVA 0x2B8EF0); detour `0x180166af0` replaces it: `CCDrawNode::clear()`, then two `drawPolygon` ribbons built by `0x180166c40` from the point array at `+0x1A0` (6.0x width in the node colour, 2.0x in white at 0.65x opacity). See [render-hooks.md](render-hooks.md#evidence--wave-trail-fix-2026-10-25). |
 | Added Safe Mode Popup | tag 483 (`0x1E3`, `HACK_SAFE_MODE_POPUP`); three code-cave detours (`0x18019a4d0` `LevelInfoLayer::onPlay`, `0x18019a520` `EditLevelLayer::onPlay`, `0x18019a570` `LevelPage::onPlay`) tail-jump to the cached original when byte `0x18080cbb0` is non-zero or `areCheatsEnabled` (`0x18019b350`) is false; otherwise they jump to `0x18019a5c0`, the alert that renders "Safe Mode" / "You have cheats enabled, are you sure you want to play this level?" with Play and Cancel. See [safe-mode-feature.md](safe-mode-feature.md#evidence--the-play-button-popup-2026-10-25). |
 | Added Replay Last Checkpoint (all three wordings) | tag 316 (`0x13C`, `HACK_REPLAY_LAST_CHECKPOINT`, static map `0x180063DF7`); registered at `0x1800b2a6e`, callback `FUN_18017ecb0` hooks `EndLevelLayer::onReplay` (RVA 0x134E80); detour `0x18017ed20` reroutes to host RVA 0x1354C0 with `edx=0` when the second argument is null and `[playlayer+0x31f0] == 1`, otherwise to the cached original. One tag and one hook serve the v6.2.0, v7.0 and v8.0.0-alpha9 rows, so they are promoted together. See [gameplay-hooks.md](gameplay-hooks.md#evidence--replay-last-checkpoint-2026-10-25). |
+| Added Auto Song Downloader | tag 323 (`0x143`, `HACK_AUTO_SONG_DOWNLOAD`, static map `0x180062C24`); registered at `0x1800b1fa4`, callback `FUN_180175640` hooks `LevelInfoLayer::init` (RVA 0x2F7340) with code-cave detour `0x1801756b0`; the detour calls the original first, then runs `CCCallFuncO::create(subObject, <host 0xCABC0>, subObject)` on `[[layer+0x2D0]+0x180]` when that object's vtable slot `+0x148` returns true. See [ui-addons.md](ui-addons.md#evidence--auto-song-downloader-2026-10-25). |
 
 ## Toggles outside the 389
 
@@ -273,7 +275,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v8.0.2-alpha.1 | Added Best Run option to only show current startpos runs | cluster | [startpos-switcher-feature.md](startpos-switcher-feature.md) |
 | v8.0.1-alpha.9 | Added Stop Triggers on Death | mapped | [gameplay-hooks.md](gameplay-hooks.md#evidence--stop-triggers-on-death-2026-10-25) | tag 415 (`0x19F`, `HACK_STOP_TRIGGERS_ON_DEATH`); registered at `0x1800b1af4`, callback `FUN_180172de0` hooks `GJBaseGameLayer::update` (RVA 0x237850); detour `0x180172e50` tail-jumps to the `getModifiedDelta` gateway (RVA 0x2377B0) when `[host_0x17B4A0+0x208] == this` and a player slot at `layer+0xDA0`/`0xDA8` carries byte `+0x9C0`, otherwise to the cached original. |
 | v8.0.1-alpha.9 | Added Auto Pickup Coins | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
-| v8.0.1-alpha.9 | Added Auto Song Downloader | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
+| v8.0.1-alpha.9 | Added Auto Song Downloader | mapped | [ui-addons.md](ui-addons.md#evidence--auto-song-downloader-2026-10-25) | tag 323 (`0x143`, `HACK_AUTO_SONG_DOWNLOAD`); registered at `0x1800b1fa4`, callback `FUN_180175640` hooks `LevelInfoLayer::init` (RVA 0x2F7340); detour `0x1801756b0` runs the cached original first, then, when `[layer+0x2D0]` and its `+0x180` sub-object's vtable slot `+0x148` both pass, runs `CCCallFuncO::create(subObject, <host RVA 0xCABC0>, subObject)` on that sub-object. |
 | v8.0.1-alpha.8 | Added Accurate Save | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v8.0.1-alpha.7 | Added Replay with brand new interface | cluster | [replay-feature.md](replay-feature.md) |
 | v8.0.1-alpha.7 | Added Replay auto-save | cluster | [replay-feature.md](replay-feature.md) |
@@ -572,7 +574,14 @@ other than "always unlocked". A target name alone never carried that.
 
 Consequence for planning: the cheap end of the detour space is exhausted. Anything still
 `cluster` needs a body read in full, so the next passes should pick rows by feature value
-(the changelog wording), not by detour size. The remaining 0xD-0x18 byte rows
-(`Auto Song Downloader`, `Force Platformer`, `Default Song Bypass`) are the last group where a
-single reading is likely to be decisive; `Safe Mode Popup` was mapped from that group on
-2026-10-25 and `Replay Last Checkpoint` on the same day, so neither is listed any more.
+(the changelog wording), not by detour size. `Auto Song Downloader` was the last
+0xD-0x18 byte row that also has a changelog row; it was mapped on 2026-10-25 from a post-hook
+detour, as were `Safe Mode Popup` and `Replay Last Checkpoint`.
+
+Correction (2026-10-25): the earlier version of this paragraph named `Force Platformer` and
+`Default Song Bypass` as the next cheap rows. Both are in the static label map — tags 242
+(`0x0F2`, `HACK_FORCE_PLATFORMER`) and 49 (`0x031`, `HACK_DEFAULT_SONG_BYPASS`) — but **neither
+has a row in the 389**: no `Added Force Platformer` and no `Added Default Song Bypass` bullet
+exists. Mapping them would add entries to "Toggles outside the 389" at best, so they are not
+progress against the milestone. The next rows must be chosen from the 319 remaining changelog
+bullets.
