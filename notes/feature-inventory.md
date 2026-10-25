@@ -13,7 +13,7 @@
 | `mapped` | The feature has its own evidence: a note that names it, its settings key(s) and default, and/or its implementing function(s) with VAs. |
 | `alias` / `dead` | A restatement of an earlier feature / absent from this build, with the evidence for that call. |
 
-All 389 rows below were `cluster` at the 2026-10-23 baseline. **Seventy are now
+All 389 rows below were `cluster` at the 2026-10-23 baseline. **Seventy-two are now
 `mapped`**; the [Mapped rows](#mapped-rows) table below is the authoritative list, with
 tag, registration site and hook address for each one.
 
@@ -47,7 +47,10 @@ code-cave detours on the three `onPlay` entry points show a "Safe Mode" confirma
 when `areCheatsEnabled()` is true and the suppression byte `0x18080CBB0` is clear. **Replay Last
 Checkpoint** closes the endscreen path: its single tag reroutes `EndLevelLayer::onReplay` to a
 different host procedure when a play-layer byte is set. Auto Song Downloader closed on the same day from a post-hook that defers a
-`CCCallFuncO` into host RVA `0xCABC0`. The other 319 rows remain `cluster`.
+`CCCallFuncO` into host RVA `0xCABC0`. **Auto Pickup Coins and Collect Coins in Practice**
+closing a week later were the same mechanism from two sides: both funnel a coin object into
+host RVA `0x2161B0`, one from a post-`resetLevel` pass and one from the object scan inside
+`collisionCheckObjects`. The other 317 rows remain `cluster`.
 
 A keyword check at the baseline found that **185 of 389** rows point at a note that
 never mentions the feature at all, so for those even the cluster assignment is only a
@@ -126,6 +129,8 @@ reported as progress.
 | Added Respawn Time modifier | tag 245 (`0x0F5`, `HACK_RESPAWN_TIME`, static map `0x180063E55`); registered at `0x1800b2ae5`, callback `FUN_18017ef50` hooks `PlayLayer::destroyPlayer` (RVA 0x3B39D0); detour converts tag 246 ms to seconds (÷1000.0) and calls `0x18017f000`, which clamps to 2^-23 and applies the tag-501 multiplier when tags 502 and 247 are on. See [gameplay-hooks.md](gameplay-hooks.md#evidence--respawn-time-modifier-2026-10-25). |
 | Added Stop Triggers on Death | tag 415 (`0x19F`, `HACK_STOP_TRIGGERS_ON_DEATH`, static map `0x1800643C4`); registered at `0x1800b1af4`, callback `FUN_180172de0` hooks `GJBaseGameLayer::update` (RVA 0x237850); detour `0x180172e50` forwards to the cached original unless `[host_0x17B4A0+0x208] == this` and a player slot (`layer+0xDA0`/`0xDA8`) has byte `+0x9C0` set, in which case it tail-jumps to the `getModifiedDelta` gateway (RVA 0x2377B0) instead. See [gameplay-hooks.md](gameplay-hooks.md#evidence--stop-triggers-on-death-2026-10-25). |
 | Added Wave Trail Fix | tag 411 (`0x19B`, `HACK_WAVE_TRAIL_FIX`, static map `0x180064855`); registered at `0x1800b094a`, callback `FUN_180166a80` hooks `HardStreak::updateStroke` (RVA 0x2B8EF0); detour `0x180166af0` replaces it: `CCDrawNode::clear()`, then two `drawPolygon` ribbons built by `0x180166c40` from the point array at `+0x1A0` (6.0x width in the node colour, 2.0x in white at 0.65x opacity). See [render-hooks.md](render-hooks.md#evidence--wave-trail-fix-2026-10-25). |
+| Added Auto Pickup Coins | tag 320 (`0x140`, `HACK_AUTO_PICKUP_COINS`); registered at `0x1800b1f2d`, callback `FUN_1801754c0` hooks `PlayLayer::resetLevel` (RVA 0x3B8EB0); detour `0x180175530` runs the original first, then collects each candidate whose tag-321 flag is set through host RVA `0x2161b0`. See [gameplay-hooks.md](gameplay-hooks.md#evidence--the-two-coin-collection-hooks-2026-10-25). |
+| Added Collect Coins in Practice | tag 297 (`0x129`, `HACK_COLLECT_COINS_IN_PRACTICE`); registered at `0x1800b2185`, callback `FUN_180176ea0` hooks `GJBaseGameLayer::collisionCheckObjects` (RVA 0x214960); detour `0x180176f10` collects type ids `0x1F`/`0x16` objects through host RVAs `0x2161b0` and `0x216090` before tail-jumping to the original. See [gameplay-hooks.md](gameplay-hooks.md#evidence--the-two-coin-collection-hooks-2026-10-25). |
 | Added Safe Mode Popup | tag 483 (`0x1E3`, `HACK_SAFE_MODE_POPUP`); three code-cave detours (`0x18019a4d0` `LevelInfoLayer::onPlay`, `0x18019a520` `EditLevelLayer::onPlay`, `0x18019a570` `LevelPage::onPlay`) tail-jump to the cached original when byte `0x18080cbb0` is non-zero or `areCheatsEnabled` (`0x18019b350`) is false; otherwise they jump to `0x18019a5c0`, the alert that renders "Safe Mode" / "You have cheats enabled, are you sure you want to play this level?" with Play and Cancel. See [safe-mode-feature.md](safe-mode-feature.md#evidence--the-play-button-popup-2026-10-25). |
 | Added Replay Last Checkpoint (all three wordings) | tag 316 (`0x13C`, `HACK_REPLAY_LAST_CHECKPOINT`, static map `0x180063DF7`); registered at `0x1800b2a6e`, callback `FUN_18017ecb0` hooks `EndLevelLayer::onReplay` (RVA 0x134E80); detour `0x18017ed20` reroutes to host RVA 0x1354C0 with `edx=0` when the second argument is null and `[playlayer+0x31f0] == 1`, otherwise to the cached original. One tag and one hook serve the v6.2.0, v7.0 and v8.0.0-alpha9 rows, so they are promoted together. See [gameplay-hooks.md](gameplay-hooks.md#evidence--replay-last-checkpoint-2026-10-25). |
 | Added Auto Song Downloader | tag 323 (`0x143`, `HACK_AUTO_SONG_DOWNLOAD`, static map `0x180062C24`); registered at `0x1800b1fa4`, callback `FUN_180175640` hooks `LevelInfoLayer::init` (RVA 0x2F7340) with code-cave detour `0x1801756b0`; the detour calls the original first, then runs `CCCallFuncO::create(subObject, <host 0xCABC0>, subObject)` on `[[layer+0x2D0]+0x180]` when that object's vtable slot `+0x148` returns true. See [ui-addons.md](ui-addons.md#evidence--auto-song-downloader-2026-10-25). |
@@ -274,7 +279,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v8.0.2-alpha.1 | Added Disable Keybinds in Editor | cluster | [ui-addons.md](ui-addons.md) |
 | v8.0.2-alpha.1 | Added Best Run option to only show current startpos runs | cluster | [startpos-switcher-feature.md](startpos-switcher-feature.md) |
 | v8.0.1-alpha.9 | Added Stop Triggers on Death | mapped | [gameplay-hooks.md](gameplay-hooks.md#evidence--stop-triggers-on-death-2026-10-25) | tag 415 (`0x19F`, `HACK_STOP_TRIGGERS_ON_DEATH`); registered at `0x1800b1af4`, callback `FUN_180172de0` hooks `GJBaseGameLayer::update` (RVA 0x237850); detour `0x180172e50` tail-jumps to the `getModifiedDelta` gateway (RVA 0x2377B0) when `[host_0x17B4A0+0x208] == this` and a player slot at `layer+0xDA0`/`0xDA8` carries byte `+0x9C0`, otherwise to the cached original. |
-| v8.0.1-alpha.9 | Added Auto Pickup Coins | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
+| v8.0.1-alpha.9 | Added Auto Pickup Coins | mapped | [gameplay-hooks.md](gameplay-hooks.md#evidence--the-two-coin-collection-hooks-2026-10-25) | tag 320 (`0x140`, `HACK_AUTO_PICKUP_COINS`); registered at `0x1800b1f2d`, callback `FUN_1801754c0` hooks `PlayLayer::resetLevel` (RVA 0x3B8EB0); detour `0x180175530` calls the original first, then calls host RVA `0x2161b0` for each candidate whose tag-321 flag is non-zero. |
 | v8.0.1-alpha.9 | Added Auto Song Downloader | mapped | [ui-addons.md](ui-addons.md#evidence--auto-song-downloader-2026-10-25) | tag 323 (`0x143`, `HACK_AUTO_SONG_DOWNLOAD`); registered at `0x1800b1fa4`, callback `FUN_180175640` hooks `LevelInfoLayer::init` (RVA 0x2F7340); detour `0x1801756b0` runs the cached original first, then, when `[layer+0x2D0]` and its `+0x180` sub-object's vtable slot `+0x148` both pass, runs `CCCallFuncO::create(subObject, <host RVA 0xCABC0>, subObject)` on that sub-object. |
 | v8.0.1-alpha.8 | Added Accurate Save | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v8.0.1-alpha.7 | Added Replay with brand new interface | cluster | [replay-feature.md](replay-feature.md) |
@@ -317,7 +322,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v8.0.0-alpha10b | Added Practice Bug Fix | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v8.0.0-alpha10b | Added custom click/move keybinds | cluster | [input-hooks.md](input-hooks.md) |
 | v8.0.0-alpha10b | Added Best Run | cluster | [best-run-feature.md](best-run-feature.md) |
-| v8.0.0-alpha10b | Added Collect Coins in Practice | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
+| v8.0.0-alpha10b | Added Collect Coins in Practice | mapped | [gameplay-hooks.md](gameplay-hooks.md#evidence--the-two-coin-collection-hooks-2026-10-25) | tag 297 (`0x129`, `HACK_COLLECT_COINS_IN_PRACTICE`); registered at `0x1800b2185`, callback `FUN_180176ea0` hooks `GJBaseGameLayer::collisionCheckObjects` (RVA 0x214960); detour `0x180176f10` keeps type ids `0x1F`/`0x16` with `+0x3d2` clear that pass `0x1802045d0`, calls host RVAs `0x2161b0` and `0x216090`, then tail-jumps to the original. |
 | v8.0.0-alpha10b | Added Checkpoint Limit Bypass | mapped | [gameplay-hooks.md](gameplay-hooks.md#evidence--four-labelled-tags-found-by-the-full-section-scan-2026-10-25) | tag 298 (`0x12A`, `HACK_CHECKPOINT_LIMIT_BYPASS`); registered at `0x1800b2092`, callback `FUN_180176250` hooks `PlayLayer::storeCheckpoint` (RVA 0x3B74A0), detour `0x1801762c0` replaces the second argument with `[checkpoint+0xE58]` before tail-jumping to the original. |
 | v8.0.0-alpha10b | Added No "Do Not" Flip | mapped | [gameplay-hooks.md](gameplay-hooks.md) | tag 412 (`HACK_NO_DO_NOT_FLIP`, 0x19C); registered in `FUN_1800afae0` at `0x1800b0e67`, callback `FUN_1801696e0` (hooks `EndLevelLayer::customSetup` + `PlayLayer::setupHasCompleted`). See no-do-not-flip-feature.md. |
 | v8.0.0-alpha10b | Added Meta Status | cluster | [status-labels-feature.md](status-labels-feature.md) |
@@ -583,5 +588,5 @@ Correction (2026-10-25): the earlier version of this paragraph named `Force Plat
 (`0x0F2`, `HACK_FORCE_PLATFORMER`) and 49 (`0x031`, `HACK_DEFAULT_SONG_BYPASS`) — but **neither
 has a row in the 389**: no `Added Force Platformer` and no `Added Default Song Bypass` bullet
 exists. Mapping them would add entries to "Toggles outside the 389" at best, so they are not
-progress against the milestone. The next rows must be chosen from the 319 remaining changelog
+progress against the milestone. The next rows must be chosen from the 317 remaining changelog
 bullets.

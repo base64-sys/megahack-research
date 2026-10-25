@@ -586,3 +586,102 @@ word, not the bytes'); what `+0x31F0` means and which host code sets it to 1; an
 site invokes `onReplay` with a null second argument. One tag and one hook serve all three
 changelog wordings (v6.2.0 "mod", v7.0 "to Endscreen", v8.0.0-alpha9), so they are promoted
 together rather than counted as three implementations.
+
+## Evidence — the two coin-collection hooks (2026-10-25)
+
+Two changelog rows turned out to be one mechanism entered from two sides: `HACK_AUTO_PICKUP_COINS`
+(320, `0x140`) clears the coins a level should have already collected after a reset, and
+`HACK_COLLECT_COINS_IN_PRACTICE` (297, `0x129`) collects coin objects during collision checks.
+Both end in the **same host routine, RVA `0x2161B0`, called with `(layer, object)`** — the
+strongest corroboration either row has, because two unrelated features independently route a
+coin-like object into it.
+
+| Feature | Tag | Registration | Callback | Target | Detour | Installer |
+| --- | --- | --- | --- | --- | --- | --- |
+| Auto Pickup Coins | 320 `0x140` | `0x1800B1F2D` | `FUN_1801754C0` | `PlayLayer::resetLevel` RVA `0x3B8EB0` | `0x180175530` | `0x1800AB850` |
+| Collect Coins in Practice | 297 `0x129` | `0x1800B2185` | `FUN_180176EA0` | `GJBaseGameLayer::collisionCheckObjects` RVA `0x214960` | `0x180176F10` | `0x180167330` |
+
+Both detours are **code caves** — `scripts/func_bounds.py` returns no `.pdata` record for
+either — so each body below was read with a recursive-descent disassembly that follows both
+branches, not with a byte-count guess.
+
+### Auto Pickup Coins (tag 320)
+
+A **pre-hook that suppresses nothing**: it calls the original `resetLevel` first, ignores the
+result, and then queues collection work of its own.
+
+```
+0x180175530  push rbp/rsi/rdi; sub rsp,0x50; lea rbp,[rsp+0x50]
+0x180175544  mov  rsi, rcx                 ; this = PlayLayer
+0x180175547  call 0x1801A4300              ; gateway -> host RVA 0x3B8EB0 (original resetLevel)
+0x18017554C  call 0x18008A510              ; settings context
+0x180175551  lea  rdx,[rbp-0x20] ; mov r8d,0x141 ; mov rcx,rax
+0x18017555E  call 0x18002EE40              ; ctx, &int_vector, tag 321 -> flags
+0x180175563  lea  rcx,[rbp-0x30] ; mov rdx,rsi ; mov r8d,1
+0x180175570  call 0x18015AFD0              ; &ptr_vector, PlayLayer, 1 -> candidates
+0x180175575  xor  edi, edi                 ; index = 0
+0x180175580  inc  edi                      ; loop back-edge
+0x180175582  mov  eax, edi
+0x180175588  mov  rcx,[rbp-0x20]           ; flags.begin
+0x18017558C  mov  r8,[rbp-0x18] ; sub r8,rcx ; sar r8,2    ; flags length
+0x180175597  cmp  rdx,r8 ; cmovb r8,rdx    ; bound = min(rdx,[rbp-0x28])
+0x18017559E  cmp  r8,rax ; jbe done
+0x1801755A3  cmp  dword [rcx+rax*4],0 ; je next   ; flag 0 -> skip
+0x1801755A9  mov  rcx,[rbp-0x30]           ; pointer vector
+0x1801755AD  mov  rdx,[rcx+rax*8]          ; candidate object
+0x1801755B1  mov  rcx,rsi
+0x1801755B4  call 0x180116220              ; gateway -> host RVA 0x2161B0
+0x1801755BB  ... vector dealloc ... ; ret
+```
+
+Gateway proofs: `0x1801A4364 lea rcx,[rax+0x3B8EB0]` is the only `lea [rax+disp]` occurrence of
+that RVA in `.text`, and `0x180116291 lea rcx,[rax+0x2161B0]` caches through
+`0x180806310`/`0x180806318` via builder `0x180115190`.
+
+### Collect Coins in Practice (tag 297)
+
+This one does **not** call `collisionCheckObjects` first: it scans the object list, collects
+what it keeps, and only then tail-jumps to the original.
+
+```
+0x180176F10  push r15/r14/r13/r12/rsi/rdi/rbx; sub rsp,0x20
+0x180176F1F  mov esi,r9d ; mov rdi,r8 ; mov rbx,rdx ; mov r14,rcx   ; (this, rdx, r8, count)
+0x180176F2B  test r9d,r9d ; jle original
+0x180176F34  cmp byte [r14+0x31F0],0 ; je original        ; same byte as Replay Last Checkpoint
+0x180176F3E  mov r12d,esi ; xor r13d,r13d ; jmp 0x180176F58
+0x180176F58  mov rax,[rdi] ; mov rcx,[rdi+8] ; sub rcx,rax ; sar rcx,3   ; list length
+0x180176F66  cmp rcx,r13 ; jbe 0x180176FD1                ; out-of-bounds trap
+0x180176F6B  mov r15,[rax+r13*8]                          ; object
+0x180176F6F  mov eax,[r15+0x3A0]                          ; type id
+0x180176F76  cmp eax,0x1F ; je ok
+0x180176F7B  cmp eax,0x16 ; jne next                     ; only 0x1F and 0x16
+0x180176F80  cmp byte [r15+0x3D2],0 ; jne next            ; skip if set
+0x180176F8A  mov rcx,rbx ; mov rdx,r15 ; call 0x1802045D0 ; predicate(object)
+0x180176F95  test al,al ; je next
+0x180176F99  mov rcx,r14 ; mov rdx,r15 ; call 0x180116220 ; gateway -> host 0x2161B0
+0x180176FA4  mov rcx,r14 ; mov rdx,r15 ; call 0x180115AA0 ; gateway -> host 0x216090
+0x180176FB1  original: restore 7 regs; add rsp,0x20; jmp 0x180115840   ; host 0x214960
+```
+
+Gateway proofs: `0x1801158C3 lea rcx,[rax+0x214960]` (cached `0x180805F80`/`0x180805F88`) and
+`0x180115B11 lea rcx,[rax+0x216090]` (cached `0x180806060`/`0x180806068`).
+
+`0x1802045D0` is an ordinary `.pdata` function that saves and restores bytes at
+`[object+0x368]` and `[object+0x2D4]` around a virtual call `[vtable+0x490]`.
+
+### Tag map
+
+| Tag (hex) | Tag (dec) | Accessor | Static-map name | Role |
+| --- | --- | --- | --- | --- |
+| 0x140 | 320 | `isHackEnabled` (Map B) | `HACK_AUTO_PICKUP_COINS` | Collect already-cleared coins after `resetLevel` |
+| 0x129 | 297 | `isHackEnabled` (Map B) | `HACK_COLLECT_COINS_IN_PRACTICE` | Collect coin objects during collision checks in practice mode |
+
+UNVERIFIED: the names of host RVAs `0x2161B0` and `0x216090` (the first is inferred to be the
+coin-collection routine from being shared by both features and receiving a coin-like object;
+neither appears in `_host_methods.tsv` and no hook-name string refers to them); what object
+type ids `0x1F` and `0x16` are; what the bytes at `object+0x3A0`, `object+0x3D2` and
+`layer+0x31F0` mean; what the int vector read for tag 321 encodes (the changelog wording
+suggests a per-coin option, but the vector's producer was not read); the settings key text
+assembled inside `0x18015AFD0` (it builds a 19-character string beginning `absolllu...` at
+`0x1805465F4`); and whether `[rbp-0x28]` in the Auto Pickup Coins loop is the pointer-list
+length or an independent count.
