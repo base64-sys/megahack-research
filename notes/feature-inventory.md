@@ -113,18 +113,21 @@ reported as progress.
 
 ## Toggles outside the 389
 
-The row universe above is the `Added …` changelog bullets. Three toggles are named elsewhere
-in the changelog (under `New For 2.2 Mods`) and are mapped in their own notes, but have no
-row here:
+The row universe above is the `Added …` changelog bullets. Four toggles are named elsewhere in
+the changelog and are mapped in their own notes, but have no row here: three under
+`New For 2.2 Mods`, and No Transition only in a fix bullet.
 
 | Feature | Evidence |
 | --- | --- |
 | No Shaders | tag 389 (`HACK_NO_SHADERS`, 0x185); registered in `FUN_1800afae0` at `0x1800b14e9`, callback `FUN_180171620` (hooks `ShaderLayer::performCalculations`, RVA 0x4880B0, and `ShaderLayer::visit`, 0x488A60). See [no-shaders-feature.md](no-shaders-feature.md). |
 | No Camera | tag 387 (`HACK_NO_CAMERA`, 0x183); registered in `FUN_1800afae0` at `0x1800b0c14`, callback `FUN_1801680e0` (hooks `CameraTriggerGameObject::triggerObject`, RVA 0x4BD820). See [no-camera-feature.md](no-camera-feature.md). |
 | No Camera Zoom | tag 388 (`HACK_NO_CAMERA_ZOOM`, 0x184); registered in `FUN_1800afae0` at `0x1800b0c8b`, callback `FUN_1801682c0` (hooks `EffectGameObject::triggerObject`, RVA 0x4A5F30). See [no-camera-zoom-feature.md](no-camera-zoom-feature.md). |
+| No Transition | tag 449 (`HACK_NO_TRANSITION`, 0x1C1); registered at `0x1800b317b`, callback `FUN_180189a70` forces the duration argument of `cocos2d::CCTransitionFade::create` and `cocos2d::CCTransitionMoveInT::create` to 0, and adds three menu-transition hooks. Named only in a changelog fix bullet ("No Transition now works on shop, tower & garage layers"), never in an `Added …` line. See [ui-addons.md](ui-addons.md#evidence--no-transition-2026-10-25). |
 
 Adding them to the counts would mix two different universes. If the M3 criterion is later read
-as "every feature named anywhere in the changelog", these three are the first rows to add.
+as "every feature named anywhere in the changelog", these four are the first rows to add — and
+No Transition shows the gap is wider than `New For 2.2 Mods`: a feature can be named only in a
+fix bullet, so a row universe built from `Added …` alone will always miss some.
 
 | Version | Feature (changelog wording) | Status | Notes |
 | --- | --- | --- | --- |

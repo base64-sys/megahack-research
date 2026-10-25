@@ -297,3 +297,58 @@ large finite value means the cap is effectively removed.
 UNVERIFIED: which field `0x1801E6D20` writes (the `rcx-0x1A0` back-reference is inferred from
 this one detour); the JSON key for tag 0x25.
 
+## Evidence — No Transition (2026-10-25)
+
+`HACK_NO_TRANSITION` (tag 449, `0x1C1`; entry #47 in the static label map, store VA
+`0x180063A90`) registers at `0x1800B317B` (`ba c1 01 00 00 48 89 c1 49 89 f0 e8 …`); the
+callback is `FUN_180189A70`. It installs five hooks — two resolved by mangled symbol, three by
+RVA:
+
+| Target | Resolution key | Detour | Installer |
+| --- | --- | --- | --- |
+| `cocos2d::CCTransitionFade::create` | `?create@CCTransitionFade@cocos2d@@SAPEAV12@MPEAVCCScene@Z` (string `0x180579934`) | `0x180189F50` | `0x180189FB0` |
+| `cocos2d::CCTransitionMoveInT::create` | `?create@CCTransitionMoveInT@cocos2d@@SAPEAV12@MPEAVCCScene@Z` (`0x180579996`) | `0x180189F60` | `0x18018A190` |
+| `GJShopLayer::onBack` | RVA `0x2ACD70` | `0x180189F70` | `0x18018A370` |
+| `LevelAreaLayer::onClickDoor` | RVA `0x2C55C0` | `0x180189F90` | `0x18018A550` |
+| `LevelAreaInnerLayer::init` | RVA `0x2C64E0` | `0x180189FA0` | `0x180154430` |
+
+The two transition factories are the decisive evidence, and they are the same trick twice:
+
+```
+0x180189F50  xorps  xmm0, xmm0        ; duration = 0.0f
+0x180189F53  jmp    0x180532EA0       ; CCTransitionFade::create body
+
+0x180189F60  xorps  xmm0, xmm0        ; duration = 0.0f
+0x180189F63  jmp    0x1805332C0       ; CCTransitionMoveInT::create body
+```
+
+Both factories take `(float duration, CCScene*)`, so zeroing `xmm0` keeps the fade/move-in
+wrapper but removes the animation. The three menu hooks cover the remaining transition entry
+points, which is exactly what the changelog fix bullet describes — "No Transition now works on
+shop, tower & garage layers":
+
+- `LevelAreaInnerLayer::init` detour is `mov dl,1; jmp 0x18014CF80`, i.e. it calls the original
+  init with second argument `1`.
+- `LevelAreaLayer::onClickDoor` detour is a bare forward: `jmp 0x18014D3E0`.
+- `GJShopLayer::onBack` detour calls `0x180146F20`, then tail-jumps `vtable+0x200`.
+
+Those three forward into `0x18014CF80` / `0x18014D3E0` / `0x180146F20`, which have the shape of
+MSVC incremental-link thunks (`mov eax,[rip+…]`, `gs:[0x58]`, `cmp eax,[r8+0x10]`,
+`jmp qword [rip+slot]`) rather than real bodies. **UNVERIFIED:** where those slots point at
+runtime, and therefore whether `dl=1` is a "skip transition" flag or something else.
+
+### Scope note
+
+No Transition has **no `Added …` row**, so it is not in the 389-feature universe. It appears in
+the changelog only as a fix bullet, which widens the M3 scope gap recorded in
+[feature-inventory.md](feature-inventory.md#toggles-outside-the-389) beyond `New For 2.2 Mods`.
+
+### Tag map
+
+| Tag (hex) | Tag (dec) | Accessor | Static-map name | Role |
+| --- | --- | --- | --- | --- |
+| 0x1C1 | 449 | `isHackEnabled` (Map B) | `HACK_NO_TRANSITION` | Master toggle (No Transition) |
+
+UNVERIFIED: the JSON key for tag 449; the three thunk destinations above; whether the
+`vtable+0x200` tail call in `onBack` reaches the original handler.
+
