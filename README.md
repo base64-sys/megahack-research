@@ -170,6 +170,8 @@ These live in `scripts/`, so they exist on a fresh clone. Neither needs `samples
 | `resolve_wrappers.py`         | Map Mega Hack's 277 runtime hook sites to their real targets                |
 | `import_names.py`             | Name the import behind an `FF 25` thunk: 1,010 imports over 30 DLLs          |
 | `test_import_names.py`        | Pin the import totals and the cocos2d names quoted in the notes               |
+| `func_bounds.py`              | Give the exact extent of a function from `.pdata`: 19,689 records             |
+| `triage_detours.py`           | List the shortest hook detours with their whole instruction body              |
 | `build_xref_index.py`         | Index every code-referenced string to the functions that name it            |
 | `settings_index.py`           | Index the settings registry: 184 read tags over six typed accessors         |
 | `build_callgraph.py`          | Build the call graph: 42,701 static edges over 16,204 functions              |
@@ -273,6 +275,9 @@ python scripts/hook_sites.py
 python scripts/hook_sites.py --method resetLevel
 python scripts/import_names.py <image.dll> 0x180532410
 python scripts/test_import_names.py
+python scripts/func_bounds.py <image.dll> 0x180166AF0
+python scripts/test_func_bounds.py
+python scripts/triage_detours.py <image.dll> --max 0x10
 python scripts/init_table.py
 python scripts/test_init_table.py
 python scripts/make_progress_svg.py

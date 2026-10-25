@@ -537,3 +537,35 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v6.0.0 | Added Absolute Positions | cluster | [render-hooks.md](render-hooks.md) |
 | v6.0.0 | Added Absolute Scaling | cluster | [render-hooks.md](render-hooks.md) |
 | v5.1 | Added gamemode changer | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
+
+## Detour-size triage (2026-10-25)
+
+The remaining `cluster` rows are expensive one at a time, so the first pass is now "which
+detours are small enough to settle in one reading?". `scripts/triage_detours.py` answers it:
+it takes each detour symbol from `recovered/functions/_hook_sites.tsv`, asks
+`scripts/func_bounds.py` for the `.pdata` extent, and for a detour with no unwind record (a
+code cave) disassembles until `ret` or an unconditional `jmp`, following conditional branches
+through so a two-branch detour is not truncated at its first `jne`.
+
+Result on the baseline artifact: **18 detours are 0xC bytes or shorter**, and every one of
+them belongs to a feature that is already `mapped`:
+
+| Detour | Bytes | Target | Owner |
+| --- | ---: | --- | --- |
+| `0x18015DCD0` / `0x18015DCE0` | 3 | `GameManager::isIconUnlocked` / `isColorUnlocked` | Unlock Icons (tag 32) |
+| `0x180163070` | 3 | `LevelEditorLayer::typeExistsAtPosition` | Place Over (tag 51) |
+| `0x180172260` | 5 | `HardStreak::updateStroke` | No Wave Trail (tag 397) |
+| `0x180167B10` | 7 | `PlayerObject::toggleVisibility` | Hide Player (tag 386) |
+| `0x180189F50` / `0x180189F60` | 8 | `CCTransitionFade::create` / `CCTransitionMoveInT::create` | No Transition (tag 449) |
+| `0x180169BE0` etc. | 0xC | `PlayLayer::addObject`, `resetLevel`, `init`, `GJBaseGameLayer::addToSection` | Show Triggers, Instant Complete, Fast Chests, other mapped flags |
+
+The one-line bodies are worth recording because they are self-proving: `xor eax, eax; ret`
+on `typeExistsAtPosition` cannot mean anything other than "no object of this type exists
+here", and `mov al, 1; ret` on the two `GameManager::is*Unlocked` queries cannot mean anything
+other than "always unlocked". A target name alone never carried that.
+
+Consequence for planning: the cheap end of the detour space is exhausted. Anything still
+`cluster` needs a body read in full, so the next passes should pick rows by feature value
+(the changelog wording), not by detour size. The remaining 0xD-0x18 byte rows
+(`Safe Mode Popup`, `Auto Song Downloader`, `Replay Last Checkpoint`, `Force Platformer`,
+`Default Song Bypass`) are the last group where a single reading is likely to be decisive.
