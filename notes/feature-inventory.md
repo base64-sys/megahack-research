@@ -113,9 +113,9 @@ reported as progress.
 
 ## Toggles outside the 389
 
-The row universe above is the `Added …` changelog bullets. Six toggles are named elsewhere in
+The row universe above is the `Added …` changelog bullets. Nine toggles are named elsewhere in
 the changelog and are mapped in their own notes, but have no row here: three under
-`New For 2.2 Mods`, No Transition only in a fix bullet, and the unlock-bypass family only in
+`New For 2.2 Mods`, No Transition only in a fix bullet, and five unlock/bypass toggles only in
 fix bullets.
 
 | Feature | Evidence |
@@ -125,10 +125,13 @@ fix bullets.
 | No Camera Zoom | tag 388 (`HACK_NO_CAMERA_ZOOM`, 0x184); registered in `FUN_1800afae0` at `0x1800b0c8b`, callback `FUN_1801682c0` (hooks `EffectGameObject::triggerObject`, RVA 0x4A5F30). See [no-camera-zoom-feature.md](no-camera-zoom-feature.md). |
 | No Transition | tag 449 (`HACK_NO_TRANSITION`, 0x1C1); registered at `0x1800b317b`, callback `FUN_180189a70` forces the duration argument of `cocos2d::CCTransitionFade::create` and `cocos2d::CCTransitionMoveInT::create` to 0, and adds three menu-transition hooks. Named only in a changelog fix bullet ("No Transition now works on shop, tower & garage layers"), never in an `Added …` line. See [ui-addons.md](ui-addons.md#evidence--no-transition-2026-10-25). |
 | Unlock Icons | tag 32 (`HACK_UNLOCK_ICONS`, 0x020); registered at `0x1800aff01`, callback `FUN_18015dc00` replaces `GameManager::isIconUnlocked` (RVA 0x17C500) and `isColorUnlocked` (0x17C8E0) with `mov al,1; ret`, so colours are covered too. Named only in fix bullets. See [unlock-bypasses.md](unlock-bypasses.md). |
-| Music Unlocker | tag 36 (`HACK_MUSIC_UNLOCKER`, 0x024); registered at `0x1800afd25`, callback `FUN_18015d130` hooks `GameStatsManager::isItemUnlocked` (RVA 0x1E5820) and answers `true` only for argument pair `(12,16)`, forwarding the rest. Named only in fix bullets. See [unlock-bypasses.md](unlock-bypasses.md). |
+| Music Unlocker | tag 36 (`HACK_MUSIC_UNLOCKER`, 0x024); registered at `0x1800afd25`, callback `FUN_18015d130` hooks `GameStatsManager::isItemUnlocked` (RVA `0x1E5820`) and answers `true` only for argument pair `(12,16)`, forwarding the rest. Named only in fix bullets. See [unlock-bypasses.md](unlock-bypasses.md). |
+| Unlock Vaults | tag 33 (`HACK_UNLOCK_VAULTS`, 0x021); registered at `0x1800affef`, callback `FUN_18015e220` **replaces** `CreatorLayer::onSecretVault` (RVA 0x9E590) and `OptionsLayer::onSecretVault` (0x372CD0), building the scene and running the 0.5 s fade itself. Named only in fix bullets. See [unlock-bypasses.md](unlock-bypasses.md#vault-shop-and-treasure-room-the-handlers-are-replaced). |
+| Unlock Shops | tag 34 (`HACK_UNLOCK_SHOPS`, 0x022); registered at `0x1800aff78`, callback `FUN_18015dfa0` replaces `SecretRewardsLayer::onShop` (RVA 0x3D66D0) with a forward to `0x1801AD0F0` carrying this plus the button's virtual index. Named only in fix bullets. See [unlock-bypasses.md](unlock-bypasses.md#vault-shop-and-treasure-room-the-handlers-are-replaced). |
+| Treasure Room | tag 35 (`HACK_TREASURE_ROOM`, 0x023); registered at `0x1800afe8a`, callback `FUN_18015d960` replaces `CreatorLayer::onTreasureRoom` (RVA 0x9EDA0), building the scene and running the 0.5 s fade itself. Named only in fix bullets. See [unlock-bypasses.md](unlock-bypasses.md#vault-shop-and-treasure-room-the-handlers-are-replaced). |
 
 Adding them to the counts would mix two different universes. If the M3 criterion is later read
-as "every feature named anywhere in the changelog", these six are the first rows to add — and
+as "every feature named anywhere in the changelog", these nine are the first rows to add — and
 No Transition and the unlock bypasses show the gap is wider than `New For 2.2 Mods`: a feature can be named only in a
 fix bullet, so a row universe built from `Added …` alone will always miss some.
 

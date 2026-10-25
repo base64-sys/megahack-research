@@ -66,21 +66,39 @@ original. Corroborated by the stub at `0x18014BC22` → `0x1E5820`.
 **UNVERIFIED:** what item type `12` and item id `16` denote (candidate: a song/music unlock
 entry), and why the bypass is expressed as one specific pair rather than a range.
 
-## Vault, shop and treasure room: entry points redirected
+## Vault, shop and treasure room: the handlers are replaced
 
-These three hooks sit on the *menu* methods that open the layers, not on an unlock predicate:
+These hooks sit on the *menu* methods that open the layers, not on an unlock predicate, and
+the detours do not call the original method — they **replace** it:
 
-| Tag | Hooks | Detour | Behaviour read so far |
+| Tag | Hook | Detour | What the detour does |
 | ---: | --- | --- | --- |
-| `0x021` | `CreatorLayer::onSecretVault` (RVA `0x9E590`), `OptionsLayer::onSecretVault` (`0x372CD0`) | `0x18015E2F0`, `0x18015E330` | builds a scene (`0x1801AB820` / `0x1801ACF70`), calls the transition factory `0x180532EA0` |
-| `0x022` | `SecretRewardsLayer::onShop` (RVA `0x3D66D0`) | `0x18015E010` | calls `[arg2+0x38]` (a virtual getter), then tail-calls with its value |
-| `0x023` | `CreatorLayer::onTreasureRoom` (RVA `0x9EDA0`) | `0x18015D9D0` | builds a scene (`0x1801FE3F0`), calls `0x180532EA0`, then `0x180531990` |
+| `0x021` | `CreatorLayer::onSecretVault` RVA `0x9E590` | `0x18015E2F0` | `call 0x1801AB820` (scene) → `movss xmm0,0.5f` → `call 0x180532EA0` → `call 0x180531990` (object handed to replaceScene) → `jmp 0x180532EB0` (replaceScene) |
+| `0x021` | `OptionsLayer::onSecretVault` RVA `0x372CD0` | `0x18015E330` | same shape, scene builder `0x1801ACF70` |
+| `0x022` | `SecretRewardsLayer::onShop` RVA `0x3D66D0` | `0x18015E010` | `call [rdx+0x38]` (virtual index getter) → `jmp 0x1801AD0F0` with `rcx=this`, `edx=index` |
+| `0x023` | `CreatorLayer::onTreasureRoom` RVA `0x9EDA0` | `0x18015D9D0` | `xor ecx,ecx; call 0x1801FE3F0` (scene) → 0.5f → `0x180532EA0` → `0x180531990` → `jmp 0x180532EB0` |
 
-The bodies are only partly read, and the layer constructors they call are host functions
-reached through Mega Hack's own lazy binder. **UNVERIFIED:** which layer each detour opens
-(the likely reading is "open the layer without the unlock check", but the constructor
-arguments are not resolved here), whether they replace or supplement the original call, and
-the JSON keys for all five tags.
+Three facts are measured here rather than inferred:
+
+1. **The transition duration is the same 0.5f constant everywhere.** Every `movss xmm0,[rip+…]`
+   in the three vault/treasure detours resolves to `0x180534410`, whose bytes `00 00 00 3f` are
+   `0.5f`. (Shop's detour has no transition of its own.)
+2. **The factory is `CCTransitionFade::create`.** This is independently established from the
+   No Transition work, where the detour on that same RVA `0x180532EA0` zeroes `xmm0` and jumps
+   into the real body with the scene in `rdx`. The two findings corroborate each other: these
+   unlock handlers build an *animated* fade that "No Transition" can suppress.
+3. **The shop detour forwards to a different internal function**, `0x1801AD0F0` (real prologue
+   `push rsi; push rdi; push rbx; sub rsp,0x20`), not to the hooked method at RVA `0x3D66D0`.
+   It supplies `this` and the button's virtual index, which is the shape of "open this shop
+   directly" rather than "run the handler that decides whether the shop is open".
+
+**UNVERIFIED, and the reason this stays a lead:** whether GD's original handler contained the
+unlock gate. Confirming it needs Geometry Dash's own binary, which is not part of this baseline.
+What the bytes prove is that Mega Hack substitutes its own handler and drives the transition
+itself, so nothing in the *replaced* path can gate on unlock state; what they do not prove is
+that the replaced path was where the gate lived. The scene constructors are host functions
+reached through the lazy binder, so their identity rests on the friendly names. The JSON keys
+for all five tags remain UNVERIFIED.
 
 ## Method
 
@@ -94,8 +112,12 @@ the JSON keys for all five tags.
 ## Open questions
 
 - UNVERIFIED: the JSON keys for tags 32-36 (`0x020`-`0x024`).
-- UNVERIFIED: whether the three layer-entry detours substitute a "bypassed" layer or merely
-  change the transition, and what `0x180532EA0`'s duration argument is in each case.
+- UNVERIFIED: whether Geometry Dash's original `onSecretVault`/`onShop`/`onTreasureRoom`
+  contained the unlock gate the toggle removes; the detours replace those handlers, so the
+  replaced path cannot gate, but the gate's original location is not observable here.
+- UNVERIFIED: the identity of the scene constructors `0x1801AB820`, `0x1801ACF70`,
+  `0x1801FE3F0` and the shop opener `0x1801AD0F0`; their names come from the friendly names
+  of the hooks, not from the calls themselves.
 - UNVERIFIED: what `(12, 16)` means to `GameStatsManager::isItemUnlocked`.
 - The changelog twice describes these as "bypasses" condensed into individual mods, so there
   may be sibling tags for RobTop's vault (the "Keymaster Vault Room Bypass" row) that are not
