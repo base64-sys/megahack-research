@@ -175,11 +175,19 @@ settled by the detour body rather than by the target name alone.
 
 | Tag | Static label | Registration | Callback | Target | Detour |
 | ---: | --- | --- | --- | --- | --- |
-| `0x033` | `HACK_PLACE_OVER` | `0x1800B028E` | `FUN_180162B60` | `LevelEditorLayer::typeExistsAtPosition` RVA 0x2D4A50 | `0x180163070` |
-| `0x137` | `HACK_CONFIRM_PRACTICE` | `0x1800B1A2E` | `FUN_1801772E0` | `PauseLayer::onPracticeMode` RVA 0x37E1C0 | `0x180177350` |
-| `0x138` | `HACK_CONFIRM_NORMAL` | `0x1800B1AAB` | `FUN_180176FF0` | `PauseLayer::onNormalMode` RVA 0x37E2A0 | `0x180177060` |
-| `0x139` | `HACK_CONFIRM_RESET` | `0x1800B1B28` | `FUN_1801774B0` | `PauseLayer::onRestart` RVA 0x37E410 | `0x180177520` |
-| `0x13A` | `HACK_CONFIRM_FULL_RESET` | `0x1800B1BA5` | `FUN_180177680` | `PauseLayer::onRestartFull` RVA 0x37E4B0 | `0x1801776F0` |
+| `0x033` | `HACK_PLACE_OVER` | `0x1800B0511` | `FUN_180163000` | `LevelEditorLayer::typeExistsAtPosition` RVA 0x2D4A50 | `0x180163070` |
+| `0x137` | `HACK_CONFIRM_PRACTICE` | `0x1800B2273` | `FUN_1801772E0` | `PauseLayer::onPracticeMode` RVA 0x37E1C0 | `0x180177350` |
+| `0x138` | `HACK_CONFIRM_NORMAL` | `0x1800B21FC` | `FUN_180176FF0` | `PauseLayer::onNormalMode` RVA 0x37E2A0 | `0x180177060` |
+| `0x139` | `HACK_CONFIRM_RESET` | `0x1800B22EA` | `FUN_1801774B0` | `PauseLayer::onRestart` RVA 0x37E410 | `0x180177520` |
+| `0x13A` | `HACK_CONFIRM_FULL_RESET` | `0x1800B2361` | `FUN_180177680` | `PauseLayer::onRestartFull` RVA 0x37E4B0 | `0x1801776F0` |
+
+**Correction (2026-10-25):** the registration and callback addresses in this table were
+first written from recall and four of them were wrong — `0x1800B028E`/`FUN_180162B60` for
+Place Over, and the `0x1800B1A**` range for the confirm tags. They are now taken from
+`scripts/tag_callback_map.py` and re-checked against the instruction bytes, which is the
+only acceptable source: `0x1800B0511` begins `ba 33 00 00 00` (the tag) and `0x1800B2273`
+begins `ba 37 01 00 00`. A registration VA in a note is a measurement, not something to
+type from memory.
 
 ### Place Over returns "not occupied"
 

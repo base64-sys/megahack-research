@@ -185,6 +185,9 @@ These live in `scripts/`, so they exist on a fresh clone. Neither needs `samples
 | `classify_strings.py`        | Split the string inventory into categories, each anchored to a VA            |
 | `host_methods.py`            | Inventory the 214 GD host methods Mega Hack resolves by name at runtime      |
 | `hook_sites.py`             | Enumerate every hook Mega Hack installs: method, host RVA and callback       |
+| `tag_callback_map.py`         | Map all 125 tag registrations to their callbacks from instruction bytes      |
+| `callback_hooks.py`           | Read each callback's hook targets, detours and installers off the bytes      |
+| `check_inventory_evidence.py` | Fail if any address cited in the feature inventory disagrees with the binary |
 | `init_table.py`              | Recover the CRT `_initterm` tables and the functions they call indirectly   |
 | `test_init_table.py`         | Pin those tables and the zero-caller counts; skips without a sample set       |
 | `test_settings_index.py`     | Pin the tag table and the argument splitter that has lost tags twice         |
