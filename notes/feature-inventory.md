@@ -13,7 +13,7 @@
 | `mapped` | The feature has its own evidence: a note that names it, its settings key(s) and default, and/or its implementing function(s) with VAs. |
 | `alias` / `dead` | A restatement of an earlier feature / absent from this build, with the evidence for that call. |
 
-All 389 rows below were `cluster` at the 2026-10-23 baseline. **Sixty-five are now
+All 389 rows below were `cluster` at the 2026-10-23 baseline. **Sixty-six are now
 `mapped`**; the [Mapped rows](#mapped-rows) table below is the authoritative list, with
 tag, registration site and hook address for each one.
 
@@ -42,7 +42,9 @@ converts a configured millisecond value to seconds before scheduling the action.
 Triggers on Death and Wave Trail Fix** close the last two "target known, body unread" rows:
 the first swaps `GJBaseGameLayer::update` for `getModifiedDelta` while a player's `+0x9C0`
 byte is set, and the second replaces `HardStreak::updateStroke` outright with a two-ribbon
-`CCDrawNode` redraw. The other 324 rows remain `cluster`.
+`CCDrawNode` redraw. **Safe Mode Popup** finishes the last short-detour group: three
+code-cave detours on the three `onPlay` entry points show a "Safe Mode" confirmation
+when `areCheatsEnabled()` is true and the suppression byte `0x18080CBB0` is clear. The other 323 rows remain `cluster`.
 
 A keyword check at the baseline found that **185 of 389** rows point at a note that
 never mentions the feature at all, so for those even the cluster assignment is only a
@@ -121,6 +123,7 @@ reported as progress.
 | Added Respawn Time modifier | tag 245 (`0x0F5`, `HACK_RESPAWN_TIME`, static map `0x180063E55`); registered at `0x1800b2ae5`, callback `FUN_18017ef50` hooks `PlayLayer::destroyPlayer` (RVA 0x3B39D0); detour converts tag 246 ms to seconds (÷1000.0) and calls `0x18017f000`, which clamps to 2^-23 and applies the tag-501 multiplier when tags 502 and 247 are on. See [gameplay-hooks.md](gameplay-hooks.md#evidence--respawn-time-modifier-2026-10-25). |
 | Added Stop Triggers on Death | tag 415 (`0x19F`, `HACK_STOP_TRIGGERS_ON_DEATH`, static map `0x1800643C4`); registered at `0x1800b1af4`, callback `FUN_180172de0` hooks `GJBaseGameLayer::update` (RVA 0x237850); detour `0x180172e50` forwards to the cached original unless `[host_0x17B4A0+0x208] == this` and a player slot (`layer+0xDA0`/`0xDA8`) has byte `+0x9C0` set, in which case it tail-jumps to the `getModifiedDelta` gateway (RVA 0x2377B0) instead. See [gameplay-hooks.md](gameplay-hooks.md#evidence--stop-triggers-on-death-2026-10-25). |
 | Added Wave Trail Fix | tag 411 (`0x19B`, `HACK_WAVE_TRAIL_FIX`, static map `0x180064855`); registered at `0x1800b094a`, callback `FUN_180166a80` hooks `HardStreak::updateStroke` (RVA 0x2B8EF0); detour `0x180166af0` replaces it: `CCDrawNode::clear()`, then two `drawPolygon` ribbons built by `0x180166c40` from the point array at `+0x1A0` (6.0x width in the node colour, 2.0x in white at 0.65x opacity). See [render-hooks.md](render-hooks.md#evidence--wave-trail-fix-2026-10-25). |
+| Added Safe Mode Popup | tag 483 (`0x1E3`, `HACK_SAFE_MODE_POPUP`); three code-cave detours (`0x18019a4d0` `LevelInfoLayer::onPlay`, `0x18019a520` `EditLevelLayer::onPlay`, `0x18019a570` `LevelPage::onPlay`) tail-jump to the cached original when byte `0x18080cbb0` is non-zero or `areCheatsEnabled` (`0x18019b350`) is false; otherwise they jump to `0x18019a5c0`, the alert that renders "Safe Mode" / "You have cheats enabled, are you sure you want to play this level?" with Play and Cancel. See [safe-mode-feature.md](safe-mode-feature.md#evidence--the-play-button-popup-2026-10-25). |
 
 ## Toggles outside the 389
 
@@ -271,7 +274,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v8.0.1-alpha.8 | Added Accurate Save | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v8.0.1-alpha.7 | Added Replay with brand new interface | cluster | [replay-feature.md](replay-feature.md) |
 | v8.0.1-alpha.7 | Added Replay auto-save | cluster | [replay-feature.md](replay-feature.md) |
-| v8.0.1-alpha.7 | Added Safe Mode Popup | cluster | [safe-mode-feature.md](safe-mode-feature.md) |
+| v8.0.1-alpha.7 | Added Safe Mode Popup | mapped | [safe-mode-feature.md](safe-mode-feature.md#evidence--the-play-button-popup-2026-10-25) | tag 483 (`0x1E3`, `HACK_SAFE_MODE_POPUP`); three code-cave detours on `LevelInfoLayer::onPlay` (`0x18019a4d0`), `EditLevelLayer::onPlay` (`0x18019a520`) and `LevelPage::onPlay` (`0x18019a570`) forward to the cached original unless suppression byte `0x18080cbb0` is 0 and `0x18019b350` (`areCheatsEnabled`) returns true, in which case they jump to `0x18019a5c0`, which builds the "Safe Mode" / "You have cheats enabled…" alert with Play and Cancel. |
 | v8.0.1-alpha.5 | Added Replay (beta) | cluster | [replay-feature.md](replay-feature.md) |
 | v8.0.1-alpha.5 | Added Capture | cluster | [ui-addons.md](ui-addons.md) |
 | v8.0.1-alpha.5 | Added Attempt Status | cluster | [status-labels-feature.md](status-labels-feature.md) |
@@ -567,5 +570,6 @@ other than "always unlocked". A target name alone never carried that.
 Consequence for planning: the cheap end of the detour space is exhausted. Anything still
 `cluster` needs a body read in full, so the next passes should pick rows by feature value
 (the changelog wording), not by detour size. The remaining 0xD-0x18 byte rows
-(`Safe Mode Popup`, `Auto Song Downloader`, `Replay Last Checkpoint`, `Force Platformer`,
-`Default Song Bypass`) are the last group where a single reading is likely to be decisive.
+(`Auto Song Downloader`, `Replay Last Checkpoint`, `Force Platformer`, `Default Song Bypass`)
+are the last group where a single reading is likely to be decisive; `Safe Mode Popup` was
+mapped from that group on 2026-10-25 and is no longer in it.

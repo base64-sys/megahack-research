@@ -173,6 +173,73 @@ tag 482: `CHEAT_SAFETY/HACK_SAFE_MODE_POPUP` is tag 483, not 482.
 The sampled profile is user data, not a shipped default. Defaults for 481/482/73 remain
 UNVERIFIED.
 
+## Evidence — the Play-button popup (2026-10-25)
+
+Tag 483 (`0x1E3`, `HACK_SAFE_MODE_POPUP`) is what the changelog calls "Added Safe Mode
+Popup". It installs three **code-cave detours** (`func_bounds.py` reports no `.pdata`
+record at any of them) on the three ways a level starts:
+
+| Host method | Detour | Original gateway |
+| --- | --- | --- |
+| `LevelInfoLayer::onPlay` | `0x18019A4D0` | `0x1801A10C0` |
+| `EditLevelLayer::onPlay` | `0x18019A520` | `0x18010E960` |
+| `LevelPage::onPlay` | `0x18019A570` | `0x1801A1440` |
+
+All three are 0x3C bytes and share one shape:
+
+```
+0x18019A4D6  cmp  byte [0x18080CBB0], 0    ; suppression byte
+0x18019A4DD  jne  0x18019A506              ; -> original, untouched
+0x18019A4DF  mov  rsi, rcx                 ; this
+0x18019A4E2  mov  rdi, rdx
+0x18019A4E5  call 0x18019B350              ; areCheatsEnabled()
+0x18019A4F2  je   0x18019A506              ; no cheats -> original
+0x18019A4F4  lea  rdx, [0x1801A10C0]       ; per-path callable
+0x18019A501  jmp  0x18019A5C0              ; show the dialog instead of playing
+0x18019A506  ... add rsp, 0x28; pop rdi; pop rsi ...
+0x18019A50D  jmp  0x1801A10C0              ; the original onPlay
+```
+
+The predicate is the `areCheatsEnabled` function already documented in [Pattern](#pattern):
+it enumerates the configured cheat ruleset through `FUN_180090BC0`, returns true for a
+non-empty vector, and has the additional true paths for tags `0x1F6`/`0x1F5` (threshold
+compared against the double `1.0` at `0x180534360`), `0x365` and `0x1E7`/`0x1E6`.
+
+`0x18019A5C0` is the popup itself. It loads the strings below, builds a small
+`std::function`-style capture around the per-path callable and the two arguments it was
+handed, calls `0x180211CC0`, and then calls vtable slot `+0x410` on the result:
+
+| Address | String |
+| --- | --- |
+| `0x18057AF9D` | `Safe Mode` |
+| `0x18057AF5A` | `You have cheats enabled, are you sure you want to play this level?` |
+| `0x180574654` | `Play` |
+| `0x18056CFAB` | `Cancel` |
+
+The three capture copy-constructors the builder references are `0x18019A740`,
+`0x18019A7E0` and `0x18019A880`; they install vtables `0x18057AFB8`, `0x18057B058` and
+`0x18057B0F8` respectively.
+
+### The suppression byte and `FUN_18019A780`
+
+`0x18080CBB0` is read only by these three detours — a full-`.text` scan for RIP-relative
+references finds seven sites, three readers and four writers inside `FUN_18019A780`:
+`= 1` at `0x18019A788` and `0x18019A827`, `= 0` at `0x18019A79D` and `0x18019A837`. That is
+the same callback the [Pattern](#pattern) section describes: set the byte, call
+`disableAllCheats`, call the captured callable, clear the byte. The byte therefore makes the
+"Play without Cheats" path unable to re-enter the popup while it is disabling everything.
+
+### Tag map
+
+| Tag (hex) | Tag (dec) | Accessor | Static-map name | Role |
+| --- | --- | --- | --- | --- |
+| 0x1E3 | 483 | `isHackEnabled` (Map B) | `HACK_SAFE_MODE_POPUP` | Warn before playing with cheats enabled |
+
+UNVERIFIED: which button of the alert invokes the captured callable (the alert builder
+`0x180211CC0` was not read, so "Play" versus "Cancel" is not established); whether the three
+per-path callables re-enter the host `onPlay` or call it directly; and whether the popup also
+appears on the ranked/online paths, which were not enumerated.
+
 ## Pattern
 
 Safe Mode is a **progress-validity gate**, not a gameplay toggle. Two hooks consult it:
