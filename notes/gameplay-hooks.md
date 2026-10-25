@@ -356,3 +356,61 @@ UNVERIFIED: which of the six hooks produces the visible layout; the meaning of t
 and their defaults; the jump-table destinations; and what `+0x516` actually controls.
 Nothing was inferred about the visual result from the feature's name.
 
+## Evidence — Respawn Time modifier (2026-10-25)
+
+`HACK_RESPAWN_TIME` (tag 245, `0xF5`; static-map entry #57, store VA `0x180063E55`) is
+registered at `0x1800B2AE5` in `FUN_1800AFAE0`. Callback `FUN_18017EF50` installs one hook:
+
+| Target | RVA | Detour | Installer |
+| --- | ---: | --- | --- |
+| `PlayLayer::destroyPlayer` | `0x3B39D0` | `0x18017EFC0` | `0x180169480` |
+
+The detour supplies the delay instead of calling the original `destroyPlayer`:
+
+```
+0x18017EFC8  call 0x1801A3D20              ; the destruction work
+0x18017EFCD  call 0x18008A510              ; registry/context
+0x18017EFD2  mov  edx, 0xF6                ; tag 246 = the configured time
+0x18017EFDA  call 0x180003D80              ; double accessor
+0x18017EFDF  divsd xmm0, [0x180549250]     ; 1000.0 (bytes 00 00 00 00 00 40 8f 40)
+0x18017EFEA  movapd xmm1, xmm0             ; seconds
+0x18017EFF3  jmp  0x18017F000
+```
+
+The helper `0x18017F000` turns those seconds into a scheduled action:
+
+```
+0x18017F010  movapd xmm6, xmm1             ; seconds
+0x18017F01F  mov  edx, 0x1F6   ; tag 502
+0x18017F027  call 0x18008F420              ; gate
+0x18017F038  mov  edx, 0xF7   ; tag 247
+0x18017F040  call 0x18002DE50              ; bool accessor
+0x18017F049  mov  edx, 0x1F5  ; tag 501
+0x18017F051  call 0x180003D80              ; double accessor -> xmm7
+0x18017F067  movsd xmm0, [0x180577F98]     ; 2^-23 (1.1920928955078125e-07)
+0x18017F06F  maxsd xmm0, xmm6
+0x18017F073  mulsd xmm0, xmm7              ; default multiplier 1.0 (0x180534360)
+```
+
+Measured facts: the configured value is tag **246**, divided by **1000.0**, clamped to a
+minimum of **2^-23**, multiplied by a factor that is **1.0** unless tags **502** and **247**
+are both enabled, in which case the factor is the double at tag **501**. The result is
+converted to `float` and handed to the action-construction calls `0x180532390` /
+`0x1805323A0` / `0x1800BADB0`, ending in `0x180532CE0`.
+
+`FUN_18017EF50` hooks the same RVA (`0x3B39D0`) that No Death Effect also hooks, with the same
+`PlayLayer::destroyPlayer` friendly name — two features, one host function, different detours.
+
+### Tag map
+
+| Tag (hex) | Tag (dec) | Accessor | Static-map name | Role |
+| --- | --- | --- | --- | --- |
+| 0x0F5 | 245 | `isHackEnabled` (Map B) | `HACK_RESPAWN_TIME` | Master toggle |
+| 0x0F6 | 246 | `FUN_180003D80` (double) | (runtime-assigned) | Configured respawn time, milliseconds |
+| 0x1F5 | 501 | `FUN_180003D80` (double) | (runtime-assigned) | Multiplier used when 502 and 247 are on |
+| 0x1F6 | 502 | `FUN_18008F420` gate | (runtime-assigned) | Gate for the multiplier |
+| 0x0F7 | 247 | `FUN_18002DE50` (bool) | (runtime-assigned) | Second gate for the multiplier |
+
+UNVERIFIED: the names of tags 246, 247, 501 and 502; whether tags 502/247 are the
+"Ignore Speedhack option" named by the changelog; the identity of the action constructors;
+and the JSON keys.

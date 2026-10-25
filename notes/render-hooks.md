@@ -183,21 +183,66 @@ This is the first row promoted from the [hook-registrations.md](hook-registratio
 table on detour evidence, and it is `mapped` in
 [feature-inventory.md](feature-inventory.md).
 
-### Four more detours read, mechanisms not yet established
+### Two more detours read, mechanisms not yet established
 
-The same pass read the detours of four neighbouring toggles. Their targets are verified;
-what the detour does is not, so they stay `cluster`:
+The same pass read the detours of four neighbouring toggles. Two of them (Hide Pause Button
+and Hide Pause Menu) were settled on 2026-10-25 and moved into their own section below;
+these two keep their targets but not a mechanism:
 
 | Toggle | Target (RVA) | Detour | What the bytes show | Status |
 | --- | --- | --- | --- | --- |
-| Hide Pause Button | `UILayer::init` `0x4CCB00` | `0x180167D80` | calls `0x1801E9E10`; if true, takes `this+0x238`, loads its vtable, calls slot `+0x140` with `edx=0`, returns non-zero | UNVERIFIED: slot identity and whether it suppresses or hides the button |
-| Hide Pause Menu | `PauseLayer::customSetup` `0x37C870` | `0x1801680A0` | calls `0x1801A2C30`, then tail-calls `[[this]+0x140]` with `edx=0` | UNVERIFIED: same vtable-slot question |
 | Stop Triggers on Death | `GJBaseGameLayer::update` `0x237850` | `0x180172E50` | calls `0x1801ACDB0`; if the result equals `this`, skips the tail `jmp 0x1801149B0`, otherwise forwards | UNVERIFIED: which branch suppresses trigger updates, and which object `0x1801ACDB0` returns |
 | Wave Trail Fix | `HardStreak::updateStroke` `0x2B8EF0` | `0x180166AF0` | tests `byte [this+0x1BA] == 1`, then calls `0x1805330B0` and `0x180532410` before touching the streak vector at `+0x140` | UNVERIFIED: the whole body; only the entry condition was read |
 
-Recording the negative result is the point: each of these needs its vtable slot or callee
-identified before a mechanism claim can be made, and a friendly name such as
-`UILayer::init` does not tell you what the detour does to the layer.
+## Evidence — Hide Pause Button and Hide Pause Menu (2026-10-25)
+
+Both toggles are `HACK_*` labels in the static map, and both detours end in the **same
+virtual call**: slot `+0x140` with `edx = 0`. That repetition is the evidence — a shared
+visibility idiom, not two unrelated behaviours.
+
+| Tag | Static label | Registration | Callback | Target | Detour |
+| ---: | --- | --- | --- | --- | --- |
+| `0x181` | `HACK_HIDE_PAUSE_BUTTON` | `0x1800B0B26` | `FUN_180167D10` | `UILayer::init` RVA `0x4CCB00` | `0x180167D80` |
+| `0x19A` | `HACK_HIDE_PAUSE_MENU` | `0x1800B0B9D` | `FUN_180167FA0` | `PauseLayer::customSetup` RVA `0x37C870` | `0x1801680A0` |
+
+Hide Pause Button, in full:
+
+```
+0x180167D89  call 0x1801E9E10            ; returns bool in al
+0x180167D8E  test al, al
+0x180167D90  je   0x180167DA9            ; not our layer -> leave it alone
+0x180167D92  mov  rcx, [rsi+0x238]       ; the child object
+0x180167D99  mov  r8,  [rcx]             ; its vtable
+0x180167D9C  xor  edx, edx               ; argument = false
+0x180167DA0  call [r8+0x140]             ; hide it
+```
+
+Hide Pause Menu calls the original setup `0x1801A2C30` first and then hides **the layer
+itself** the same way:
+
+```
+0x1801680A8  call 0x1801A2C30
+0x1801680AD  mov  rax, [rsi]
+0x1801680B0  mov  rax, [rax+0x140]
+0x1801680BA  xor  edx, edx
+0x1801680C1  jmp  rax
+```
+
+So "Hide Pause Button" hides the pause button child at `UILayer+0x238`, and "Hide Pause
+Menu" hides the whole `PauseLayer` after it has been populated. **UNVERIFIED:** the identity
+of vtable slot `+0x140` (the shape is consistent with `setVisible(false)`, but the slot is
+not named from this binary) and whether an invisible `PauseLayer` still receives touches,
+which decides whether "Hide Pause Menu" is a screenshot aid or a functional change.
+
+### Tag map
+
+| Tag (hex) | Tag (dec) | Accessor | Static-map name | Role |
+| --- | --- | --- | --- | --- |
+| 0x181 | 385 | `isHackEnabled` (Map B) | `HACK_HIDE_PAUSE_BUTTON` | Hide the pause button in `UILayer` |
+| 0x19A | 410 | `isHackEnabled` (Map B) | `HACK_HIDE_PAUSE_MENU` | Hide the pause layer after setup |
+
+The general lesson stands: a friendly name such as `UILayer::init` does not tell you what the
+detour does to the layer — only the call at the end of the detour does.
 
 ## Evidence - three runtime-assigned cosmetic tags (2026-10-25)
 

@@ -13,7 +13,7 @@
 | `mapped` | The feature has its own evidence: a note that names it, its settings key(s) and default, and/or its implementing function(s) with VAs. |
 | `alias` / `dead` | A restatement of an earlier feature / absent from this build, with the evidence for that call. |
 
-All 389 rows below were `cluster` at the 2026-10-23 baseline. **Sixty are now
+All 389 rows below were `cluster` at the 2026-10-23 baseline. **Sixty-three are now
 `mapped`**; the [Mapped rows](#mapped-rows) table below is the authoritative list, with
 tag, registration site and hook address for each one.
 
@@ -35,8 +35,11 @@ Limit Bypass, Allow Low Volume, Fast Chests) needed no inference: their static
 came from detour bodies** (Place Over, Confirm Practice, Confirm Reset, Confirm
 Full-Reset), including a shared confirmation-dialog wrapper. **Show Triggers, Main Menu
 Gameplay, Show Layout and the three editor/UI toggles below** (Text Length Bypass, Hide UI,
-Smooth Editor Trail) each came from reading every detour installed by the callback. The other
-329 rows remain `cluster`.
+Smooth Editor Trail) each came from reading every detour installed by the callback. **Hide
+Pause Button, Hide Pause Menu and the Respawn Time modifier** were settled the same way: both
+hide toggles end in the same vtable slot `+0x140` called with `edx=0`, and the respawn detour
+converts a configured millisecond value to seconds before scheduling the action. The other
+326 rows remain `cluster`.
 
 A keyword check at the baseline found that **185 of 389** rows point at a note that
 never mentions the feature at all, so for those even the cluster assignment is only a
@@ -110,6 +113,9 @@ reported as progress.
 | Added No (C) Mark | tag 44 (`HACK_NO_C_MARK`, 0x02C); registered in `FUN_1800afae0` at `0x1800b049a`, callback `FUN_180162d20` (hooks `ShareLevelLayer::onShare`, RVA 0x490270). See no-c-mark-feature.md. |
 | Added No Respawn Flash | tag 398 (`HACK_NO_RESPAWN_FLASH`, 0x18E); registered in `FUN_1800afae0` at `0x1800b13fb`, callback `FUN_1801714c0` (hooks `PlayerObject::playSpawnEffect`, RVA 0x397480). See no-respawn-flash-feature.md. |
 | Added No Death Effect mod | tag 399 (`HACK_NO_DEATH_EFFECT`, 0x18F); registered in `FUN_1800afae0` at `0x1800b0df0`, callback `FUN_180169330` (hooks `PlayerObject::playDeathEffect`, RVA 0x37EF10, with a bare-`ret` detour at `0x180169400`). See no-death-effect-feature.md. |
+| Added Hide Pause Button | tag 385 (`0x181`, `HACK_HIDE_PAUSE_BUTTON`, static map `0x18006326C`); registered at `0x1800b0b26`, callback `FUN_180167d10` hooks `UILayer::init` (RVA 0x4CCB00); detour `0x180167d80` hides the child at `UILayer+0x238` via vtable `+0x140` with `edx=0`. See [render-hooks.md](render-hooks.md#evidence--hide-pause-button-and-hide-pause-menu-2026-10-25). |
+| Added Hide Pause Menu | tag 410 (`0x19A`, `HACK_HIDE_PAUSE_MENU`, static map `0x1800632CF`); registered at `0x1800b0b9d`, callback `FUN_180167fa0` hooks `PauseLayer::customSetup` (RVA 0x37C870); detour `0x1801680a0` runs `0x1801a2c30` then hides the layer via vtable `+0x140`. See [render-hooks.md](render-hooks.md#evidence--hide-pause-button-and-hide-pause-menu-2026-10-25). |
+| Added Respawn Time modifier | tag 245 (`0x0F5`, `HACK_RESPAWN_TIME`, static map `0x180063E55`); registered at `0x1800b2ae5`, callback `FUN_18017ef50` hooks `PlayLayer::destroyPlayer` (RVA 0x3B39D0); detour converts tag 246 ms to seconds (÷1000.0) and calls `0x18017f000`, which clamps to 2^-23 and applies the tag-501 multiplier when tags 502 and 247 are on. See [gameplay-hooks.md](gameplay-hooks.md#evidence--respawn-time-modifier-2026-10-25). |
 
 ## Toggles outside the 389
 
@@ -288,7 +294,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v8.0.0-alpha12 | Added Confirm Full-Reset | mapped | [ui-addons.md](ui-addons.md#evidence--confirmation-dialogs-and-place-over-2026-10-25) | tag 314 (`0x13A`, `HACK_CONFIRM_FULL_RESET`); registered at `0x1800b2361`, callback `FUN_180177680` hooks `PauseLayer::onRestartFull` (RVA 0x37E4B0); detour `0x1801776f0` shares guard `0x18080C638` and handler `0x1801A3220`. |
 | v8.0.0-alpha12 | Added Confirm Practice | mapped | [ui-addons.md](ui-addons.md#evidence--confirmation-dialogs-and-place-over-2026-10-25) | tag 311 (`0x137`, `HACK_CONFIRM_PRACTICE`); registered at `0x1800b2273`, callback `FUN_1801772e0` hooks `PauseLayer::onPracticeMode` (RVA 0x37E1C0); detour `0x180177350` shares guard `0x18080C638` and handler `0x1801A3080`. |
 | v8.0.0-alpha12 | Added Hide Player | mapped | [render-hooks.md](render-hooks.md#evidence---hide-player-verified-2026-10-25) | tag 386 (`0x182`, `HACK_HIDE_PLAYER`); callback `FUN_180167a60` hooks `PlayerObject::toggleVisibility` (RVA 0x38B440), detour `0x180167b10` forces `edx=0` before `jmp 0x1801a9b70`. |
-| v8.0.0-alpha12 | Added Hide Pause Button | cluster | [render-hooks.md](render-hooks.md) |
+| v8.0.0-alpha12 | Added Hide Pause Button | mapped | [render-hooks.md](render-hooks.md#evidence--hide-pause-button-and-hide-pause-menu-2026-10-25) | tag 385 (`0x181`, `HACK_HIDE_PAUSE_BUTTON`); registered at `0x1800b0b26`, callback `FUN_180167d10` hooks `UILayer::init` (RVA 0x4CCB00); detour calls `0x1801e9e10`, then hides `[UILayer+0x238]` through vtable slot `+0x140` with `edx=0`. |
 | v8.0.0-alpha12 | Added Thread Priority | mapped | [render-hooks.md](render-hooks.md) | tag 454 (`HACK_THREAD_PRIORITY`); `FUN_18018ADF0`/`FUN_18018AE50` call `SetThreadPriority` when enabled. Tag 0x1C7 (455) is the priority level. See render-hooks.md. |
 | v8.0.0-alpha12 | Added Switch After Death to StartPos Switcher | cluster | [startpos-switcher-feature.md](startpos-switcher-feature.md) |
 | v8.0.0-alpha12 | Added support for NodeIDs (Geode) | cluster | [ui-addons.md](ui-addons.md) |
@@ -312,7 +318,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v8.0.0-alpha9 | Added 0% Practice Complete | mapped | [gameplay-hooks.md](gameplay-hooks.md) | tag 296 (`HACK_0_PRACTICE_COMPLETE`, static map entry #0); read via `hackpro::Config` vtable (`FUN_1800917B0` at 0x180544FF0). No gameplay code reads it directly; accessed through exported `isHackEnabled` API. See gameplay-hooks.md. |
 | v8.0.0-alpha9 | Added Uncomplete Level | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v8.0.0-alpha9 | Added Trigger Value Bypass | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
-| v8.0.0-alpha9 | Added Hide Pause Menu | cluster | [render-hooks.md](render-hooks.md) |
+| v8.0.0-alpha9 | Added Hide Pause Menu | mapped | [render-hooks.md](render-hooks.md#evidence--hide-pause-button-and-hide-pause-menu-2026-10-25) | tag 410 (`0x19A`, `HACK_HIDE_PAUSE_MENU`); registered at `0x1800b0b9d`, callback `FUN_180167fa0` hooks `PauseLayer::customSetup` (RVA 0x37C870); detour calls `0x1801a2c30` then tail-jumps vtable slot `+0x140` with `edx=0`. |
 | v8.0.0-alpha9 | Added Hide UI | mapped | [render-hooks.md](render-hooks.md#evidence--hide-ui-2026-10-25) | tag 53 (`0x35`, `HACK_HIDE_UI`, static map `0x180063372`); registered at `0x1800b0330`, callback `FUN_18015fa70` hooks `EditorUI::init` (RVA 0xDF390); detour `0x18015fb20` calls vtable `+0x140` with `edx=0` (hide) when its gate returns true. |
 | v8.0.0-alpha9 | Added Restart, Practice & folder shortcuts | cluster | [ui-addons.md](ui-addons.md) |
 | v8.0.0-alpha8 | Added Show Hitboxes | mapped | [show-hitboxes-feature.md](show-hitboxes-feature.md) | tag 192 (`HACK_SHOW_HITBOXES`); gate `FUN_180203EE0`, draw `FUN_180203F60`→`FUN_180204000`/`FUN_180204150`; per-object draw `FUN_180203070`. See show-hitboxes-feature.md. |
@@ -330,7 +336,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v8.0.0-alpha6 | Added Show Layout | mapped | [gameplay-hooks.md](gameplay-hooks.md#evidence--show-layout-2026-10-25) | tag 260 (`0x104`, `HACK_SHOW_LAYOUT`, static map `0x180064095`); registered at `0x1800b2b5c`, callback `FUN_18017f0f0` installs six hooks (`resetLevel`, `applyEnterEffect`, `applyCustomEnterEffect`, `triggerObject`, `addGlow`, `saveActiveColors`); the resetLevel detour reads Map A tags 262 and 263. |
 | v8.0.0-alpha6 | Added Endscreen Hider | cluster | [render-hooks.md](render-hooks.md) |
 | v8.0.0-alpha5 | Added Smart StartPos | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
-| v8.0.0-alpha5 | Added Respawn Time modifier | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
+| v8.0.0-alpha5 | Added Respawn Time modifier | mapped | [gameplay-hooks.md](gameplay-hooks.md#evidence--respawn-time-modifier-2026-10-25) | tag 245 (`0x0F5`, `HACK_RESPAWN_TIME`); registered at `0x1800b2ae5`, callback `FUN_18017ef50` hooks `PlayLayer::destroyPlayer` (RVA 0x3B39D0); detour reads the double at tag 246, divides by 1000.0, and hands seconds to helper `0x18017f000`, which clamps to 2^-23 and multiplies by tag 501 when tags 502 and 247 are on. |
 | v8.0.0-alpha5 | Added Confirm Exit | cluster | [ui-addons.md](ui-addons.md) |
 | v8.0.0-alpha5 | Added Allow Low Volume | mapped | [gameplay-hooks.md](gameplay-hooks.md#evidence--four-labelled-tags-found-by-the-full-section-scan-2026-10-25) | tag 451 (`0x1C3`, `HACK_ALLOW_LOW_VOLUME`); registered at `0x1800b2ea7`, callback `FUN_180186100` hooks `PauseLayer`/`OptionsLayer` music and sfx slider callbacks (RVAs 0x37E130, 0x372A90, 0x372990), each detour recomputes the float and tail-jumps to the volume setter `0x180129980`. |
 | v8.0.0-alpha5 | Added No Particles | mapped | [render-hooks.md](render-hooks.md) | tag 402 (`HACK_NO_PARTICLES`, 0x192); registered in `FUN_1800afae0` at `0x1800b11a8`, callback `FUN_1801703b0`. See no-particles-feature.md. |
