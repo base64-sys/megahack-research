@@ -727,3 +727,113 @@ UNVERIFIED: which bound the vanilla `createValueControlAdvanced` enforces and wh
 applied; what the guarded pointer at `[0x180818B40]` resolves to; what the two dictionaries at
 `this+0x328`/`+0x330` hold and why emptying them belongs to the bypass. Finding the clamp site
 is the acceptance criterion for promoting this row.
+
+## Evidence — Jumpscare (2026-10-25)
+
+One tag, one hook on `PlayLayer::destroyPlayer`, and a self-contained UI effect built from a
+PNG and an MP3 inside the mod's own resources. Target, registration, callback and the full
+detour body are read, so the row is `mapped`.
+
+| Field | Value |
+| --- | --- |
+| Tag | 291 (`0x123`, `HACK_JUMPSCARE`), static map entry 28, store `0x180063420` |
+| Registration | `0x1800B26A7` |
+| Callback | `0x180178D10` (one installer call at `0x180178D5C`) |
+| Installer | `0x180169480`, name string `0x180575973` "PlayLayer::destroyPlayer" |
+| Target | `PlayLayer::destroyPlayer`, RVA `0x3B39D0` |
+| Detour | `0x180178D80`, code cave, body `0x180178D80..0x180178DDC` (`ret`), 0x5D bytes, then `int3` padding |
+
+### Detour body
+
+```
+0x180178D80  push rsi; push rdi; sub rsp,0x28
+0x180178D86  mov rdi, r8                 ; player argument kept for the compare below
+0x180178D89  mov rsi, rcx                ; this = PlayLayer
+0x180178D8C  call 0x1801A3D20            ; tail-calls the cached original destroyPlayer
+0x180178D91  cmp rdi, [rsi+0x3788]
+0x180178D98  je  0x180178DD5             ; no effect for this player
+0x180178D9A  mov rcx, rsi
+0x180178D9D  call 0x180179AE0            ; gate: settings + random
+0x180178DA2  test al, al
+0x180178DA4  je  0x180178DD5             ; gate said no
+0x180178DA6  call 0x180178DE0            ; build the black overlay + sprite
+0x180178DAB  mov rdi, rax
+0x180178DAE  mov rcx, [rsi+0x3540]       ; parent node of the play layer
+0x180178DB5  mov rax, [rcx]
+0x180178DB8  mov rdx, rdi
+0x180178DBB  mov r8d, 0x64               ; z-order 100
+0x180178DC1  call [rax+0x1B8]            ; addChild(overlay, 100)
+0x180178DC7  mov rcx, rdi
+0x180178DCA  add rsp,0x28; pop rdi; pop rsi
+0x180178DD0  jmp 0x180179260             ; tail-call: play sound and run the animation
+0x180178DD5  add rsp,0x28; pop rdi; pop rsi; ret
+```
+
+`0x1801A3D20` is the delayed-bind trampoline for the original: it tail-jumps the pointer
+cached at `0x18080FD28`, and on first use builds it from `base + 0x3B39D0` (`0x1801A3D99`,
+base from `0x18010DDC0`) through `0x1801A3E00` and sets the guard dword `0x18080FD30`. The
+same RVA is what the callback handed the installer, so the hook replaces the real
+`destroyPlayer` and still runs it.
+
+### Gate — `0x180179AE0(layer)` returns `bool`
+
+Settings context `0x18008A510`, then four tag reads:
+
+| Tag | Accessor | Meaning (inferred from use) |
+| --- | --- | --- |
+| `0x127` (295) | `0x18002DE50` bool | `CHECKBOX_JUMPSCARE_ONLY_0` / `LEVEL/JUMPSCARE/DROPDOWN/ONLY_FROM_0` |
+| `0x126` (294) | `0x180003D80` double | `LEVEL/JUMPSCARE/DROPDOWN/TIME_THRESHOLD` |
+| `0x125` (293) | `0x180003D80` double | `LEVEL/JUMPSCARE/DROPDOWN/PERCENTAGE` |
+| `0x124` (292) | `0x180003D80` double | `LEVEL/JUMPSCARE/DROPDOWN/PROBABILITY` |
+
+1. **Only from 0** (`0x127` true): returns false unless `[layer+0x3188] == 0` *and*
+   `CCArray::count([layer+0x3888]) == 0` (`0x180179B08`..`0x180179B20`), i.e. the run must
+   have no checkpoint and nothing collected yet.
+2. **Time or percentage threshold**: if byte `[layer+0x309E] != 0`, require
+   `tag 0x126 <= [layer+0x39C0]` (double compare at `0x180179B2B`); otherwise call
+   `0x1801A4CB0(layer)`, widen its `float` result to `double`, and require
+   `tag 0x125 <= that value` (`0x180179B4A`..`0x180179B6A`). Failing either returns false.
+3. **Probability**: a call through the IAT slot `0x180644D18` — its import entry at RVA
+   `0x64F806` is hint `0x001B` + "rand" — reduced modulo 10000
+   (`imul 0x68DB8BAD` / `sar 0x2C` / `imul 0x2710`), compared with `tag 0x124 * 100.0`
+   (double `0x180534330` = 100.0): returns `probability*100 > rand()%10000`, so 100.0 means
+   always and the unit is percent with two decimals.
+
+### Builder — `0x180178DE0() -> CCLayerColor*`
+
+`operator new(0x228)`, `memset(...,0,0x228)`, constructor `0x1801E7F50`, then the class
+pointer at `+0x00` and seven vtable slots at `+0x140`, `+0x148`, `+0x150`, `+0x158`, `+0x160`,
+`+0x198`, `+0x1B0` are overwritten with `0x180576C78`, `0x180577098`, `0x1805770F8`,
+`0x180577108`, `0x180577128`, `0x180577148`, `0x180577168`, `0x1805771E8`
+(`CCLayerColor::initWithColor(0xFF000000)` then runs on that object). On success the sprite
+from `0x180178FA0` is stored at `[layer+0x220]`, added with `[vtable+0x1C0]`
+(single-argument `addChild`) and autoreleased; on failure `[vtable+8]` is called with `edx=1`
+and null is returned.
+
+`0x180178FA0` builds the resource name `"jumpscare.png"` in a `std::string` and passes it with
+the module string `"absolllute.megahack"` (`0x1805465F4`) to `0x18010C110`, then
+`CCSprite::create(path)` (`0x180531A00`).
+
+### Animation — `0x180179260(layer)`
+
+- `0x1801797D0` lazily loads `"jumpscare.mp3"` (same module string) through `0x180179C30`,
+  caching the handle at `0x18080C6F0` behind flag `0x18080C6F8`; the loaded object's `+0x230`
+  pointer is then played through `FMOD::System::playSound` (`0x180533250`).
+- The layer's size is read through `[vtable+0x130]`, halved componentwise with `(0.5, 0.5)`
+  (`0x180549C80`) and passed to the sprite through `[sprite vtable+0xB8]`; the sprite then
+  receives the float `0.4` (`0x180572A6C`) through `[vtable+0xA0]`.
+- `CCFadeIn(0.02)` (`0x180572A94` = 0.02f) + `CCDelayTime(1.0)` (`0x1805343D0`) +
+  `CCRemoveSelf(true)` are combined by `0x1800BADB0` and run on the overlay, so the black
+  screen appears, holds for a second and removes itself.
+- A second chain, also combined by `0x1800BADB0` and run on the sprite, alternates twelve
+  `CCFadeTo(255 / 0)` steps with `CCDelayTime(0.02)`, then runs a `CCScaleTo` sequence with
+  the same 0.02 delay and factors from `0x180576C54`..`0x180574BCC`, finishing with
+  `CCFadeIn(0.02)`.
+
+UNVERIFIED: the meaning of `[layer+0x3788]` — the compare skips the effect when the dying
+player equals it, which reads either as a player-slot filter or as a guard against repeated
+deaths; nothing in the image names the field. Also open: whether `+0x309E` is the platformer
+flag (the branch switches from percentage to time when it is set) and what percent
+`0x1801A4CB0` returns; the names of `PlayLayer+0x3540` (the parent the overlay is added to),
+`+0x3188` and `+0x3888` (the only-from-0 test); and what each of the seven overwritten
+vtable slots at `+0x140..+0x1B0` overrides.

@@ -13,7 +13,7 @@
 | `mapped` | The feature has its own evidence: a note that names it, its settings key(s) and default, and/or its implementing function(s) with VAs. |
 | `alias` / `dead` | A restatement of an earlier feature / absent from this build, with the evidence for that call. |
 
-All 389 rows below were `cluster` at the 2026-10-23 baseline. **Seventy-three are now
+All 389 rows below were `cluster` at the 2026-10-23 baseline. **Seventy-four are now
 `mapped`**; the [Mapped rows](#mapped-rows) table below is the authoritative list, with
 tag, registration site and hook address for each one.
 
@@ -51,7 +51,9 @@ different host procedure when a play-layer byte is set. Auto Song Downloader clo
 closing a week later were the same mechanism from two sides: both funnel a coin object into
 host RVA `0x2161B0`, one from a post-`resetLevel` pass and one from the object scan inside
 `collisionCheckObjects`. **Toolbox Button Bypass** replaced two editor steppers outright, so
-they count without a host bound. The other 316 rows remain `cluster`.
+they count without a host bound. **Jumpscare** builds its own overlay and sound from
+`jumpscare.png`/`jumpscare.mp3` after a probability gate passes on death. The other 315 rows
+remain `cluster`.
 
 A keyword check at the baseline found that **185 of 389** rows point at a note that
 never mentions the feature at all, so for those even the cluster assignment is only a
@@ -135,6 +137,7 @@ reported as progress.
 | Added Safe Mode Popup | tag 483 (`0x1E3`, `HACK_SAFE_MODE_POPUP`); three code-cave detours (`0x18019a4d0` `LevelInfoLayer::onPlay`, `0x18019a520` `EditLevelLayer::onPlay`, `0x18019a570` `LevelPage::onPlay`) tail-jump to the cached original when byte `0x18080cbb0` is non-zero or `areCheatsEnabled` (`0x18019b350`) is false; otherwise they jump to `0x18019a5c0`, the alert that renders "Safe Mode" / "You have cheats enabled, are you sure you want to play this level?" with Play and Cancel. See [safe-mode-feature.md](safe-mode-feature.md#evidence--the-play-button-popup-2026-10-25). |
 | Added Replay Last Checkpoint (all three wordings) | tag 316 (`0x13C`, `HACK_REPLAY_LAST_CHECKPOINT`, static map `0x180063DF7`); registered at `0x1800b2a6e`, callback `FUN_18017ecb0` hooks `EndLevelLayer::onReplay` (RVA 0x134E80); detour `0x18017ed20` reroutes to host RVA 0x1354C0 with `edx=0` when the second argument is null and `[playlayer+0x31f0] == 1`, otherwise to the cached original. One tag and one hook serve the v6.2.0, v7.0 and v8.0.0-alpha9 rows, so they are promoted together. See [gameplay-hooks.md](gameplay-hooks.md#evidence--replay-last-checkpoint-2026-10-25). |
 | Added Toolbox Button Bypass | tag 47 (`0x02F`, `HACK_TOOLBOX_BUTTON_BYPASS`, static map `0x1800644EA`); registered at `0x1800b0604`, callback `FUN_180163f50` installs two code-cave replacements: `EditorOptionsLayer::onButtonRows` (RVA 0x291A00) -> `0x180164020` and `onButtonsPerRow` (RVA 0x291970) -> `0x1801641b0`. Both read a direction from `[[arg2]+0x38]`, `inc` the stored count at `+0x3F4`/`+0x3F0` with no ceiling, format it with `"{}"` through `0x18000AE30` and push it into the label at `[[this+0x400]+0x168]`/`[[this+0x3F8]+0x168]`. See [ui-addons.md](ui-addons.md#evidence--toolbox-button-bypass-2026-10-25). |
+| Added Jumpscare | tag 291 (`0x123`, `HACK_JUMPSCARE`, static map `0x180063420`); registered at `0x1800b26a7`, callback `0x180178d10` hooks `PlayLayer::destroyPlayer` (RVA 0x3B39D0) with code-cave detour `0x180178d80`, which runs the original through the trampoline `0x1801a3d20`, tests tags 0x127/0x126/0x125/0x124 (only-from-0, time threshold, percentage, probability) in gate `0x180179ae0`, then adds a black `CCLayerColor` carrying `jumpscare.png` to `[layer+0x3540]` at z-order 100 and tail-calls `0x180179260` to play `jumpscare.mp3` and run the fade/scale chain. See [gameplay-hooks.md](gameplay-hooks.md#evidence--jumpscare-2026-10-25). |
 | Added Auto Song Downloader | tag 323 (`0x143`, `HACK_AUTO_SONG_DOWNLOAD`, static map `0x180062C24`); registered at `0x1800b1fa4`, callback `FUN_180175640` hooks `LevelInfoLayer::init` (RVA 0x2F7340) with code-cave detour `0x1801756b0`; the detour calls the original first, then runs `CCCallFuncO::create(subObject, <host 0xCABC0>, subObject)` on `[[layer+0x2D0]+0x180]` when that object's vtable slot `+0x148` returns true. See [ui-addons.md](ui-addons.md#evidence--auto-song-downloader-2026-10-25). |
 
 ## Toggles outside the 389
@@ -333,7 +336,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v8.0.0-alpha9b | Added auto update to Geode builds | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v8.0.0-alpha9 | Added Auto Deafen | mapped | [audio-sync-feature.md](audio-sync-feature.md) | tag 279 (`HACK_AUTO_DEAFEN`, 0x117); registered in `FUN_1800afae0` at `0x1800b1dc8`, callback `FUN_180174a80` (hooks `PlayLayer::resetLevel`). See auto-deafen-feature.md. |
 | v8.0.0-alpha9 | Added Show Triggers | mapped | [render-hooks.md](render-hooks.md#evidence--show-triggers-2026-10-25) | tag 286 (`0x11E`, `HACK_SHOW_TRIGGERS`, static map `0x1800640F7`); registered at `0x1800b2cc6`, callback `FUN_180183790` hooks `PlayLayer::addObject` (0x3ADD70), `GJBaseGameLayer::addToSection` (0x226500) and `GameObject::customSetup` (0x190E20); the customSetup detour accepts object IDs 0xB53..0xBD9. |
-| v8.0.0-alpha9 | Added Jumpscare | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
+| v8.0.0-alpha9 | Added Jumpscare | mapped | [gameplay-hooks.md](gameplay-hooks.md#evidence--jumpscare-2026-10-25) | tag 291 (`0x123`, `HACK_JUMPSCARE`, static map `0x180063420`); hook on `PlayLayer::destroyPlayer` (RVA 0x3B39D0) adds a `jumpscare.png` overlay on `+0x3540` at z-order 100 and plays `jumpscare.mp3` when the tags 292-295 gate passes. |
 | v8.0.0-alpha9 | Added Replay Last Checkpoint | mapped | tag 316 (`0x13C`, `HACK_REPLAY_LAST_CHECKPOINT`); registered at `0x1800b2a6e`, callback `FUN_18017ecb0` hooks `EndLevelLayer::onReplay` (RVA 0x134E80); detour `0x18017ed20` reroutes to host RVA 0x1354C0 with `edx=0` when the second argument is null and `[playlayer+0x31f0] == 1`, otherwise to the cached original. See [gameplay-hooks.md](gameplay-hooks.md#evidence--replay-last-checkpoint-2026-10-25). |
 | v8.0.0-alpha9 | Added 0% Practice Complete | mapped | [gameplay-hooks.md](gameplay-hooks.md) | tag 296 (`HACK_0_PRACTICE_COMPLETE`, static map entry #0); read via `hackpro::Config` vtable (`FUN_1800917B0` at 0x180544FF0). No gameplay code reads it directly; accessed through exported `isHackEnabled` API. See gameplay-hooks.md. |
 | v8.0.0-alpha9 | Added Uncomplete Level | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
@@ -590,5 +593,5 @@ Correction (2026-10-25): the earlier version of this paragraph named `Force Plat
 (`0x0F2`, `HACK_FORCE_PLATFORMER`) and 49 (`0x031`, `HACK_DEFAULT_SONG_BYPASS`) — but **neither
 has a row in the 389**: no `Added Force Platformer` and no `Added Default Song Bypass` bullet
 exists. Mapping them would add entries to "Toggles outside the 389" at best, so they are not
-progress against the milestone. The next rows must be chosen from the 316 remaining changelog
+progress against the milestone. The next rows must be chosen from the 315 remaining changelog
 bullets.
