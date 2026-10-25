@@ -685,3 +685,45 @@ suggests a per-coin option, but the vector's producer was not read); the setting
 assembled inside `0x18015AFD0` (it builds a 19-character string beginning `absolllu...` at
 `0x1805465F4`); and whether `[rbp-0x28]` in the Auto Pickup Coins loop is the pointer-list
 length or an independent count.
+
+## Lead — Trigger Value Bypass replaces the popup's value control (2026-10-25)
+
+Not enough to promote the row yet: the hook and its whole body are read, but the site that
+lifts the value bound is not located, so this stays a lead and the inventory row stays
+`cluster`.
+
+| Field | Value |
+| --- | --- |
+| Tag | 54 (`0x036`, `HACK_TRIGGER_VALUE_BYPASS`) |
+| Registration | `0x1800B067B` (`notes/hook-registrations.md` line 84) |
+| Callback | `FUN_180164530` (order `0xFFFFFFE0`) |
+| Target | `SetupTriggerPopup::createValueControlAdvanced`, RVA `0x475FD0` |
+| Detour | `0x1801645A0`, `.pdata` `0x1801645A0..0x180164799` (0x1F9 bytes) |
+| Installer | `0x1801647E0` |
+
+The callback reads the enable flag from `byte [rdx]` and only installs on `1`; the disable
+branch is at `0x180164589`. The name string it passes to the installer is `0x18057559D`. No
+tag is read inside the detour, so the toggle is install/uninstall, not a per-call check.
+
+Measured body shape:
+
+- the `std::string` argument is copied into a local (`length` at `[r8+0x10]`, SSO flag
+  `[r8+0x18] >= 0x10` selects the heap pointer at `[r8]`, `memcpy` through `0x180533B10` of
+  `length + 1` bytes);
+- the `double` at `[r9]` is copied to `[rbp+8]`;
+- every stack argument is reloaded from `[rbp+0xA0]`..`[rbp+0xF8]` (the `float`, `int` and
+  `byte` parameters in their original positions) and passed to `0x1801FE660(this, edx,
+  &string_copy, &double_copy, <stack args>)`;
+- then `cocos2d::CCDictionary::removeAllObjects` is called on `[this+0x328]` and
+  `[this+0x330]`;
+- the callee's value is returned unchanged (`mov rdi, rax` ... `mov rax, rdi`).
+
+`0x1801FE660` has no `.pdata` record. Disassembling it to its `ret` at `0x1801FE879` finds no
+`minsd`, `maxsd`, `minss`, `maxss` or `comisd`, so no clamp lives in the shim either. It
+re-copies the same string and double and forwards through a thread-guarded function pointer —
+guard `[0x180818B48]`, pointer `[0x180818B40]`, `call rbx` at `0x1801FE806`.
+
+UNVERIFIED: which bound the vanilla `createValueControlAdvanced` enforces and where it is
+applied; what the guarded pointer at `[0x180818B40]` resolves to; what the two dictionaries at
+`this+0x328`/`+0x330` hold and why emptying them belongs to the bypass. Finding the clamp site
+is the acceptance criterion for promoting this row.
