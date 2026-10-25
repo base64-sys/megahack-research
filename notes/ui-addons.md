@@ -167,3 +167,77 @@ by this tag (only the EndLevelLayer one was observed).
 UNVERIFIED: which feature this corresponds to (candidate: multi-lingual support);
 the semantics of `FUN_1800BB170` and `FUN_18014E6A0`; the language keys
 "0025" and "0170" and what they represent.
+
+## Evidence — confirmation dialogs and Place Over (2026-10-25)
+
+Four `HACK_CONFIRM_*` tags and `HACK_PLACE_OVER` are the first toggles whose behaviour is
+settled by the detour body rather than by the target name alone.
+
+| Tag | Static label | Registration | Callback | Target | Detour |
+| ---: | --- | --- | --- | --- | --- |
+| `0x033` | `HACK_PLACE_OVER` | `0x1800B028E` | `FUN_180162B60` | `LevelEditorLayer::typeExistsAtPosition` RVA 0x2D4A50 | `0x180163070` |
+| `0x137` | `HACK_CONFIRM_PRACTICE` | `0x1800B1A2E` | `FUN_1801772E0` | `PauseLayer::onPracticeMode` RVA 0x37E1C0 | `0x180177350` |
+| `0x138` | `HACK_CONFIRM_NORMAL` | `0x1800B1AAB` | `FUN_180176FF0` | `PauseLayer::onNormalMode` RVA 0x37E2A0 | `0x180177060` |
+| `0x139` | `HACK_CONFIRM_RESET` | `0x1800B1B28` | `FUN_1801774B0` | `PauseLayer::onRestart` RVA 0x37E410 | `0x180177520` |
+| `0x13A` | `HACK_CONFIRM_FULL_RESET` | `0x1800B1BA5` | `FUN_180177680` | `PauseLayer::onRestartFull` RVA 0x37E4B0 | `0x1801776F0` |
+
+### Place Over returns "not occupied"
+
+`LevelEditorLayer::typeExistsAtPosition` is replaced wholesale:
+
+```
+0x180163070  xor  eax, eax
+0x180163072  ret
+```
+
+The editor calls this predicate before allowing a placement, so forcing it to return `false`
+means "nothing of this type occupies the position" — the direct mechanism for placing an
+object over an existing one. This is decisive, not inferred: no argument is read.
+
+### The confirmation wrapper
+
+The four `HACK_CONFIRM_*` detours are the same shape, differing only in the tail-call
+target. Practice mode, in full:
+
+```
+0x180177364  cmp  byte [rip+0x6952CD], 1     ; guard -> 0x18080C638
+0x18017736B  jne  0x180177379
+0x180177374  jmp  0x1801A3080                ; guard set: original handler
+0x180177379  ...
+0x180177381  call 0x1803A50B4                ; allocate 0x240 bytes
+0x18017738D  call 0x1801E7F50                ; construct dialog
+0x180177392  lea  rax,[rip+0x3FEFEF]         ; vtable writes at +0x00, +0x140,
+...                                          ; +0x148 ... +0x230
+0x180177410  mov  [rdi+0x228], rsi           ; dialog keeps the layer
+```
+
+| Detour | Guard | Handler on the guarded path |
+| --- | --- | --- |
+| `0x180177350` practice | `0x18080C638` | `0x1801A3080` |
+| `0x180177060` normal | `0x18080C638` | `0x1801A2FB0` |
+| `0x180177520` restart | `0x18080C638` | `0x1801A3150` |
+| `0x1801776F0` full reset | `0x18080C638` | `0x1801A3220` |
+
+All four read the **same** guard byte, which is the reusable "dialog already answered"
+flag: when it is set the detour tail-jumps straight to the original action, and otherwise it
+constructs a 0x240-byte dialog with the action's own vtable and callbacks, keeping the layer
+at `+0x228`. The per-feature gating is done by the callback, which installs the detour only
+on the `*param_2 == 1` path — so there is one wrapper implementation and four settings.
+
+`HACK_CONFIRM_NORMAL` has no changelog row of its own, and `settings-contents.md` only
+records `LEVEL/HACK_CONFIRM_FULL_RESET` and `LEVEL/HACK_CONFIRM_NORMAL` among the user's
+202 keys, so `HACK_CONFIRM_PRACTICE`/`_RESET` keys are **UNVERIFIED**.
+
+### Tag map
+
+| Tag (hex) | Tag (dec) | Accessor | Static-map name | Role |
+| --- | --- | --- | --- | --- |
+| 0x033 | 51 | `isHackEnabled` (Map B) | `HACK_PLACE_OVER` | Place objects over existing ones |
+| 0x137 | 311 | `isHackEnabled` (Map B) | `HACK_CONFIRM_PRACTICE` | Confirm before Practice Mode |
+| 0x138 | 312 | `isHackEnabled` (Map B) | `HACK_CONFIRM_NORMAL` | Confirm before Normal Mode |
+| 0x139 | 313 | `isHackEnabled` (Map B) | `HACK_CONFIRM_RESET` | Confirm before restart |
+| 0x13A | 314 | `isHackEnabled` (Map B) | `HACK_CONFIRM_FULL_RESET` | Confirm before full reset |
+
+UNVERIFIED: the dialog class behind `0x1801E7F50`; which code sets and clears the shared
+guard `0x18080C638`; the JSON keys for three of the four confirm tags.
+

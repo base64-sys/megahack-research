@@ -13,7 +13,7 @@
 | `mapped` | The feature has its own evidence: a note that names it, its settings key(s) and default, and/or its implementing function(s) with VAs. |
 | `alias` / `dead` | A restatement of an earlier feature / absent from this build, with the evidence for that call. |
 
-All 389 rows below were `cluster` at the 2026-10-23 baseline. **Fifty are now
+All 389 rows below were `cluster` at the 2026-10-23 baseline. **Fifty-four are now
 `mapped`**; the [Mapped rows](#mapped-rows) table below is the authoritative list, with
 tag, registration site and hook address for each one.
 
@@ -31,8 +31,10 @@ runtime-assigned and have no static label, so those two bindings rest on the tar
 plus, for Spider Dash, the `COSMETIC/HACK_NO_SPIDER_DASH` settings key. **Four labelled
 toggles recovered by the full-`.text` registration scan** (Instant Complete, Checkpoint
 Limit Bypass, Allow Low Volume, Fast Chests) needed no inference: their static
-`HACK_*` label matches a changelog row verbatim, and their detours were read. The other
-339 rows remain `cluster`.
+`HACK_*` label matches a changelog row verbatim, and their detours were read. **Four more
+came from detour bodies** (Place Over, Confirm Practice, Confirm Reset, Confirm
+Full-Reset), including a shared confirmation-dialog wrapper. The other 335 rows remain
+`cluster`.
 
 A keyword check at the baseline found that **185 of 389** rows point at a note that
 never mentions the feature at all, so for those even the cluster assignment is only a
@@ -89,6 +91,10 @@ lead. That count predates every promotion since the baseline; the method is reco
 | Added Checkpoint Limit Bypass | tag 298 (`0x12A`, `HACK_CHECKPOINT_LIMIT_BYPASS`); registered at `0x1800b2092`, callback `FUN_180176250` hooks `PlayLayer::storeCheckpoint` (RVA 0x3B74A0), detour `0x1801762c0`. See [gameplay-hooks.md](gameplay-hooks.md#evidence--four-labelled-tags-found-by-the-full-section-scan-2026-10-25). |
 | Added Allow Low Volume | tag 451 (`0x1C3`, `HACK_ALLOW_LOW_VOLUME`); registered at `0x1800b2ea7`, callback `FUN_180186100` hooks the four music/sfx slider callbacks; detours recompute the float before the setter `0x180129980`. See [gameplay-hooks.md](gameplay-hooks.md#evidence--four-labelled-tags-found-by-the-full-section-scan-2026-10-25). |
 | Added Fast Chests | tag 461 (`0x1CD`, `HACK_FAST_CHESTS`); registered at `0x1800b300c`, callback `FUN_180187820` hooks `RewardUnlockLayer::init`/`playRewardEffect`/`showCloseButton`, detours scope flag `0x18080C8E0`. See [gameplay-hooks.md](gameplay-hooks.md#evidence--four-labelled-tags-found-by-the-full-section-scan-2026-10-25). |
+| Added Place Over | tag 51 (`0x33`, `HACK_PLACE_OVER`, static map `0x180062FAA`); registered at `0x1800b028e`, callback `FUN_180162b60` hooks `LevelEditorLayer::typeExistsAtPosition` (RVA 0x2D4A50), detour `0x180163070` returns 0 unconditionally. See [ui-addons.md](ui-addons.md#evidence--confirmation-dialogs-and-place-over-2026-10-25). |
+| Added Confirm Practice | tag 311 (`0x137`, `HACK_CONFIRM_PRACTICE`); registered at `0x1800b1a2e`, callback `FUN_1801772e0` hooks `PauseLayer::onPracticeMode` (RVA 0x37E1C0), detour `0x180177350`. See [ui-addons.md](ui-addons.md#evidence--confirmation-dialogs-and-place-over-2026-10-25). |
+| Added Confirm Reset | tag 313 (`0x139`, `HACK_CONFIRM_RESET`); registered at `0x1800b1b28`, callback `FUN_1801774b0` hooks `PauseLayer::onRestart` (RVA 0x37E410), detour `0x180177520`. See [ui-addons.md](ui-addons.md#evidence--confirmation-dialogs-and-place-over-2026-10-25). |
+| Added Confirm Full-Reset | tag 314 (`0x13A`, `HACK_CONFIRM_FULL_RESET`); registered at `0x1800b1ba5`, callback `FUN_180177680` hooks `PauseLayer::onRestartFull` (RVA 0x37E4B0), detour `0x1801776f0`. See [ui-addons.md](ui-addons.md#evidence--confirmation-dialogs-and-place-over-2026-10-25). |
 | Added No (C) Mark | tag 44 (`HACK_NO_C_MARK`, 0x02C); registered in `FUN_1800afae0` at `0x1800b049a`, callback `FUN_180162d20` (hooks `ShareLevelLayer::onShare`, RVA 0x490270). See no-c-mark-feature.md. |
 | Added No Respawn Flash | tag 398 (`HACK_NO_RESPAWN_FLASH`, 0x18E); registered in `FUN_1800afae0` at `0x1800b13fb`, callback `FUN_1801714c0` (hooks `PlayerObject::playSpawnEffect`, RVA 0x397480). See no-respawn-flash-feature.md. |
 | Added No Death Effect mod | tag 399 (`HACK_NO_DEATH_EFFECT`, 0x18F); registered in `FUN_1800afae0` at `0x1800b0df0`, callback `FUN_180169330` (hooks `PlayerObject::playDeathEffect`, RVA 0x37EF10, with a bare-`ret` detour at `0x180169400`). See no-death-effect-feature.md. |
@@ -257,9 +263,9 @@ as "every feature named anywhere in the changelog", these three are the first ro
 | v8.0.0-alpha12 | Added Instant Complete | mapped | [gameplay-hooks.md](gameplay-hooks.md#evidence--four-labelled-tags-found-by-the-full-section-scan-2026-10-25) | tag 89 (`0x59`, `HACK_INSTANT_COMPLETE`); registered at `0x1800b25b9`, callback `FUN_1801789e0` hooks `PlayLayer::postUpdate` (0x3B4BA0), `levelComplete` (0x3A7A80) and `updateTimeWarp` (0x3AB9A0); the `levelComplete` detour sets flag `0x18080C8C8` around the original call. |
 | v8.0.0-alpha12 | Added Classic Borderless Fullscreen | cluster | [render-hooks.md](render-hooks.md) |
 | v8.0.0-alpha12 | Added Physics Sync | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
-| v8.0.0-alpha12 | Added Confirm Reset | cluster | [ui-addons.md](ui-addons.md) |
-| v8.0.0-alpha12 | Added Confirm Full-Reset | cluster | [ui-addons.md](ui-addons.md) |
-| v8.0.0-alpha12 | Added Confirm Practice | cluster | [ui-addons.md](ui-addons.md) |
+| v8.0.0-alpha12 | Added Confirm Reset | mapped | [ui-addons.md](ui-addons.md#evidence--confirmation-dialogs-and-place-over-2026-10-25) | tag 313 (`0x139`, `HACK_CONFIRM_RESET`); registered at `0x1800b1b28`, callback `FUN_1801774b0` hooks `PauseLayer::onRestart` (RVA 0x37E410); detour `0x180177520` shows a 0x240-byte dialog unless guard `0x18080C638` is set, then tail-jumps the handler `0x1801A3150`. |
+| v8.0.0-alpha12 | Added Confirm Full-Reset | mapped | [ui-addons.md](ui-addons.md#evidence--confirmation-dialogs-and-place-over-2026-10-25) | tag 314 (`0x13A`, `HACK_CONFIRM_FULL_RESET`); registered at `0x1800b1ba5`, callback `FUN_180177680` hooks `PauseLayer::onRestartFull` (RVA 0x37E4B0); detour `0x1801776f0` shares guard `0x18080C638` and handler `0x1801A3220`. |
+| v8.0.0-alpha12 | Added Confirm Practice | mapped | [ui-addons.md](ui-addons.md#evidence--confirmation-dialogs-and-place-over-2026-10-25) | tag 311 (`0x137`, `HACK_CONFIRM_PRACTICE`); registered at `0x1800b1a2e`, callback `FUN_1801772e0` hooks `PauseLayer::onPracticeMode` (RVA 0x37E1C0); detour `0x180177350` shares guard `0x18080C638` and handler `0x1801A3080`. |
 | v8.0.0-alpha12 | Added Hide Player | mapped | [render-hooks.md](render-hooks.md#evidence---hide-player-verified-2026-10-25) | tag 386 (`0x182`, `HACK_HIDE_PLAYER`); callback `FUN_180167a60` hooks `PlayerObject::toggleVisibility` (RVA 0x38B440), detour `0x180167b10` forces `edx=0` before `jmp 0x1801a9b70`. |
 | v8.0.0-alpha12 | Added Hide Pause Button | cluster | [render-hooks.md](render-hooks.md) |
 | v8.0.0-alpha12 | Added Thread Priority | mapped | [render-hooks.md](render-hooks.md) | tag 454 (`HACK_THREAD_PRIORITY`); `FUN_18018ADF0`/`FUN_18018AE50` call `SetThreadPriority` when enabled. Tag 0x1C7 (455) is the priority level. See render-hooks.md. |
@@ -276,7 +282,7 @@ as "every feature named anywhere in the changelog", these three are the first ro
 | v8.0.0-alpha10b | Added No "Do Not" Flip | mapped | [gameplay-hooks.md](gameplay-hooks.md) | tag 412 (`HACK_NO_DO_NOT_FLIP`, 0x19C); registered in `FUN_1800afae0` at `0x1800b0e67`, callback `FUN_1801696e0` (hooks `EndLevelLayer::customSetup` + `PlayLayer::setupHasCompleted`). See no-do-not-flip-feature.md. |
 | v8.0.0-alpha10b | Added Meta Status | cluster | [status-labels-feature.md](status-labels-feature.md) |
 | v8.0.0-alpha10b | Added Toolbox Button Bypass | cluster | [ui-addons.md](ui-addons.md) |
-| v8.0.0-alpha10b | Added Place Over | cluster | [ui-addons.md](ui-addons.md) |
+| v8.0.0-alpha10b | Added Place Over | mapped | [ui-addons.md](ui-addons.md#evidence--confirmation-dialogs-and-place-over-2026-10-25) | tag 51 (`0x33`, `HACK_PLACE_OVER`); registered at `0x1800b028e`, callback `FUN_180162b60` hooks `LevelEditorLayer::typeExistsAtPosition` (RVA 0x2D4A50); detour `0x180163070` is `xor eax,eax; ret`, so the editor never sees a position as occupied. |
 | v8.0.0-alpha9b | Added auto update to Geode builds | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v8.0.0-alpha9 | Added Auto Deafen | mapped | [audio-sync-feature.md](audio-sync-feature.md) | tag 279 (`HACK_AUTO_DEAFEN`, 0x117); registered in `FUN_1800afae0` at `0x1800b1dc8`, callback `FUN_180174a80` (hooks `PlayLayer::resetLevel`). See auto-deafen-feature.md. |
 | v8.0.0-alpha9 | Added Show Triggers | cluster | [render-hooks.md](render-hooks.md) |
