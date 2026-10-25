@@ -13,7 +13,7 @@
 | `mapped` | The feature has its own evidence: a note that names it, its settings key(s) and default, and/or its implementing function(s) with VAs. |
 | `alias` / `dead` | A restatement of an earlier feature / absent from this build, with the evidence for that call. |
 
-All 389 rows below were `cluster` at the 2026-10-23 baseline. **Forty-six are now
+All 389 rows below were `cluster` at the 2026-10-23 baseline. **Fifty are now
 `mapped`**; the [Mapped rows](#mapped-rows) table below is the authoritative list, with
 tag, registration site and hook address for each one.
 
@@ -28,8 +28,11 @@ it forces `edx=0` and jumps to the visibility setter. **Added No Orb Ring** and
 **Added No Spider Dash** followed from one-byte `ret` detours on
 `RingObject::spawnCircle` and `PlayerObject::playSpiderDashEffect`; both tags are
 runtime-assigned and have no static label, so those two bindings rest on the target
-plus, for Spider Dash, the `COSMETIC/HACK_NO_SPIDER_DASH` settings key. The other 343
-rows remain `cluster`.
+plus, for Spider Dash, the `COSMETIC/HACK_NO_SPIDER_DASH` settings key. **Four labelled
+toggles recovered by the full-`.text` registration scan** (Instant Complete, Checkpoint
+Limit Bypass, Allow Low Volume, Fast Chests) needed no inference: their static
+`HACK_*` label matches a changelog row verbatim, and their detours were read. The other
+339 rows remain `cluster`.
 
 A keyword check at the baseline found that **185 of 389** rows point at a note that
 never mentions the feature at all, so for those even the cluster assignment is only a
@@ -82,6 +85,10 @@ lead. That count predates every promotion since the baseline; the method is reco
 | Added Hide Player | tag 386 (`0x182`, `HACK_HIDE_PLAYER`); registered in `FUN_1800afae0` at `0x1800b0aaf`, callback `FUN_180167a60` hooks `PlayerObject::toggleVisibility` (RVA 0x38B440), detour `0x180167b10` forces `edx=0` before `jmp 0x1801a9b70`. See [render-hooks.md](render-hooks.md#evidence---hide-player-verified-2026-10-25). |
 | Added No Orb Ring | tag 420 (`0x1A4`, runtime-assigned — no static `HACK_*` label); registered in `FUN_1800afae0` at `0x1800b1131`, callback `FUN_18016a370` hooks `RingObject::spawnCircle` (RVA 0x4A1DB0), detour `0x18016a3e0` is a bare `ret`. See [render-hooks.md](render-hooks.md#evidence---three-runtime-assigned-cosmetic-tags-2026-10-25). |
 | Added No Spider Dash | tag 434 (`0x1B2`, runtime-assigned); registered in `FUN_1800afae0` at `0x1800b15d7`, callback `FUN_1801719c0` hooks `PlayerObject::playSpiderDashEffect` (RVA 0x395170), detour `0x180171a30` is a bare `ret`. Key `COSMETIC/HACK_NO_SPIDER_DASH`. See [render-hooks.md](render-hooks.md#evidence---three-runtime-assigned-cosmetic-tags-2026-10-25). |
+| Added Instant Complete | tag 89 (`0x59`, `HACK_INSTANT_COMPLETE`, static map `0x1800633d2`); registered at `0x1800b25b9`, callback `FUN_1801789e0` hooks `PlayLayer::postUpdate`/`levelComplete`/`updateTimeWarp`; flag `0x18080C8C8` scopes the completion. See [gameplay-hooks.md](gameplay-hooks.md#evidence--four-labelled-tags-found-by-the-full-section-scan-2026-10-25). |
+| Added Checkpoint Limit Bypass | tag 298 (`0x12A`, `HACK_CHECKPOINT_LIMIT_BYPASS`); registered at `0x1800b2092`, callback `FUN_180176250` hooks `PlayLayer::storeCheckpoint` (RVA 0x3B74A0), detour `0x1801762c0`. See [gameplay-hooks.md](gameplay-hooks.md#evidence--four-labelled-tags-found-by-the-full-section-scan-2026-10-25). |
+| Added Allow Low Volume | tag 451 (`0x1C3`, `HACK_ALLOW_LOW_VOLUME`); registered at `0x1800b2ea7`, callback `FUN_180186100` hooks the four music/sfx slider callbacks; detours recompute the float before the setter `0x180129980`. See [gameplay-hooks.md](gameplay-hooks.md#evidence--four-labelled-tags-found-by-the-full-section-scan-2026-10-25). |
+| Added Fast Chests | tag 461 (`0x1CD`, `HACK_FAST_CHESTS`); registered at `0x1800b300c`, callback `FUN_180187820` hooks `RewardUnlockLayer::init`/`playRewardEffect`/`showCloseButton`, detours scope flag `0x18080C8E0`. See [gameplay-hooks.md](gameplay-hooks.md#evidence--four-labelled-tags-found-by-the-full-section-scan-2026-10-25). |
 | Added No (C) Mark | tag 44 (`HACK_NO_C_MARK`, 0x02C); registered in `FUN_1800afae0` at `0x1800b049a`, callback `FUN_180162d20` (hooks `ShareLevelLayer::onShare`, RVA 0x490270). See no-c-mark-feature.md. |
 | Added No Respawn Flash | tag 398 (`HACK_NO_RESPAWN_FLASH`, 0x18E); registered in `FUN_1800afae0` at `0x1800b13fb`, callback `FUN_1801714c0` (hooks `PlayerObject::playSpawnEffect`, RVA 0x397480). See no-respawn-flash-feature.md. |
 | Added No Death Effect mod | tag 399 (`HACK_NO_DEATH_EFFECT`, 0x18F); registered in `FUN_1800afae0` at `0x1800b0df0`, callback `FUN_180169330` (hooks `PlayerObject::playDeathEffect`, RVA 0x37EF10, with a bare-`ret` detour at `0x180169400`). See no-death-effect-feature.md. |
@@ -215,7 +222,7 @@ as "every feature named anywhere in the changelog", these three are the first ro
 | v8.0.3-alpha.1 | Added Best Run Accurate Percentage toggle | cluster | [best-run-feature.md](best-run-feature.md) |
 | v8.0.3-alpha.1 | Added Glow to Icon Effects | cluster | [iconic-feature.md](iconic-feature.md) |
 | v8.0.2-alpha.1 | Added Auto Music Sync | cluster | [audio-sync-feature.md](audio-sync-feature.md) |
-| v8.0.2-alpha.1 | Added Fast Chests | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
+| v8.0.2-alpha.1 | Added Fast Chests | mapped | [gameplay-hooks.md](gameplay-hooks.md#evidence--four-labelled-tags-found-by-the-full-section-scan-2026-10-25) | tag 461 (`0x1CD`, `HACK_FAST_CHESTS`); registered in `FUN_1800afae0` at `0x1800b300c`, callback `FUN_180187820` hooks `RewardUnlockLayer::init` (RVA 0x3CDDF0) and `playRewardEffect`/`showCloseButton`; detours set flag `0x18080C8E0` around the original call. |
 | v8.0.2-alpha.1 | Added No Portal Lightning | mapped | [render-hooks.md](render-hooks.md) | tag 416 (`HACK_NO_PORTAL_LIGHTNING`, 0x1A0); registered in `FUN_1800afae0` at `0x1800b1296`, callback `FUN_180171170` (hooks `GJBaseGameLayer::lightningFlash`). See no-portal-lightning-feature.md. |
 | v8.0.2-alpha.1 | Added Main Level Bypass | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v8.0.2-alpha.1 | Added Disable Keybinds in Editor | cluster | [ui-addons.md](ui-addons.md) |
@@ -247,7 +254,7 @@ as "every feature named anywhere in the changelog", these three are the first ro
 | v8.0.0-alpha12 | Added Replay for Platformer mode | cluster | [replay-feature.md](replay-feature.md) |
 | v8.0.0-alpha12 | Added Tooltips | cluster | [ui-addons.md](ui-addons.md) |
 | v8.0.0-alpha12 | Added Demonlist, Challengelist, Speedrun & Leaderboard Rulesets | cluster | [ui-addons.md](ui-addons.md) |
-| v8.0.0-alpha12 | Added Instant Complete | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
+| v8.0.0-alpha12 | Added Instant Complete | mapped | [gameplay-hooks.md](gameplay-hooks.md#evidence--four-labelled-tags-found-by-the-full-section-scan-2026-10-25) | tag 89 (`0x59`, `HACK_INSTANT_COMPLETE`); registered at `0x1800b25b9`, callback `FUN_1801789e0` hooks `PlayLayer::postUpdate` (0x3B4BA0), `levelComplete` (0x3A7A80) and `updateTimeWarp` (0x3AB9A0); the `levelComplete` detour sets flag `0x18080C8C8` around the original call. |
 | v8.0.0-alpha12 | Added Classic Borderless Fullscreen | cluster | [render-hooks.md](render-hooks.md) |
 | v8.0.0-alpha12 | Added Physics Sync | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v8.0.0-alpha12 | Added Confirm Reset | cluster | [ui-addons.md](ui-addons.md) |
@@ -265,7 +272,7 @@ as "every feature named anywhere in the changelog", these three are the first ro
 | v8.0.0-alpha10b | Added custom click/move keybinds | cluster | [input-hooks.md](input-hooks.md) |
 | v8.0.0-alpha10b | Added Best Run | cluster | [best-run-feature.md](best-run-feature.md) |
 | v8.0.0-alpha10b | Added Collect Coins in Practice | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
-| v8.0.0-alpha10b | Added Checkpoint Limit Bypass | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
+| v8.0.0-alpha10b | Added Checkpoint Limit Bypass | mapped | [gameplay-hooks.md](gameplay-hooks.md#evidence--four-labelled-tags-found-by-the-full-section-scan-2026-10-25) | tag 298 (`0x12A`, `HACK_CHECKPOINT_LIMIT_BYPASS`); registered at `0x1800b2092`, callback `FUN_180176250` hooks `PlayLayer::storeCheckpoint` (RVA 0x3B74A0), detour `0x1801762c0` replaces the second argument with `[checkpoint+0xE58]` before tail-jumping to the original. |
 | v8.0.0-alpha10b | Added No "Do Not" Flip | mapped | [gameplay-hooks.md](gameplay-hooks.md) | tag 412 (`HACK_NO_DO_NOT_FLIP`, 0x19C); registered in `FUN_1800afae0` at `0x1800b0e67`, callback `FUN_1801696e0` (hooks `EndLevelLayer::customSetup` + `PlayLayer::setupHasCompleted`). See no-do-not-flip-feature.md. |
 | v8.0.0-alpha10b | Added Meta Status | cluster | [status-labels-feature.md](status-labels-feature.md) |
 | v8.0.0-alpha10b | Added Toolbox Button Bypass | cluster | [ui-addons.md](ui-addons.md) |
@@ -298,7 +305,7 @@ as "every feature named anywhere in the changelog", these three are the first ro
 | v8.0.0-alpha5 | Added Smart StartPos | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v8.0.0-alpha5 | Added Respawn Time modifier | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v8.0.0-alpha5 | Added Confirm Exit | cluster | [ui-addons.md](ui-addons.md) |
-| v8.0.0-alpha5 | Added Allow Low Volume | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
+| v8.0.0-alpha5 | Added Allow Low Volume | mapped | [gameplay-hooks.md](gameplay-hooks.md#evidence--four-labelled-tags-found-by-the-full-section-scan-2026-10-25) | tag 451 (`0x1C3`, `HACK_ALLOW_LOW_VOLUME`); registered at `0x1800b2ea7`, callback `FUN_180186100` hooks `PauseLayer`/`OptionsLayer` music and sfx slider callbacks (RVAs 0x37E130, 0x372A90, 0x372990), each detour recomputes the float and tail-jumps to the volume setter `0x180129980`. |
 | v8.0.0-alpha5 | Added No Particles | mapped | [render-hooks.md](render-hooks.md) | tag 402 (`HACK_NO_PARTICLES`, 0x192); registered in `FUN_1800afae0` at `0x1800b11a8`, callback `FUN_1801703b0`. See no-particles-feature.md. |
 | v8.0.0-alpha5 | Added No Wave Trail | mapped | [render-hooks.md](render-hooks.md) | tag 397 (`HACK_NO_WAVE_TRAIL`, 0x18D); registered in `FUN_1800afae0` at `0x1800b17b3`, callback `FUN_1801721f0` (hooks `HardStreak::updateStroke`). See no-wave-trail-feature.md. |
 | v8.0.0-alpha5 | Added Solid Wave Trail | mapped | [cosmetic-feature.md](cosmetic-feature.md) | tag 396 (`HACK_SOLID_WAVE_TRAIL`); blend-func toggle in `FUN_1801EECA0` (solid 0x30300000001 vs blended 0x100000302); registered in `FUN_1800afae0` at `0x1800b1a06`, callback `FUN_1801728c0` hooks `PlayerObject::setupStreak` (RVA 0x3887C0) and `PlayerObject::updateStreakBlend` (0x388CA0). See cosmetic-feature.md and [hook-registrations.md](hook-registrations.md#worked-example-promoting-a-candidate-row-to-verified). |

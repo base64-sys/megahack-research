@@ -176,3 +176,91 @@ Completion".
 UNVERIFIED: which JSON keys bind to tags 0x1E6, 0x1E7, 0x1EA; the semantics of
 `PlayLayer+0x32A4` (frame counter) and `+0x3250`/`+0x330`; whether this is
 "TPS Bypass" or "Legacy Mode to Speedhack".
+
+## Evidence — four labelled tags found by the full-section scan (2026-10-25)
+
+The registration scan was originally bounded to `0x1800AFAE0`–`0x1800B2000` and missed 46
+registrations. Four of the recovered tags have a static label that matches a changelog row
+verbatim, so the tag↔feature binding needs no inference:
+
+| Tag | Static label | Registration | Callback | Hooks |
+| ---: | --- | --- | --- | --- |
+| `0x59` | `HACK_INSTANT_COMPLETE` | `0x1800B25B9` | `0x1801789E0` | `PlayLayer::postUpdate` 0x3B4BA0, detour `0x180178B10`; `PlayLayer::levelComplete` 0x3A7A80, detour `0x180178BC0`; `PlayLayer::updateTimeWarp` 0x3AB9A0, detour `0x180178BE0` |
+| `0x12A` | `HACK_CHECKPOINT_LIMIT_BYPASS` | `0x1800B2092` | `0x180176250` | `PlayLayer::storeCheckpoint` 0x3B74A0, detour `0x1801762C0` |
+| `0x1C3` | `HACK_ALLOW_LOW_VOLUME` | `0x1800B2EA7` | `0x180186100` | `PauseLayer::musicSliderChanged` 0x37E130 and `sfxSliderChanged` 0x372A90, `OptionsLayer::musicSliderChanged` 0x372990 / `sfxSliderChanged` 0x372A90, detours `0x180186290`/`0x1801862C0`/`0x1801862F0`/`0x180186370` |
+| `0x1CD` | `HACK_FAST_CHESTS` | `0x1800B300C` | `0x180187820` | `RewardUnlockLayer::init` 0x3CDDF0, detour `0x180187CE0`; `playRewardEffect` 0x3CEDE0, detour `0x180187D00`; `showCloseButton` 0x3D0480, detour `0x180187D20`; two symbol-resolved hooks |
+
+All four callbacks follow the usual shape: `movzx`/`cmp` on `*param_2`, the `== 1` path
+installs with the detours above, and the other path unregisters through `FUN_180108A80`.
+
+### The "scoped flag" detour idiom
+
+Instant Complete and Fast Chests do not suppress their target. Their detours set a global
+byte, call the original work, then clear the byte:
+
+```
+; Fast Chests, RewardUnlockLayer::init detour 0x180187CE0
+0x180187CE4  mov  byte [rip+0x684BF5], 1     ; -> 0x18080C8E0
+0x180187CEB  call 0x1801AAAE0                ; original work
+0x180187CF0  mov  byte [rip+0x684BE9], 0     ; -> 0x18080C8E0
+0x180187CFB  ret
+```
+
+| Feature | Flag global | Writers |
+| --- | --- | --- |
+| Instant Complete | `0x18080C8C8` | `0x180178BC4` (set) / `0x180178BD0` (clear) in the `levelComplete` detour |
+| Fast Chests | `0x18080C8E0` | `0x180187CE4` / `0x180187CF0` (`init`) and `0x180187D04` / `0x180187D10` (`playRewardEffect`) |
+
+The two flags are adjacent but distinct (`0x18080C8C8` vs `0x18080C8E0`), so they do not
+share state. **UNVERIFIED:** which code reads either flag, and therefore what is accelerated;
+both are in `.data`'s zero-fill tail and no reader was located this pass. The idiom is
+recorded because it distinguishes these toggles from the one-byte-`ret` suppressions.
+
+### Checkpoint Limit Bypass rewrites an argument
+
+`PlayLayer::storeCheckpoint` (0x3B74A0) is tail-replaced by `0x1801762C0`:
+
+```
+0x1801762CC  mov  rcx, [rcx+0x3888]     ; PlayLayer -> sub-object
+0x1801762D3  call 0x180532E10           ; UNVERIFIED callee
+0x1801762D8  mov  rdx, [rsi+0xE58]      ; checkpoint object -> field
+0x1801762DF  mov  rax, [rdi]            ; PlayLayer vtable
+0x1801762E2  mov  rax, [rax+0x478]      ; original storeCheckpoint
+0x1801762E9  mov  rcx, rdi
+0x1801762F2  jmp  rax
+```
+
+The second argument is replaced with the value at `[checkpoint+0xE58]` before the original
+method is entered, and `[this+0x3888]` is touched first. That is consistent with replacing
+the checkpoint's stored limit/time with a value that bypasses the cap, but **UNVERIFIED:**
+the identity of `0x180532E10`, the type of `[checkpoint+0xE58]`, and whether the cap is
+enforced inside `storeCheckpoint` or downstream.
+
+### Allow Low Volume recomputes the slider value
+
+Each of the four slider detours recomputes the float argument and tail-jumps into the
+volume path. The music variant:
+
+```
+0x180186299  call 0x180128CF0          ; singleton/context
+0x1801862A4  call 0x1801FF9C0          ; slider -> float (rcx = param_2)
+0x1801862AC  movaps xmm1, xmm0
+0x1801862B5  jmp 0x180129980           ; volume setter
+```
+
+The detour passes a different float to the setter than the original would have; the exact
+remapping (and whether it is a clamp, a scale, or a flooring of the low end) is
+**UNVERIFIED** — the two callees were not identified.
+
+### Tag map
+
+| Tag (hex) | Tag (dec) | Accessor | Static-map name | Role |
+| --- | --- | --- | --- | --- |
+| 0x059 | 89 | `isHackEnabled` (Map B) | `HACK_INSTANT_COMPLETE` | Instant Complete master toggle |
+| 0x12A | 298 | `isHackEnabled` (Map B) | `HACK_CHECKPOINT_LIMIT_BYPASS` | Checkpoint limit bypass |
+| 0x1C3 | 451 | `isHackEnabled` (Map B) | `HACK_ALLOW_LOW_VOLUME` | Allow volume below the vanilla floor |
+| 0x1CD | 461 | `isHackEnabled` (Map B) | `HACK_FAST_CHESTS` | Fast chest rewards |
+
+UNVERIFIED: which JSON keys bind to these four tags; the semantics of the two flag globals;
+what `[checkpoint+0xE58]` holds; and the volume remapping.
+
