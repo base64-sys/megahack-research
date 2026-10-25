@@ -123,20 +123,29 @@ python3 scripts/tag_callback_map.py samples/absolllute.hackmega/absolllute.hackm
 ```
 
 It finds every `mov edx,<tag>` / `mov rcx,rax` / `mov r8,rsi` / `call 0x18008f910` sequence in
-`FUN_1800afae0` and resolves the callback as the nearest preceding `lea rcx,[rip+disp]`, which
-is the rule step 1 above establishes. Running it on 2026-10-25 yields **79 registrations**;
-all twenty tag→callback pairs recorded in this note and in the per-feature notes match its
-output, apart from the No Shake row corrected in this batch. That is the check that catches
-the adjacency error: the callback belongs to the block *before* the tag, not after it.
+`.text` and resolves the callback as the nearest preceding `lea rcx,[rip+disp]`, which
+is the rule step 1 above establishes. Running it on 2026-10-25 yields **125 registrations**
+(125 distinct tags); all twenty tag→callback pairs recorded in this note and in the
+per-feature notes match its output, apart from the No Shake row corrected in this batch.
+That is the check that catches the adjacency error: the callback belongs to the block
+*before* the tag, not after it.
 
-The remaining **59 callbacks are unnamed leads** — one function each, almost all still
-unidentified — and are the cheapest next step for the rest of the feature inventory.
+**Correction (2026-10-25).** The tool originally scanned only
+`0x1800AFAE0`–`0x1800B2000` and reported 79 registrations. That window is not the whole
+initialiser: the function continues to `0x1800B3550`, and 46 further registrations sit
+past it (plus two outside the initialiser entirely, at `0x1800A8206` and `0x18018ACDC`).
+The window-bounded count undercounted by 46 and made the map look complete; the tool now
+scans the whole section, and `notes/hook-registrations.md` carries all 125 rows.
+
+The remaining **leads are the unlabelled tags**: 46 of the 125 have no `HACK_*` label, and
+almost all are still unidentified — they are the cheapest next step for the rest of the
+feature inventory.
 The first pass over them is now recorded in
-[hook-registrations.md](hook-registrations.md): all 79 tags with their static `HACK_*`
-label (50 present, 29 runtime-assigned), callback, hook targets, detours, names and
-installers — **104 same-image hooks across 72 callbacks**, 6 symbol-only callbacks and one
-registration that installs no hook at all. A companion tool reads those operands from the
-instruction bytes:
+[hook-registrations.md](hook-registrations.md): all 125 tags with their static `HACK_*`
+label (79 present, 46 runtime-assigned), callback, hook targets, detours, names and
+installers — **186 same-image hooks across 111 callbacks**, 9 symbol-only callbacks, 3
+registrations that resolve a callback but install no hook, and 2 whose callback could not
+be located. A companion tool reads those operands from the instruction bytes:
 
 ```
 python3 scripts/callback_hooks.py samples/absolllute.hackmega/absolllute.hackmega_original.dll 0x180169330

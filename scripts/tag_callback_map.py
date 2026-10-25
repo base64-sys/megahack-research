@@ -78,6 +78,13 @@ def _nearest_callback(img: Image, reg_va: int, limit: int = 0x180) -> int | None
 
 
 def registrations(img: Image) -> list[tuple[int, int]]:
+    """Every ``mov edx,tag / mov rcx,rax / mov r8,rsi / call registrar`` in ``.text``.
+
+    Until 2026-10-25 this was bounded to the cosmetic block at ``INIT_LO``..``INIT_HI``,
+    which made the map look complete at 79 registrations.  The initialiser in fact
+    continues past ``INIT_HI`` and other sites exist elsewhere, so the scan covers the
+    whole section; the two constants are kept only to name that block in the notes.
+    """
     found = _section_bytes(img, ".text")
     if found is None:
         raise SystemExit("no .text section")
@@ -90,8 +97,7 @@ def registrations(img: Image) -> list[tuple[int, int]]:
             break
         va = text_va + off
         if (
-            INIT_LO <= va <= INIT_HI
-            and text[off + MARKER_TAIL_OFF : off + MARKER_TAIL_OFF + len(MARKER_TAIL)] == MARKER_TAIL
+            text[off + MARKER_TAIL_OFF : off + MARKER_TAIL_OFF + len(MARKER_TAIL)] == MARKER_TAIL
             and text[off + 11] == 0xE8
             and struct.unpack_from("<i", text, off + 12)[0] + (va + 16) == REGISTRAR
         ):
