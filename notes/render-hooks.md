@@ -131,6 +131,22 @@ the adjacency error: the callback belongs to the block *before* the tag, not aft
 
 The remaining **59 callbacks are unnamed leads** — one function each, almost all still
 unidentified — and are the cheapest next step for the rest of the feature inventory.
+The first pass over them is now recorded in
+[hook-registrations.md](hook-registrations.md): all 79 tags with their static `HACK_*`
+label (50 present, 29 runtime-assigned), callback, hook targets, detours, names and
+installers — **104 same-image hooks across 72 callbacks**, 6 symbol-only callbacks and one
+registration that installs no hook at all. A companion tool reads those operands from the
+instruction bytes:
+
+```
+python3 scripts/callback_hooks.py samples/absolllute.hackmega/absolllute.hackmega_original.dll 0x180169330
+```
+
+It anchors on the `call 0x18010A370` that resolves an RVA, so it reports the resolution key
+rather than a plausible-looking immediate, and bounds each callback at the next one in the
+registration table. As a check it reproduces the four hand-derived rows (No Shake, No Death
+Effect, No Wave Trail, No Shaders) exactly. One new fact came out of the first run: No Death
+Effect installs a **second** hook, on `PlayLayer::destroyPlayer` (RVA `0x3B39D0`).
 
 
 ## Evidence - No Shake (corrected 2026-10-25)

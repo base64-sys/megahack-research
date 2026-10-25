@@ -270,7 +270,17 @@ Exit criteria:
       tag → callback binding in `FUN_1800afae0` from the instruction bytes: **79
       registrations**, of which 20 are now tied to a named feature and 59 callbacks remain
       unnamed leads. The callback is the nearest *preceding* `lea rcx,[rip+disp]`, not the
-      block after the tag.
+      block after the tag. All 79 are now tabulated in
+      [hook-registrations.md](../notes/hook-registrations.md) with their static `HACK_*`
+      label (50 named, 29 runtime-assigned), callback, and — via the new
+      `scripts/callback_hooks.py` — **104 same-image hooks across 72 callbacks**, plus 6
+      symbol-only callbacks and one registration that installs no hook. Detours, friendly
+      names and the 67 distinct installer helpers are read from the instruction bytes; the
+      four hand-derived rows reproduce exactly. `0x18C`/Solid Wave Trail was read end to
+      end as the worked example (`PlayerObject::setupStreak` 0x3887C0 and
+      `PlayerObject::updateStreakBlend` 0x388CA0, detours 0x180172A80/0x180172B00), and
+      the same pass found that No Death Effect also hooks `PlayLayer::destroyPlayer`
+      (0x3B39D0).
       **New 2026-10-23:** the CRT initializer `FUN_180062940` statically enumerates 85
       `HACK_*` names (Map B hack-flag tags, consumed by the profile loader) and 21
       `CHECKBOX_*` boolean options (Map A config tags, 19 accessor-confirmed). The settings

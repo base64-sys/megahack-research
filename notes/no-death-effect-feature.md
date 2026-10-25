@@ -29,6 +29,18 @@ The detour at `0x180169400` is the entire function `c3` — a bare `ret`. The to
 therefore works by replacing `PlayerObject::playDeathEffect` with a no-op, not by
 observing and then vetoing.
 
+The same callback installs a **second** hook, found on 2026-10-25 with
+`scripts/callback_hooks.py` and not previously recorded:
+
+| Target | RVA | Detour | Installer |
+| --- | --- | --- | --- |
+| `PlayLayer::destroyPlayer` | `0x3B39D0` | `0x180169410` | `FUN_180169480` |
+
+Both hooks are installed on the same `*param_2 == 1` branch, and both are removed through
+`FUN_180108a80` on the other branch. UNVERIFIED: what the `destroyPlayer` detour does and
+whether it is the mechanism behind the changelog's "No Death Effect in duals" fix
+([feature-inventory.md](feature-inventory.md)); the detour body was not read this pass.
+
 Verified 2026-10-25 with `pe_disasm.py` on `FUN_180169330` and `0x180169400`, and
 `scripts/pe_rva.py` for the name string. Note: an intermediate arithmetic slip put the
 name string at `0x180575488` (which holds a pair of pointers) instead of
