@@ -190,6 +190,47 @@ Recording the negative result is the point: each of these needs its vtable slot 
 identified before a mechanism claim can be made, and a friendly name such as
 `UILayer::init` does not tell you what the detour does to the layer.
 
+## Evidence - three runtime-assigned cosmetic tags (2026-10-25)
+
+Tags `0x1A1`, `0x1A4`, `0x1A5`, `0x1B2` and `0x1B4` are **not** in the 85-entry static
+map, so they have no `HACK_*` label to lean on. Their detours were read instead, and in
+three cases the detour is the whole mechanism:
+
+| Tag | Target | Detour | Detour bytes | Effect |
+| ---: | --- | --- | --- | --- |
+| `0x1A1` | `GJBaseGameLayer::toggleFlipped` (RVA `0x2467D0`) | `0x180169C70` | `c3` | the flip is never applied |
+| `0x1A4` | `RingObject::spawnCircle` (RVA `0x4A1DB0`) | `0x18016A3E0` | `c3` | the ring/orb circle is never spawned |
+| `0x1A5` | `PlayerObject::spawnPortalCircle` (RVA `0x397760`) | `0x1801713C0` | `c3` | the portal circle is never spawned |
+| `0x1B2` | `PlayerObject::playSpiderDashEffect` (RVA `0x395170`) | `0x180171A30` | `c3` | the spider-dash effect is never played |
+
+A one-byte `ret` is the same suppression idiom as No Death Effect
+(`0x180169400`), so for these four the mechanism is established, not inferred.
+
+`0x1B4` is different: its detour (`0x1801692D0`) keeps the player and hides one child
+node — it loads `[this+0x660]`, tests it for null, then calls vtable slot `+0x140` with
+`edx=0` (the same slot the pause detours use), and clears `[this+0x660]`'s own `+0x140`
+entry afterwards. So the node is hidden rather than the effect being suppressed.
+
+### Which changelog feature is which
+
+The changelog rows are `Added No Orb Ring`, `Added No Portal Circle` (v9.0.0),
+`Added No Circle Effect` (v9.0.7), `Added No Spider Dash`, `Added No Dash Fire` and
+`Added No Flip Portal hack`. Binding a tag to a row needs more than a plausible target,
+because two of those rows compete for the same target:
+
+| Tag | Binding | Basis |
+| ---: | --- | --- |
+| `0x1B2` | **`Added No Spider Dash`** — mapped | Friendly name `PlayerObject::playSpiderDashEffect`, and the settings key `COSMETIC/HACK_NO_SPIDER_DASH` is present in [settings-contents.md](settings-contents.md). Two independent angles. |
+| `0x1A4` | **`Added No Orb Ring`** — mapped | The hook's friendly name is `RingObject::spawnCircle`, i.e. the ring spawned by a ring/orb object, and the competing circle-family row is portal-specific (its fix note names mini and wave portals, not orbs). The binding assumes the friendly name reflects behaviour, which the code does not independently prove. |
+| `0x1A5` | UNVERIFIED between `No Portal Circle` and `No Circle Effect` | Both changelog rows describe a portal circle and only one tag hooks `spawnPortalCircle`. The rows may be a rename, or one of them may be implemented elsewhere (for example inside the ring path). Not promoted. |
+| `0x1A1` | UNVERIFIED: `Added No Flip Portal hack` | The mechanism matches (flip suppressed), but no settings key or label corroborates the binding, and the row could equally be handled by the editor-side flip path. Not promoted. |
+| `0x1B4` | UNVERIFIED: `Added No Dash Fire` | Hiding the node at `this+0x660` is consistent with hiding dash fire, but `+0x660` was not identified as the dash-fire sprite. Not promoted. |
+
+`0x1AD` is a separate, larger case and is not a cosmetic no-op: it hooks both
+`PlayLayer::updateProgressbar` (`0x3B23C0`, detour `0x180165110`, a real function with a
+`0xd0` frame) and `PlayLayer::getCurrentPercent` (`0x3B3950`, detour `0x1801655E0`), which
+is the shape of the percentage feature rather than a "No …" toggle.
+
 ## Evidence - No Shake (corrected 2026-10-25)
 
 `HACK_NO_SHAKE` (tag 409, `0x199`) is registered as a hook in `FUN_1800afae0`

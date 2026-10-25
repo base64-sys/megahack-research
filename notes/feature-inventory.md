@@ -13,7 +13,7 @@
 | `mapped` | The feature has its own evidence: a note that names it, its settings key(s) and default, and/or its implementing function(s) with VAs. |
 | `alias` / `dead` | A restatement of an earlier feature / absent from this build, with the evidence for that call. |
 
-All 389 rows below were `cluster` at the 2026-10-23 baseline. **Forty-four are now
+All 389 rows below were `cluster` at the 2026-10-23 baseline. **Forty-six are now
 `mapped`**; the [Mapped rows](#mapped-rows) table below is the authoritative list, with
 tag, registration site and hook address for each one.
 
@@ -23,9 +23,13 @@ Trail, No Wave Trail, No Wave Trail Behind, Wave Pulse Size, No Wave Pulse, Trai
 Cutting, No Robot Fire, No Robot/Swing Fire, Classic Particles, No "Do Not" Flip, and
 Auto Deafen — each by the same pattern: a `mov edx, <tag>` / `call FUN_18008f910`
 registration in the shared initialiser `FUN_1800afae0`, plus a callback that installs
-or removes the hook. **Added Hide Player** is the 2026-10-25 promotion, and the only one
-whose detour body was read as well: it forces `edx=0` and jumps to the visibility setter.
-The other 345 rows remain `cluster`.
+or removes the hook. **Added Hide Player** (2026-10-25) added the detour body as well:
+it forces `edx=0` and jumps to the visibility setter. **Added No Orb Ring** and
+**Added No Spider Dash** followed from one-byte `ret` detours on
+`RingObject::spawnCircle` and `PlayerObject::playSpiderDashEffect`; both tags are
+runtime-assigned and have no static label, so those two bindings rest on the target
+plus, for Spider Dash, the `COSMETIC/HACK_NO_SPIDER_DASH` settings key. The other 343
+rows remain `cluster`.
 
 A keyword check at the baseline found that **185 of 389** rows point at a note that
 never mentions the feature at all, so for those even the cluster assignment is only a
@@ -76,6 +80,8 @@ lead. That count predates every promotion since the baseline; the method is reco
 | Added No "Do Not" Flip | tag 412 (`HACK_NO_DO_NOT_FLIP`, 0x19C); registered in `FUN_1800afae0` at `0x1800b0e67`, callback `FUN_1801696e0` (hooks `EndLevelLayer::customSetup` + `PlayLayer::setupHasCompleted`). See no-do-not-flip-feature.md. |
 | Added Auto Deafen | tag 279 (`HACK_AUTO_DEAFEN`, 0x117); registered in `FUN_1800afae0` at `0x1800b1dc8`, callback `FUN_180174a80` (hooks `PlayLayer::resetLevel`, RVA 0x3B8EB0). See auto-deafen-feature.md. |
 | Added Hide Player | tag 386 (`0x182`, `HACK_HIDE_PLAYER`); registered in `FUN_1800afae0` at `0x1800b0aaf`, callback `FUN_180167a60` hooks `PlayerObject::toggleVisibility` (RVA 0x38B440), detour `0x180167b10` forces `edx=0` before `jmp 0x1801a9b70`. See [render-hooks.md](render-hooks.md#evidence---hide-player-verified-2026-10-25). |
+| Added No Orb Ring | tag 420 (`0x1A4`, runtime-assigned — no static `HACK_*` label); registered in `FUN_1800afae0` at `0x1800b1131`, callback `FUN_18016a370` hooks `RingObject::spawnCircle` (RVA 0x4A1DB0), detour `0x18016a3e0` is a bare `ret`. See [render-hooks.md](render-hooks.md#evidence---three-runtime-assigned-cosmetic-tags-2026-10-25). |
+| Added No Spider Dash | tag 434 (`0x1B2`, runtime-assigned); registered in `FUN_1800afae0` at `0x1800b15d7`, callback `FUN_1801719c0` hooks `PlayerObject::playSpiderDashEffect` (RVA 0x395170), detour `0x180171a30` is a bare `ret`. Key `COSMETIC/HACK_NO_SPIDER_DASH`. See [render-hooks.md](render-hooks.md#evidence---three-runtime-assigned-cosmetic-tags-2026-10-25). |
 | Added No (C) Mark | tag 44 (`HACK_NO_C_MARK`, 0x02C); registered in `FUN_1800afae0` at `0x1800b049a`, callback `FUN_180162d20` (hooks `ShareLevelLayer::onShare`, RVA 0x490270). See no-c-mark-feature.md. |
 | Added No Respawn Flash | tag 398 (`HACK_NO_RESPAWN_FLASH`, 0x18E); registered in `FUN_1800afae0` at `0x1800b13fb`, callback `FUN_1801714c0` (hooks `PlayerObject::playSpawnEffect`, RVA 0x397480). See no-respawn-flash-feature.md. |
 | Added No Death Effect mod | tag 399 (`HACK_NO_DEATH_EFFECT`, 0x18F); registered in `FUN_1800afae0` at `0x1800b0df0`, callback `FUN_180169330` (hooks `PlayerObject::playDeathEffect`, RVA 0x37EF10, with a bare-`ret` detour at `0x180169400`). See no-death-effect-feature.md. |
@@ -138,7 +144,7 @@ as "every feature named anywhere in the changelog", these three are the first ro
 | v9.0.4 | Added Multiple Editor Trails | cluster | [creator-feature.md](creator-feature.md) |
 | v9.0.4 | Added No Dash Fire | cluster | [render-hooks.md](render-hooks.md) |
 | v9.0.4 | Added No New Best Popup | cluster | [ui-addons.md](ui-addons.md) |
-| v9.0.4 | Added No Spider Dash | cluster | [render-hooks.md](render-hooks.md) |
+| v9.0.4 | Added No Spider Dash | mapped | [render-hooks.md](render-hooks.md#evidence---three-runtime-assigned-cosmetic-tags-2026-10-25) | tag 434 (`0x1B2`, runtime-assigned, no static label); registered at `0x1800b15d7`, callback `FUN_1801719c0` hooks `PlayerObject::playSpiderDashEffect` (RVA 0x395170), detour `0x180171a30` is a bare `ret`. Key `COSMETIC/HACK_NO_SPIDER_DASH` in [settings-contents.md](settings-contents.md). |
 | v9.0.4 | Added Same Dual Colour to Iconic | cluster | [iconic-feature.md](iconic-feature.md) |
 | v9.0.4 | Added Session Time | cluster | [status-labels-feature.md](status-labels-feature.md) |
 | v9.0.4 | Added Show Hitboxes Player Collison Blocks | cluster | [show-hitboxes-feature.md](show-hitboxes-feature.md) |
@@ -173,7 +179,7 @@ as "every feature named anywhere in the changelog", these three are the first ro
 | v9.0.0 | Added No Fade Out Audio | cluster | [audio-sync-feature.md](audio-sync-feature.md) |
 | v9.0.0 | Added No Glow | cluster | [render-hooks.md](render-hooks.md) |
 | v9.0.0 | Added No Mirror | cluster | [render-hooks.md](render-hooks.md) |
-| v9.0.0 | Added No Orb Ring | cluster | [render-hooks.md](render-hooks.md) |
+| v9.0.0 | Added No Orb Ring | mapped | [render-hooks.md](render-hooks.md#evidence---three-runtime-assigned-cosmetic-tags-2026-10-25) | tag 420 (`0x1A4`, runtime-assigned, no static label); registered at `0x1800b1131`, callback `FUN_18016a370` hooks `RingObject::spawnCircle` (RVA 0x4A1DB0), detour `0x18016a3e0` is a bare `ret`. |
 | v9.0.0 | Added No Particles Classic (for pre-v9 behaviour) | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v9.0.0 | Added No Portal Circle | cluster | [render-hooks.md](render-hooks.md) |
 | v9.0.0 | Added Menu Snow in December | mapped | [cosmetic-feature.md](cosmetic-feature.md) | tag 498 (0x1F2, runtime-assigned Map B); `FUN_180154AD0` checks December via `_time64`, registers snow particle creator `FUN_180154C10` on `MenuLayer::init` and listener `FUN_1801550F0`. See cosmetic-feature.md. |
