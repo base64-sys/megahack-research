@@ -246,6 +246,31 @@ records `LEVEL/HACK_CONFIRM_FULL_RESET` and `LEVEL/HACK_CONFIRM_NORMAL` among th
 | 0x139 | 313 | `isHackEnabled` (Map B) | `HACK_CONFIRM_RESET` | Confirm before restart |
 | 0x13A | 314 | `isHackEnabled` (Map B) | `HACK_CONFIRM_FULL_RESET` | Confirm before full reset |
 
-UNVERIFIED: the dialog class behind `0x1801E7F50`; which code sets and clears the shared
-guard `0x18080C638`; the JSON keys for three of the four confirm tags.
+### Who sets the guard
+
+A `.text` scan for rip-relative references to `0x18080C638` finds exactly **six**: the four
+`cmp` instructions above, plus one writer pair at `0x1801778C9` (set to 1) and `0x1801778E4`
+(clear to 0) inside `FUN_1801778C0`:
+
+```
+0x1801778C0  sub  rsp, 0x28
+0x1801778C4  test r8b, r8b
+0x1801778C7  je   0x1801778EB
+0x1801778C9  mov  byte [0x18080C638], 1   ; answering the dialog
+0x1801778D0  movsxd rax, [rcx+0x18]
+0x1801778D4  add  rax, [rcx+8]
+0x1801778DE  xor  edx, edx
+0x1801778E0  call qword [r8+0x10]         ; the deferred action
+0x1801778E4  mov  byte [0x18080C638], 0
+```
+
+So the guard is a **scoped re-entrancy flag around the confirmed action**, not a per-setting
+switch: the wrapper sets it, invokes the stored delegate, and clears it. The four detours
+therefore take the direct path only while that delegate is running — which is precisely the
+"the user already confirmed" case. `FUN_1801778C0` has no direct `call` site; its only
+reference is an absolute pointer stored at `0x180576910` (a static descriptor table, not a
+vtable slot: the qword before it is `0x180576920`, not a COL).
+
+UNVERIFIED: the dialog class behind `0x1801E7F50` and the descriptor at `0x180576388`;
+which JSON keys bind to three of the four confirm tags.
 

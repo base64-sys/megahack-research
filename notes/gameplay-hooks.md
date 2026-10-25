@@ -269,3 +269,46 @@ remapping (and whether it is a clamp, a scale, or a flooring of the low end) is
 UNVERIFIED: which JSON keys bind to these four tags; the semantics of the two flag globals;
 what `[checkpoint+0xE58]` holds; and the volume remapping.
 
+## Evidence — Main Menu Gameplay (2026-10-25)
+
+`HACK_MAIN_MENU_PLAY` (tag 457, `0x1C9`; entry #31 in the static label map, store VA
+`0x180063529`) is registered in `FUN_1800AFAE0` at `0x1800B308D`; the callback is
+`FUN_180189260`. It hooks three methods of the menu player layer, all resolved by name:
+
+| Target | RVA | Detour | Installer |
+| --- | ---: | --- | --- |
+| `MenuGameLayer::tryJump` | `0x331F70` | `0x180189390` | `0x180189450` |
+| `MenuGameLayer::update` | `0x332240` | `0x1801893A0` | `0x180189450` |
+| `MenuGameLayer::ccTouchBegan` | `0x333600` | `0x180189400` | `0x180189630` |
+
+The three detours implement one small state machine around a single flag byte at
+**`0x18080C920`** (three rip-relative references, all inside these detours):
+
+```
+0x180189400  sub  rsp, 0x28
+0x180189404  add  rcx, -0x140              ; ccTouchBegan's node -> the menu layer
+0x18018940D  mov  rcx, [rcx+0x1B0]         ; the menu icon object
+0x180189419  cmp  byte [rcx+0x9BE], 0      ; icon state A
+0x180189422  cmp  byte [rcx+0x9BB], 0      ; icon state B
+0x180189432  call 0x1801A85A0              ; start controlling the icon
+0x18018943C  mov  byte [0x18080C920], 1    ; gameplay active
+0x180189443  mov  al, 1                    ; consume the touch
+```
+
+If either icon-state byte is non-zero the detour returns `0` without starting anything, so
+the touch falls through to the menu. `update` (detour `0x1801893A0`) checks the same flag
+first, calls `0x18019EF10`, and while the flag is set advances the icon through
+`0x1801A8920([layer+0x1B0], 1)` before clearing the flag at `0x1801893E7`.
+`tryJump`'s detour is a bare `ret` (`0x180189390`), which removes the menu icon's automatic
+jump while the player is driving it.
+
+### Tag map
+
+| Tag (hex) | Tag (dec) | Accessor | Static-map name | Role |
+| --- | --- | --- | --- | --- |
+| 0x1C9 | 457 | `isHackEnabled` (Map B) | `HACK_MAIN_MENU_PLAY` | Master toggle (Main Menu Gameplay) |
+
+UNVERIFIED: what `0x18019EF10` and `0x1801A85A0`/`0x1801A8920` are (names not recovered);
+what the icon-state bytes `+0x9BB`/`+0x9BE` mean; why `tryJump` must be suppressed rather
+than left to run; which JSON key binds to tag 0x1C9.
+
