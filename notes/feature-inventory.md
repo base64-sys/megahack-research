@@ -13,21 +13,21 @@
 | `mapped` | The feature has its own evidence: a note that names it, its settings key(s) and default, and/or its implementing function(s) with VAs. |
 | `alias` / `dead` | A restatement of an earlier feature / absent from this build, with the evidence for that call. |
 
-All 389 rows below were `cluster` at the 2026-10-23 baseline. Twenty-five now have per-feature
-evidence and are `mapped`: **Added Safe Mode**, **Added Auto Safe Mode**,
-**Added Disable Progress to Noclip**, **Added Show Hitboxes**, **Added Show Hitboxes on Death**,
-**Added "Requires Show Hitboxes" option to Show Hitbox Trail**, **Added Frame Stepper**,
-**Added StartPos Switcher**, **Added Solid Wave Trail**, **Added Thread Priority**,
-**Added Transition Customiser (with duration)**, **Added Pitch Shifter**,
-**Added TPS Bypass**, **Added Borderless Fullscreen**, **Added multi-lingual support**,
-**Added Interface tab to disable Mega Hack UI changes**, **Added Menu Snow in December**,
-**Added Noclip Accuracy**, **Added Corrective Music Sync**,
-**Added NoClip Accuracy screen tint**, **Added Custom Background (successor to Transparent BG)**,
-**Added Hitbox Trail**, **Added Accurate Percentage**, **Added Noclip Limits** and
-**Added 0% Practice Complete** (see below). The other 364 remain `cluster`. A keyword check
-at the baseline found that **185 of 389** rows point at a note that never mentions the
-feature at all, so for those even the cluster assignment is only a lead. That count
-predates the three promotions; the method is recorded in
+All 389 rows below were `cluster` at the 2026-10-23 baseline. **Forty-three are now
+`mapped`**; the [Mapped rows](#mapped-rows) table below is the authoritative list, with
+tag, registration site and hook address for each one.
+
+The 2026-10-24 batch promoted eighteen hook-registered toggles — No (C) Mark, No Death
+Effect, No Particles, No Respawn Flash, No Shake, No Portal Lightning, No Pulse, No
+Trail, No Wave Trail, No Wave Trail Behind, Wave Pulse Size, No Wave Pulse, Trail
+Cutting, No Robot Fire, No Robot/Swing Fire, Classic Particles, No "Do Not" Flip, and
+Auto Deafen — each by the same pattern: a `mov edx, <tag>` / `call FUN_18008f910`
+registration in the shared initialiser `FUN_1800afae0`, plus a callback that installs
+or removes the hook. The other 346 rows remain `cluster`.
+
+A keyword check at the baseline found that **185 of 389** rows point at a note that
+never mentions the feature at all, so for those even the cluster assignment is only a
+lead. That count predates every promotion since the baseline; the method is recorded in
 [m3-validation.md](m3-validation.md).
 
 ## Mapped rows
@@ -59,6 +59,38 @@ predates the three promotions; the method is recorded in
 | Added Accurate Percentage | tag 429 (0x1AD, runtime-assigned Map B); `FUN_180165110` hooks `PlayLayer::updateProgressbar` (RVA 0x3B23C0) and formats percentage with configurable decimals (tag 0x1AE = 430). See best-run-feature.md. |
 | Added Noclip Limits | tag 83 (`HACK_NOCLIP_LIMITS`); `FUN_18017A290` implements accuracy limit (tag 0x55/0x54) and death limit (tag 0x57/0x56) gating tint overlay. See noclip-feature.md. |
 | Added 0% Practice Complete | tag 296 (`HACK_0_PRACTICE_COMPLETE`, static map entry #0); read via `hackpro::Config` vtable (`FUN_1800917B0` at 0x180544FF0). No gameplay code reads it directly. See gameplay-hooks.md. |
+| Added No Particles | tag 402 (`HACK_NO_PARTICLES`, 0x192); registered in `FUN_1800afae0` at `0x1800b11a8`, callback `FUN_1801703b0` (toggles cocos2d hook based on `*param_2`). See no-particles-feature.md. |
+| Added No Shake | tag 409 (`HACK_NO_SHAKE`, 0x199); registered in `FUN_1800afae0` at `0x1800b1560`, callback `FUN_1801718C0` (hooks `PlayLayer::init`, RVA 0x3A5B00, detour 0x180171930). See no-shake-feature.md. |
+| Added No Portal Lightning | tag 416 (`HACK_NO_PORTAL_LIGHTNING`, 0x1A0); registered in `FUN_1800afae0` at `0x1800b1296`, callback `FUN_180171170` (hooks `GJBaseGameLayer::lightningFlash`, RVA 0x246D00). See no-portal-lightning-feature.md. |
+| Added No Pulse | tag 413 (`HACK_NO_PULSE`, 0x19D); registered in `FUN_1800afae0` at `0x1800b1384`, callback `FUN_1801713e0` (hooks `PlayLayer::updateVisibility`, RVA 0x3AF3A0). See no-pulse-feature.md. |
+| Added No Trail | tag 395 (`HACK_NO_TRAIL`, 0x18B); registered in `FUN_1800afae0` at `0x1800b16c5`, callback `FUN_180171db0` (hooks `cocos2d::CCMotionStreak::draw`). See no-trail-feature.md. |
+| Added No Wave Trail | tag 397 (`HACK_NO_WAVE_TRAIL`, 0x18D); registered in `FUN_1800afae0` at `0x1800b17b3`, callback `FUN_1801721f0` (hooks `HardStreak::updateStroke`, RVA 0x2B8EF0). See no-wave-trail-feature.md. |
+| Added No Wave Trail Behind | tag 414 (`HACK_NO_WAVE_TRAIL_BEHIND`, 0x19E); registered in `FUN_1800afae0` at `0x1800b182a`, callback `FUN_180172280` (hooks `PlayerObject::activateStreak`, RVA 0x3A0090). See no-wave-trail-behind-feature.md. |
+| Added Wave Pulse Size | tag 407 (`HACK_WAVE_PULSE_SIZE`, 0x197); registered in `FUN_1800afae0` at `0x1800b1c59`, callback `FUN_180173920` (hooks `PlayerObject::update`, RVA 0x388D80). See wave-pulse-size-feature.md. |
+| Added Trail Cutting | tag 392 (`HACK_TRAIL_CUTTING`, 0x188); registered in `FUN_1800afae0` at `0x1800b1be2`, callback `FUN_1801732c0` (hooks `cocos2d::CCMotionStreak::initWithFade`). See trail-cutting-feature.md. |
+| Added No Robot Fire | tag 440 (0x1B8, runtime-assigned); registered in `FUN_1800afae0` at `0x1800b1472`, callback `FUN_180171550` (hooks `PlayerObject::toggleRobotMode`). See no-robot-swing-fire-feature.md. |
+| Added No Robot/Swing Fire | tags 440/441 (0x1B8/0x1B9, runtime-assigned); registered in `FUN_1800afae0` at `0x1800b1472`/`0x1800b164e`, callbacks `FUN_180171550`/`FUN_180171ca0` (hooks `PlayerObject::toggleRobotMode`/`toggleSwingMode`). See no-robot-swing-fire-feature.md. |
+| Added Classic Particles | tag 390 (`HACK_CLASSIC_PARTICLES`, 0x186); registered in `FUN_1800afae0` at `0x1800b085c`, callback `FUN_180166270` (hooks `cocos2d::CCParticleSystem::loadScaledDefaults`). See classic-particles-feature.md. |
+| Added No "Do Not" Flip | tag 412 (`HACK_NO_DO_NOT_FLIP`, 0x19C); registered in `FUN_1800afae0` at `0x1800b0e67`, callback `FUN_1801696e0` (hooks `EndLevelLayer::customSetup` + `PlayLayer::setupHasCompleted`). See no-do-not-flip-feature.md. |
+| Added Auto Deafen | tag 279 (`HACK_AUTO_DEAFEN`, 0x117); registered in `FUN_1800afae0` at `0x1800b1dc8`, callback `FUN_180174a80` (hooks `PlayLayer::resetLevel`, RVA 0x3B8EB0). See auto-deafen-feature.md. |
+| Added No (C) Mark | tag 44 (`HACK_NO_C_MARK`, 0x02C); registered in `FUN_1800afae0` at `0x1800b049a`, callback `FUN_180162d20` (hooks `ShareLevelLayer::onShare`, RVA 0x490270). See no-c-mark-feature.md. |
+| Added No Respawn Flash | tag 398 (`HACK_NO_RESPAWN_FLASH`, 0x18E); registered in `FUN_1800afae0` at `0x1800b13fb`, callback `FUN_1801714c0` (hooks `PlayerObject::playSpawnEffect`, RVA 0x397480). See no-respawn-flash-feature.md. |
+| Added No Death Effect mod | tag 399 (`HACK_NO_DEATH_EFFECT`, 0x18F); registered in `FUN_1800afae0` at `0x1800b0df0`, callback `FUN_180169330` (hooks `PlayerObject::playDeathEffect`, RVA 0x37EF10, with a bare-`ret` detour at `0x180169400`). See no-death-effect-feature.md. |
+
+## Toggles outside the 389
+
+The row universe above is the `Added …` changelog bullets. Three toggles are named elsewhere
+in the changelog (under `New For 2.2 Mods`) and are mapped in their own notes, but have no
+row here:
+
+| Feature | Evidence |
+| --- | --- |
+| No Shaders | tag 389 (`HACK_NO_SHADERS`, 0x185); registered in `FUN_1800afae0` at `0x1800b14e9`, callback `FUN_180171620` (hooks `ShaderLayer::performCalculations`, RVA 0x4880B0, and `ShaderLayer::visit`, 0x488A60). See [no-shaders-feature.md](no-shaders-feature.md). |
+| No Camera | tag 387 (`HACK_NO_CAMERA`, 0x183); registered in `FUN_1800afae0` at `0x1800b0c14`, callback `FUN_1801680e0` (hooks `CameraTriggerGameObject::triggerObject`, RVA 0x4BD820). See [no-camera-feature.md](no-camera-feature.md). |
+| No Camera Zoom | tag 388 (`HACK_NO_CAMERA_ZOOM`, 0x184); registered in `FUN_1800afae0` at `0x1800b0c8b`, callback `FUN_1801682c0` (hooks `EffectGameObject::triggerObject`, RVA 0x4A5F30). See [no-camera-zoom-feature.md](no-camera-zoom-feature.md). |
+
+Adding them to the counts would mix two different universes. If the M3 criterion is later read
+as "every feature named anywhere in the changelog", these three are the first rows to add.
 
 | Version | Feature (changelog wording) | Status | Notes |
 | --- | --- | --- | --- |
@@ -92,7 +124,7 @@ predates the three promotions; the method is recorded in
 | v9.0.8 | Added Auto-Select toggle for Search | cluster | [ui-addons.md](ui-addons.md) |
 | v9.0.8 | Added Coin Shower | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v9.0.8 | Added No End Shake | cluster | [render-hooks.md](render-hooks.md) |
-| v9.0.8 | Added No Robot/Swing Fire | cluster | [render-hooks.md](render-hooks.md) |
+| v9.0.8 | Added No Robot/Swing Fire | mapped | [render-hooks.md](render-hooks.md) | tags 440/441 (0x1B8/0x1B9, runtime-assigned); registered in `FUN_1800afae0` at `0x1800b1472`/`0x1800b164e`, callbacks `FUN_180171550`/`FUN_180171ca0` (hooks `PlayerObject::toggleRobotMode`/`toggleSwingMode`). See no-robot-swing-fire-feature.md. |
 | v9.0.8 | Added Replay option to block inputs | cluster | [replay-feature.md](replay-feature.md) |
 | v9.0.8 | Added Show Layout colour options | cluster | [render-hooks.md](render-hooks.md) |
 | v9.0.8 | Added Show Trajectory iterations/thickness options | cluster | [show-trajectory-feature.md](show-trajectory-feature.md) |
@@ -175,7 +207,7 @@ predates the three promotions; the method is recorded in
 | v8.0.3-alpha.1 | Added Glow to Icon Effects | cluster | [iconic-feature.md](iconic-feature.md) |
 | v8.0.2-alpha.1 | Added Auto Music Sync | cluster | [audio-sync-feature.md](audio-sync-feature.md) |
 | v8.0.2-alpha.1 | Added Fast Chests | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
-| v8.0.2-alpha.1 | Added No Portal Lightning | cluster | [render-hooks.md](render-hooks.md) |
+| v8.0.2-alpha.1 | Added No Portal Lightning | mapped | [render-hooks.md](render-hooks.md) | tag 416 (`HACK_NO_PORTAL_LIGHTNING`, 0x1A0); registered in `FUN_1800afae0` at `0x1800b1296`, callback `FUN_180171170` (hooks `GJBaseGameLayer::lightningFlash`). See no-portal-lightning-feature.md. |
 | v8.0.2-alpha.1 | Added Main Level Bypass | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v8.0.2-alpha.1 | Added Disable Keybinds in Editor | cluster | [ui-addons.md](ui-addons.md) |
 | v8.0.2-alpha.1 | Added Best Run option to only show current startpos runs | cluster | [startpos-switcher-feature.md](startpos-switcher-feature.md) |
@@ -192,7 +224,7 @@ predates the three promotions; the method is recorded in
 | v8.0.1-alpha.5 | Added Menu Keybind Fallthrough option | cluster | [ui-addons.md](ui-addons.md) |
 | v8.0.1-alpha.5 | Added menu-wide pasting | cluster | [ui-addons.md](ui-addons.md) |
 | v8.0.1-alpha.5 | Added an improved Practice Bug Fix | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
-| v8.0.1-alpha.4 | Added No Wave Trail Behind | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
+| v8.0.1-alpha.4 | Added No Wave Trail Behind | mapped | [gameplay-hooks.md](gameplay-hooks.md) | tag 414 (`HACK_NO_WAVE_TRAIL_BEHIND`, 0x19E); registered in `FUN_1800afae0` at `0x1800b182a`, callback `FUN_180172280` (hooks `PlayerObject::activateStreak`). See no-wave-trail-behind-feature.md. |
 | v8.0.1-alpha.3 | Added Icon Randomiser with editor support | cluster | [iconic-feature.md](iconic-feature.md) |
 | v8.0.1-alpha.3 | Added Icon Effects with editor support | cluster | [iconic-feature.md](iconic-feature.md) |
 | v8.0.1-alpha.3 | Added Same Dual Colour | cluster | [iconic-feature.md](iconic-feature.md) |
@@ -200,7 +232,7 @@ predates the three promotions; the method is recorded in
 | v8.0.0-alpha13b | Added Main Menu Gameplay | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v8.0.0-alpha13b | Added TPS Bypass | mapped | [gameplay-hooks.md](gameplay-hooks.md) | tag 490 (`HACK` TPS Bypass); hooks `GJBaseGameLayer::getModifiedDelta` (RVA 0x2377B0) via `FUN_180196CA0` (registered by `FUN_180196C30`). Tags 0x1E6 (486, TPS value) and 0x1E7 (487, sub-toggle) are runtime-assigned. See gameplay-hooks.md. |
 | v8.0.0-alpha13b | Added Hitbox Trail | mapped | [show-hitboxes-feature.md](show-hitboxes-feature.md) | tag 360 (0x168, runtime-assigned Map B) controls trail overlay draw node 0x1E6813C visibility via `FUN_1801589F0`. Main trail draw is `FUN_1801809A0` (tag 224). See show-hitboxes-feature.md. |
-| v8.0.0-alpha13b | Added No Pulse | cluster | [render-hooks.md](render-hooks.md) |
+| v8.0.0-alpha13b | Added No Pulse | mapped | [render-hooks.md](render-hooks.md) | tag 413 (`HACK_NO_PULSE`, 0x19D); registered in `FUN_1800afae0` at `0x1800b1384`, callback `FUN_1801713e0` (hooks `PlayLayer::updateVisibility`). See no-pulse-feature.md. |
 | v8.0.0-alpha13b | Added Real Time to Lock Delta | cluster | [render-hooks.md](render-hooks.md) |
 | v8.0.0-alpha12 | Added Replay | cluster | [replay-feature.md](replay-feature.md) |
 | v8.0.0-alpha12 | Added Replay for Platformer mode | cluster | [replay-feature.md](replay-feature.md) |
@@ -225,12 +257,12 @@ predates the three promotions; the method is recorded in
 | v8.0.0-alpha10b | Added Best Run | cluster | [best-run-feature.md](best-run-feature.md) |
 | v8.0.0-alpha10b | Added Collect Coins in Practice | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v8.0.0-alpha10b | Added Checkpoint Limit Bypass | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
-| v8.0.0-alpha10b | Added No "Do Not" Flip | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
+| v8.0.0-alpha10b | Added No "Do Not" Flip | mapped | [gameplay-hooks.md](gameplay-hooks.md) | tag 412 (`HACK_NO_DO_NOT_FLIP`, 0x19C); registered in `FUN_1800afae0` at `0x1800b0e67`, callback `FUN_1801696e0` (hooks `EndLevelLayer::customSetup` + `PlayLayer::setupHasCompleted`). See no-do-not-flip-feature.md. |
 | v8.0.0-alpha10b | Added Meta Status | cluster | [status-labels-feature.md](status-labels-feature.md) |
 | v8.0.0-alpha10b | Added Toolbox Button Bypass | cluster | [ui-addons.md](ui-addons.md) |
 | v8.0.0-alpha10b | Added Place Over | cluster | [ui-addons.md](ui-addons.md) |
 | v8.0.0-alpha9b | Added auto update to Geode builds | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
-| v8.0.0-alpha9 | Added Auto Deafen | cluster | [audio-sync-feature.md](audio-sync-feature.md) |
+| v8.0.0-alpha9 | Added Auto Deafen | mapped | [audio-sync-feature.md](audio-sync-feature.md) | tag 279 (`HACK_AUTO_DEAFEN`, 0x117); registered in `FUN_1800afae0` at `0x1800b1dc8`, callback `FUN_180174a80` (hooks `PlayLayer::resetLevel`). See auto-deafen-feature.md. |
 | v8.0.0-alpha9 | Added Show Triggers | cluster | [render-hooks.md](render-hooks.md) |
 | v8.0.0-alpha9 | Added Jumpscare | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v8.0.0-alpha9 | Added Replay Last Checkpoint | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
@@ -242,11 +274,11 @@ predates the three promotions; the method is recorded in
 | v8.0.0-alpha9 | Added Restart, Practice & folder shortcuts | cluster | [ui-addons.md](ui-addons.md) |
 | v8.0.0-alpha8 | Added Show Hitboxes | mapped | [show-hitboxes-feature.md](show-hitboxes-feature.md) | tag 192 (`HACK_SHOW_HITBOXES`); gate `FUN_180203EE0`, draw `FUN_180203F60`→`FUN_180204000`/`FUN_180204150`; per-object draw `FUN_180203070`. See show-hitboxes-feature.md. |
 | v8.0.0-alpha8 | Added Show Hitboxes on Death | mapped | [show-hitboxes-feature.md](show-hitboxes-feature.md) | tag 216 (`HACK_SHOW_HITBOXES_ON_DEATH`); gate `FUN_180203EE0` branch 2, death-object draw via `FUN_180204000` (uses `DAT_18080CB80` from `destroyPlayer` callback). See show-hitboxes-feature.md. |
-| v8.0.0-alpha8 | Added Wave Pulse Size | cluster | [render-hooks.md](render-hooks.md) |
-| v8.0.0-alpha8 | Added No (C) Mark | cluster | [render-hooks.md](render-hooks.md) |
-| v8.0.0-alpha8 | Added No Shake | cluster | [render-hooks.md](render-hooks.md) |
+| v8.0.0-alpha8 | Added Wave Pulse Size | mapped | [render-hooks.md](render-hooks.md) | tag 407 (`HACK_WAVE_PULSE_SIZE`, 0x197); registered in `FUN_1800afae0` at `0x1800b1c59`, callback `FUN_180173920` (hooks `PlayerObject::update`). See wave-pulse-size-feature.md. |
+| v8.0.0-alpha8 | Added No (C) Mark | mapped | [render-hooks.md](render-hooks.md) | tag 44 (`HACK_NO_C_MARK`, 0x02C); registered in `FUN_1800afae0` at `0x1800b049a`, callback `FUN_180162d20` (hooks `ShareLevelLayer::onShare`). See no-c-mark-feature.md. |
+| v8.0.0-alpha8 | Added No Shake | mapped | [no-shake-feature.md](no-shake-feature.md) | tag 409 (`HACK_NO_SHAKE`, 0x199); registered in `FUN_1800afae0` at `0x1800b1560`, callback `FUN_1801718C0` (hooks `PlayLayer::init`, RVA 0x3A5B00, detour 0x180171930). |
 | v8.0.0-alpha8 | Added Clock | cluster | [status-labels-feature.md](status-labels-feature.md) |
-| v8.0.0-alpha7 | Added Classic Particles | cluster | [render-hooks.md](render-hooks.md) |
+| v8.0.0-alpha7 | Added Classic Particles | mapped | [render-hooks.md](render-hooks.md) | tag 390 (`HACK_CLASSIC_PARTICLES`, 0x186); registered in `FUN_1800afae0` at `0x1800b085c`, callback `FUN_180166270` (hooks `cocos2d::CCParticleSystem::loadScaledDefaults`). See classic-particles-feature.md. |
 | v8.0.0-alpha7 | Added Noclip Accuracy | mapped | [noclip-feature.md](noclip-feature.md) | tag 497 (0x1F1, runtime-assigned Map B); `FUN_180152010` hooks `EndLevelLayer::showLayer` (RVA 0x134CA0) and draws "Noclip: {:.2f}%" unless tag enabled. Also reads `HACK_NOCLIP` (tag 72). See noclip-feature.md. |
 | v8.0.0-alpha7 | Added Noclip Limits | mapped | [noclip-feature.md](noclip-feature.md) | tag 83 (`HACK_NOCLIP_LIMITS`); `FUN_18017A290` implements accuracy limit (tag 0x55/0x54) and death limit (tag 0x57/0x56) gating tint overlay. See noclip-feature.md. |
 | v8.0.0-alpha7 | Added Cheat Indicator with breakdown | cluster | [ui-addons.md](ui-addons.md) |
@@ -258,10 +290,10 @@ predates the three promotions; the method is recorded in
 | v8.0.0-alpha5 | Added Respawn Time modifier | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v8.0.0-alpha5 | Added Confirm Exit | cluster | [ui-addons.md](ui-addons.md) |
 | v8.0.0-alpha5 | Added Allow Low Volume | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
-| v8.0.0-alpha5 | Added No Particles | cluster | [render-hooks.md](render-hooks.md) |
-| v8.0.0-alpha5 | Added No Wave Trail | cluster | [render-hooks.md](render-hooks.md) |
+| v8.0.0-alpha5 | Added No Particles | mapped | [render-hooks.md](render-hooks.md) | tag 402 (`HACK_NO_PARTICLES`, 0x192); registered in `FUN_1800afae0` at `0x1800b11a8`, callback `FUN_1801703b0`. See no-particles-feature.md. |
+| v8.0.0-alpha5 | Added No Wave Trail | mapped | [render-hooks.md](render-hooks.md) | tag 397 (`HACK_NO_WAVE_TRAIL`, 0x18D); registered in `FUN_1800afae0` at `0x1800b17b3`, callback `FUN_1801721f0` (hooks `HardStreak::updateStroke`). See no-wave-trail-feature.md. |
 | v8.0.0-alpha5 | Added Solid Wave Trail | mapped | [cosmetic-feature.md](cosmetic-feature.md) | tag 396 (`HACK_SOLID_WAVE_TRAIL`); blend-func toggle in `FUN_1801EECA0` (solid 0x30300000001 vs blended 0x100000302). See cosmetic-feature.md. |
-| v8.0.0-alpha5 | Added No Respawn Flash | cluster | [render-hooks.md](render-hooks.md) |
+| v8.0.0-alpha5 | Added No Respawn Flash | mapped | [render-hooks.md](render-hooks.md) | tag 398 (`HACK_NO_RESPAWN_FLASH`, 0x18E); registered in `FUN_1800afae0` at `0x1800b13fb`, callback `FUN_1801714c0` (hooks `PlayerObject::playSpawnEffect`). See no-respawn-flash-feature.md. |
 | v8.0.0-alpha5 | Added Force StartPos Reset Camera | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v8.0.0-alpha5 | Added StartPos Switcher keybind options | cluster | [startpos-switcher-feature.md](startpos-switcher-feature.md) |
 | v8.0.0-alpha5 | Added StartPos Switcher interface | cluster | [startpos-switcher-feature.md](startpos-switcher-feature.md) |
@@ -270,12 +302,12 @@ predates the three promotions; the method is recorded in
 | v8.0.0-alpha4 | Added Safe Mode | mapped | [safe-mode-feature.md](safe-mode-feature.md) |
 | v8.0.0-alpha4 | Added Auto Safe Mode | mapped | [safe-mode-feature.md](safe-mode-feature.md) |
 | v8.0.0-alpha4 | Added Platformer Practice | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
-| v8.0.0-alpha4 | Added Trail Cutting | cluster | [render-hooks.md](render-hooks.md) |
+| v8.0.0-alpha4 | Added Trail Cutting | mapped | [render-hooks.md](render-hooks.md) | tag 392 (`HACK_TRAIL_CUTTING`, 0x188); registered in `FUN_1800afae0` at `0x1800b1be2`, callback `FUN_1801732c0` (hooks `cocos2d::CCMotionStreak::initWithFade`). See trail-cutting-feature.md. |
 | v8.0.0-alpha4 | Added Zero Delay | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v8.0.0-alpha4 | Added Text Length Bypass | cluster | [ui-addons.md](ui-addons.md) |
 | v8.0.0-alpha4 | Added Slider Bypass | cluster | [ui-addons.md](ui-addons.md) |
-| v8.0.0-alpha4 | Added No Trail | cluster | [render-hooks.md](render-hooks.md) |
-| v8.0.0-alpha4 | Added No Wave Pulse | cluster | [render-hooks.md](render-hooks.md) |
+| v8.0.0-alpha4 | Added No Trail | mapped | [render-hooks.md](render-hooks.md) | tag 395 (`HACK_NO_TRAIL`, 0x18B); registered in `FUN_1800afae0` at `0x1800b16c5`, callback `FUN_180171db0` (hooks `cocos2d::CCMotionStreak::draw`). See no-trail-feature.md. |
+| v8.0.0-alpha4 | Added No Wave Pulse | mapped | [render-hooks.md](render-hooks.md) | tag 394 (`HACK_NO_WAVE_PULSE`, 0x18A); registered in `FUN_1800afae0` at `0x1800b173c`, callback `FUN_180172160` (hooks `PlayerObject::update`). See no-wave-pulse-feature.md. |
 | v8.0.0-alpha4 | Added Disable Progress to Noclip | mapped | [noclip-feature.md](noclip-feature.md) |
 | v8.0.0 (initial release) | Added Profiles | cluster | [ui-addons.md](ui-addons.md) |
 | v8.0.0 (initial release) | Added Mouse 4 & 5 Support to Keybinds | cluster | [input-hooks.md](input-hooks.md) |
@@ -320,7 +352,7 @@ predates the three promotions; the method is recorded in
 | v7.1 (Full) | Added No Death x to editor | cluster | [render-hooks.md](render-hooks.md) |
 | v7.1 (Full) | Added No Effect Circle | cluster | [render-hooks.md](render-hooks.md) |
 | v7.1 (Full) | Added No Menu Music | cluster | [audio-sync-feature.md](audio-sync-feature.md) |
-| v7.1 (Full) | Added No Robot Fire | cluster | [render-hooks.md](render-hooks.md) |
+| v7.1 (Full) | Added No Robot Fire | mapped | [render-hooks.md](render-hooks.md) | tag 440 (0x1B8, runtime-assigned); registered in `FUN_1800afae0` at `0x1800b1472`, callback `FUN_180171550` (hooks `PlayerObject::toggleRobotMode`). See no-robot-swing-fire-feature.md. |
 | v7.1 (Full) | Added Noclip for P1/P2 | cluster | [noclip-feature.md](noclip-feature.md) |
 | v7.1 (Full) | Added Pause Countdown | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v7.1 (Full) | Added Play Song to Level page | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
@@ -416,7 +448,7 @@ predates the three promotions; the method is recorded in
 | v6.2.0 (Full) | Added Level Restart button | cluster | [ui-addons.md](ui-addons.md) |
 | v6.2.0 (Full) | Added Lock Cursor | cluster | [render-hooks.md](render-hooks.md) |
 | v6.2.0 (Full) | Added Mini Cube Icon mod | cluster | [iconic-feature.md](iconic-feature.md) |
-| v6.2.0 (Full) | Added No Death Effect mod | cluster | [render-hooks.md](render-hooks.md) |
+| v6.2.0 (Full) | Added No Death Effect mod | mapped | [render-hooks.md](render-hooks.md) | tag 399 (`HACK_NO_DEATH_EFFECT`, 0x18F); registered in `FUN_1800afae0` at `0x1800b0df0`, callback `FUN_180169330` (hooks `PlayerObject::playDeathEffect`, RVA 0x37EF10, with a bare-`ret` detour at `0x180169400`). See no-death-effect-feature.md. |
 | v6.2.0 (Full) | Added No Force Glow mod | cluster | [render-hooks.md](render-hooks.md) |
 | v6.2.0 (Full) | Added No New Best Popup mod | cluster | [ui-addons.md](ui-addons.md) |
 | v6.2.0 (Full) | Added No Respawn Flash mod | cluster | [render-hooks.md](render-hooks.md) |

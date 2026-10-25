@@ -248,17 +248,22 @@ Mega Hack ships 160+ toggles. Map each to the code that implements it.
 Exit criteria:
 
 - [ ] Every feature listed in `changelog.md` accounted for: implemented, alias, or dead.
-      **Measured 2026-10-23:** all 389 changelog rows are assigned to a subsystem note.
-      Twenty-five now have per-feature evidence and are `mapped` (Safe Mode, Auto Safe Mode,
-      Disable Progress to Noclip, Show Hitboxes, Show Hitboxes on Death, Show Hitbox
-      Trail Requires Show Hitboxes, Frame Stepper, StartPos Switcher, Solid Wave Trail,
-      Thread Priority, Transition Customiser, Pitch Shifter, TPS Bypass, Borderless
-      Fullscreen, multi-lingual support, Interface tab to disable Mega Hack UI
-      changes, Menu Snow in December, Noclip Accuracy, Corrective Music Sync,
-      NoClip Accuracy screen tint, Custom Background, Hitbox Trail, Accurate Percentage,
-      Noclip Limits, 0% Practice Complete); the other 364 remain `cluster`, and for **185 of 389** the linked note never mentioned the feature
-      at the baseline (before the promotions). The criterion stays open. See
+      **Measured 2026-10-23:** the 414 `Added …` changelog bullets collapse to **389 unique
+      feature wordings**, each assigned to a subsystem note. **Forty-three now have
+      per-feature evidence and are `mapped`**; the authoritative list, with tag and hook
+      address per row, is the mapped-rows table in
+      [feature-inventory.md](../notes/feature-inventory.md). The other **346** remain
+      `cluster`, and for **185 of 389** the linked note never mentioned the feature at the
+      baseline (before the promotions). The criterion stays open. See
       [m3-validation.md](../notes/m3-validation.md).
+      **Scope caveat (2026-10-25):** the 389-row universe is the `Added …` bullets only.
+      The changelog also names features under `New For 2.2 Mods` (`No Shaders`,
+      `No Camera Move/Zoom`), `Mod Additions` and `Mod Changes`; those are not in the 389.
+      Three of them are already mapped in their own notes (`no-shaders-feature.md`,
+      `no-camera-feature.md`, `no-camera-zoom-feature.md`) and are listed in the
+      "Toggles outside the 389" table of the inventory.
+      Whether this criterion means "every added feature" or "every feature named anywhere
+      in the changelog" is unresolved, and the row count would grow if the latter.
 - [ ] Each feature mapped to its implementing function(s) with VAs, its settings keys, its
       default, and its interactions.
       **New 2026-10-23:** the CRT initializer `FUN_180062940` statically enumerates 85

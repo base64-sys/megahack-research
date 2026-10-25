@@ -63,6 +63,33 @@ same pattern seen in the input cluster: Mega Hack observes the same gameplay eve
 from several ownership or timing contexts, then funnels each family through one
 shared helper.
 
+## Evidence — No Wave Trail Behind (recovered 2026-10-24 via REA/Ghidra 12.1.2 + pe_disasm)
+
+`HACK_NO_WAVE_TRAIL_BEHIND` (tag 414, `0x19E`) is registered as a hook in the large
+initializer `FUN_1800afae0` (`0x1800afae0`) at `0x1800b182a`:
+
+```
+0x1800b182a  mov  edx, 0x19E          ; tag = HACK_NO_WAVE_TRAIL_BEHIND
+0x1800b182f  mov  rcx, rax            ; resolver
+0x1800b1832  mov  r8, rsi             ; context structure
+0x1800b1835  call 0x18008f910         ; register hook with tag
+```
+
+The callback is `FUN_180172280` (`0x180172280`), which takes `(param_1, param_2)`:
+- If `*param_2 == 1`: registers a hook on `PlayerObject::activateStreak`
+  (RVA `0x3A0090`) via `FUN_1800AB230`, using the string
+  `"PlayerObject::activateStreak"`.
+- If `*param_2 != 1`: unregisters the hook via `FUN_180108a80()`.
+
+### Tag map
+
+| Tag (hex) | Tag (dec) | Accessor | Static-map name | Role |
+| --- | --- | --- | --- | --- |
+| 0x19E | 414 | (registered via FUN_18008f910) | `HACK_NO_WAVE_TRAIL_BEHIND` | Master toggle (No Wave Trail Behind) |
+
+UNVERIFIED: which JSON key binds to tag 0x19E; the exact behavior of the hook
+(veto vs observe).
+
 ## Open questions
 
 - UNVERIFIED: which settings tags gate each gameplay hook. The recovered callbacks
