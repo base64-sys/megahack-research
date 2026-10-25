@@ -447,3 +447,96 @@ returns for that class; and what host RVA `0xCABC0` does — no name string in t
 to it, it is absent from `_host_methods.tsv`, and the only occurrence of the immediate is the
 gateway initialiser above. The "auto download" reading therefore rests on the changelog
 wording plus the deferred-call shape, not on an identified download routine.
+
+## Evidence — Toolbox Button Bypass (2026-10-25)
+
+One changelog row, one tag, two hooks: both stepper handlers of the editor options layer are
+replaced outright, and neither detour calls the function it replaces. That is the whole
+mechanism, so the row is `mapped`; the vanilla ceilings themselves are host code and stay
+`UNVERIFIED`.
+
+| Field | Value |
+| --- | --- |
+| Tag | 47 (`0x02F`, `HACK_TOOLBOX_BUTTON_BYPASS`) |
+| Static label | map entry 74, store `0x1800644EA` (`notes/static-hack-label-map.md`) |
+| Registration | `0x1800B0604` (`notes/hook-registrations.md`) |
+| Callback | `FUN_180163F50` |
+| Installer | `0x180164340` (both hooks, two calls at `0x180163FA0` and `0x180163FFC`) |
+| Hook 1 | `EditorOptionsLayer::onButtonRows`, RVA `0x291A00` -> detour `0x180164020` |
+| Hook 2 | `EditorOptionsLayer::onButtonsPerRow`, RVA `0x291970` -> detour `0x1801641B0` |
+
+### Detour 1 — `onButtonRows`, `0x180164020`
+
+Code cave (no `.pdata` record). Body `0x180164020..0x180164141`, `ret` at `0x180164141`,
+0x122 bytes, then `ud2` at `0x180164142`; the SEH funclet at `0x180164150` is not part of the
+flow.
+
+```
+0x180164020  push rbp; push rsi; push rdi; sub rsp,0x90; lea rbp,[rsp+0x80]
+0x180164032  mov qword [rbp+8], 0xFFFFFFFFFFFFFFFE   ; SEH frame marker
+0x18016403A  mov rsi, rcx                            ; this = EditorOptionsLayer
+0x18016403D  mov rax, [rdx]                          ; stepper argument object
+0x180164040  mov rcx, rdx
+0x180164043  call [rax+0x38]                         ; direction -> eax
+0x180164046  mov ecx, [rsi+0x3F4]                    ; current rows value
+0x18016404C  cmp eax, 1
+0x18016404F  jne 0x180164055
+0x180164051  inc ecx                                ; direction 1: increment, no ceiling
+0x180164053  jmp 0x180164064
+0x180164055  cmp ecx, 3
+0x180164058  mov eax, 2
+0x18016405D  cmovge eax, ecx
+0x180164060  dec eax                                ; floor: max(ecx,3)-1
+0x180164062  mov ecx, eax
+0x180164064  mov [rsi+0x3F4], ecx                    ; store new value
+0x18016406A  mov rdi, [rsi+0x400]                    ; label owner
+0x180164071  mov [rbp-0x28], ecx                     ; format argument payload
+0x180164074  movabs rax, 0x1000000000000000
+0x18016407E  mov [rbp-0x30], rax                     ; argument tag word
+...
+0x180164099  mov qword [rbp-0x50], 1                 ; one format argument
+0x1801640A9  lea rax, [0x180542A08]                  ; "{}"
+0x1801640B0  mov [rbp-0x40], rax
+0x1801640B4  mov qword [rbp-0x38], 2                 ; length 2
+0x1801640C5  lea rcx, [rbp-0x58]                     ; out string
+0x1801640D8  call 0x18000AE30                        ; format "{}" with the count
+0x1801640DD  lea rcx, [rdi+0x168]                    ; label sub-object
+0x1801640EF  mov rax, [rdi+0x168]
+0x1801640F6  mov rdx, rsi
+0x1801640F9  call qword [rax]                        ; vtable slot 0 <- formatted string
+0x180164136  add rsp,0x90; pop rdi; pop rsi; pop rbp; ret
+```
+
+The unchanged part of the body (`0x1801640DD..0x180164141`) allocates the `std::string`
+temporaries, passes the formatted text down and unwinds them; no branch returns to a vanilla
+`onButtonRows`, and no gateway initialiser for RVA `0x291A00` appears anywhere in the cave.
+
+### Detour 2 — `onButtonsPerRow`, `0x1801641B0`
+
+Same shape, body `0x1801641B0..0x1801642D1`, `ret` at `0x1801642D1`, 0x121 bytes, `ud2` at
+`0x1801642D2`. The SEH funclet at `0x1801642E0` ends at `0x180164304` and must not be quoted
+as the body end. Only the member offsets differ:
+
+| | `onButtonRows` | `onButtonsPerRow` |
+| --- | --- | --- |
+| stored count | `[this+0x3F4]` | `[this+0x3F0]` |
+| label owner | `[this+0x400]` | `[this+0x3F8]` |
+| label sub-object | `+0x168` | `+0x168` |
+
+Both detours share the direction logic exactly (`cmp eax,1` -> plain `inc`; anything else ->
+`max(count,3)-1`), the same `"{}"` format call through `0x18000AE30` with a single argument,
+and the same `call [label+0x168]` vtable slot 0. So the toggle raises the maximum of both
+editor steppers and never lets either drop below 1.
+
+Supporting reads: `0x180542A08` holds `7b 7d 00` (`"{}"`) followed by `7b 0a 00`, `22 3a 20 00`,
+`2c 0a 00`, `22 3a 00` — a table of format fragments, the detours using the first; and
+`0x18000AE30` is a large formatting helper (`push rbp/r15/r14/r13/r12/rsi/rdi/rbx`,
+`sub rsp,0x1B8`) with no name string referring to it.
+
+UNVERIFIED: the vanilla ceilings and where the host enforces them — the detours replace the
+functions instead of post-processing their result, so the original bound is not readable from
+this image and the "bypass" wording rests on the changelog plus the unbounded `inc`. Also open:
+the identity of the virtual at `[[arg2]+0x38]` (a direction/step selector is inferred from the
+`cmp eax,1` branch, not proven); the names of `EditorOptionsLayer+0x3F0`/`+0x3F4` and whether
+host code reads them too; and what the objects at `+0x3F8`/`+0x400` are, whose `+0x168`
+sub-object's slot 0 is only shape-compatible with a label `setString`.
