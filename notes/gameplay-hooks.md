@@ -837,3 +837,131 @@ flag (the branch switches from percentage to time when it is set) and what perce
 `0x1801A4CB0` returns; the names of `PlayLayer+0x3540` (the parent the overlay is added to),
 `+0x3188` and `+0x3888` (the only-from-0 test); and what each of the seven overwritten
 vtable slots at `+0x140..+0x1B0` overrides.
+
+## Evidence — Practice Bug Fix (2026-10-25)
+
+One tag serves both changelog wordings. This build has a single `PRACTICE_BUG_FIX` label and a
+single `LEVEL/HACK_PRACTICE_BUG_FIX` settings key, so the v8.0.0-alpha10b bullet and the
+v8.0.1-alpha.5 "improved" bullet are the same toggle at two revisions; both rows are promoted
+together, as with Replay Last Checkpoint.
+
+| Field | Value |
+| --- | --- |
+| Tag | 317 (`0x13D`, `HACK_PRACTICE_BUG_FIX`) |
+| Static label | map entry 53, store `0x180063CD1` |
+| Settings key | `LEVEL/HACK_PRACTICE_BUG_FIX` (`notes/settings-contents.md`) |
+| Registration | `0x1800B288D` |
+| Callback | `FUN_18017B620` |
+| Installer | `0x1800AB850` (the coin hook uses the same installer on the same target) |
+| Target | `PlayLayer::resetLevel`, RVA `0x3B8EB0` |
+| Detour | `0x18017B690` (code cave) |
+| Name string | `0x180545515` "PlayLayer::resetLevel" |
+
+### Callback
+
+```
+0x18017B626  movzx ebx, byte [rdx]        ; enable flag
+0x18017B629  call 0x180108960             ; hook context
+0x18017B631  cmp bl, 1
+0x18017B636  call 0x18010A250             ; module base
+0x18017B63B  mov edx, 0x3B8EB0
+0x18017B643  call 0x18010A370             ; resolve host RVA -> function
+0x18017B650  mov dword [rsp+0x20], 0xBD8  ; installer argument 5
+0x18017B648  mov dword [rsp+0x28], 1      ; installer argument 6
+0x18017B658  lea r8, [0x18017B690]        ; detour
+0x18017B65F  lea r9, [0x180545515]        ; "PlayLayer::resetLevel"
+0x18017B66C  call 0x1800AB850
+```
+
+The disable branch is at `0x18017B679`. The fourth and fifth stack arguments differ from the
+Auto Pickup Coins callback (`FUN_1801754C0`), which installs on the same RVA with
+`[rsp+0x20] = 0xFFFFFFE0`; this one passes `0xBD8`. Both pass `1` in the sixth slot. The pair
+has to be ordered against each other on one target, so the field is read as an install
+order/priority, but the meaning of `0xBD8` itself is UNVERIFIED.
+
+### Detour body — `0x18017B690..0x18017B6C0` (0x31 bytes, `ret` at `0x18017B6C0`)
+
+```
+0x18017B690  push rsi; sub rsp,0x20
+0x18017B695  mov rsi, rcx                 ; this = PlayLayer
+0x18017B698  call 0x1801A4300             ; cached original resetLevel, then:
+0x18017B69D  mov rcx, rsi
+0x18017B6A0  call 0x18017B6D0             ; newest checkpoint -> CCNode* or null
+0x18017B6A5  test rax, rax
+0x18017B6A8  je 0x18017B6BA               ; no checkpoint: plain return
+0x18017B6AA  mov rcx, rax                 ; checkpoint object
+0x18017B6AD  mov rdx, rsi                 ; layer
+0x18017B6B5  jmp 0x18017B7A0              ; restore, then return
+```
+
+`0x1801A4300` is the standard delayed-bind trampoline for the replaced function: guard
+`0x18080FE50`, cached pointer `0x18080FE48`, builder `0x1801A33C0`, and
+`lea rcx,[rax+0x3B8EB0]` at `0x1801A4364` (module base from `0x18010DDC0`). The detour is
+therefore a post-hook: the vanilla `resetLevel` runs first, then the fix re-applies the
+checkpoint state.
+
+### Checkpoint lookup — `0x18017B6D0`
+
+```
+0x18017B6E3  mov rcx, [rcx+0x3888]        ; PlayLayer checkpoint CCArray
+0x18017B6EA  call CCArray::count
+0x18017B6F1  je 0x18017B777               ; empty -> return null
+0x18017B6FE  call CCArray::lastObject
+0x18017B70B  ... RTTI walk ...
+0x18017B734  lea rdi, [0x1806E2710]       ; ".?AVCCNode@cocos2d@@"
+0x18017B753  call strcmp
+0x18017B76B  add rcx, rsi                 ; adjust to the CCNode subobject
+```
+
+The walk is a manual `dynamic_cast<CCNode*>`: it reads the complete-object-locator from the
+vtable, walks the class-hierarchy array, `strcmp`s each raw descriptor name against
+`.?AVCCNode@cocos2d@@` (string at `0x1806E2710`) and returns the last checkpoint only if the
+base is found. Non-checkpoint objects are rejected, so the fix never touches an arbitrary
+`CCObject`.
+
+### Restore — `0x18017B7A0`
+
+```
+0x18017B7A7  mov rdi, rdx                 ; layer
+0x18017B7AA  mov rsi, rcx                 ; checkpoint
+0x18017B7AD  lea rdx, [rcx+0x148]         ; player-1 state block
+0x18017B7B4  mov rbx, [rdi+0xDA0]         ; player 1
+0x18017B7BE  call 0x180207470             ; copy block -> player
+0x18017B7C3  call 0x18020AFE0             ; static object at 0x180819680
+0x18017B7CB  call 0x18020B880             ; mov eax,[rcx+0xF8]; ret
+0x18017B7D0  test eax, eax
+0x18017B7D2  je 0x18017B7DF               ; global field 0 -> extra step
+0x18017B7D4  cmp byte [rsi+0xC38], 1      ; second player recorded?
+0x18017B7DF  mov qword [rbx+0xAF8], 0
+0x18017B7ED  call 0x1801A8850             ; cached host RVA 0x39F100, arg = player
+0x18017B7FB  add rsi, 0x6C0               ; player-2 state block
+0x18017B802  mov rdi, [rdi+0xDA8]         ; player 2
+```
+
+- `0x180207470` copies a saved block field by field: `[src+0x50] -> [player+0x560]`,
+  `+0x58 -> +0x568`, `+0x80 -> +0x590`, `+0xC0 -> +0x5D0`, `+0x110 -> +0x620`,
+  `+0x2C4 -> ...` — the same routine the structure note already lists as a Mega Hack-side
+  copy (`notes/gd-structures.md`, `+0x2C4` table).
+- When `[0x180819680+0xF8]` is zero the detour additionally clears `[player+0xAF8]` and tail
+  calls host RVA `0x39F100` with the player; `scripts`-recorded `_wrappers.tsv` maps
+  `0x1801A8850` to that host RVA, so the third angle here is the wrapper table, not a guess.
+- Player 2 is restored only when the record's byte `+0xC38` equals `1`. The record itself is
+  Mega Hack's: the constructor at `0x18017B850` allocates `0xC40` bytes
+  (`mov ecx,0xC40` / `operator new`) and installs vtable `0x180577AC8`; the block at `+0x148`
+  and the block at `+0x6C0` are `0x578` bytes apart, and `+0x6C0 + 0x578 = 0xC38`, i.e. the
+  byte sits immediately after the second block. Sites `0x18017B8A5` (store 0) and
+  `0x18017BBB4` (store 1) are the writers of that flag.
+
+Corroboration from other investigated features: `[layer+0xDA0]`/`[layer+0xDA8]` are the two
+player slots and `[layer+0x3888]` is the checkpoint `CCArray` whose count is used as "no
+checkpoint yet" in the Jumpscare gate. Both fields are therefore measured twice, from
+independent detours.
+
+UNVERIFIED: that the array element is GD's `CheckpointObject` and that this class derives from
+`cocos2d::CCNode` (the RTTI check proves the base, not the class); that `+0x148`/`+0x6C0` are
+per-player state blocks (inferred from the `0x180207470` copy destinations and the `+0xC38`
+sentinel immediately after the second one); what host RVA `0x39F100` does and what
+`[0x180819680+0xF8]` means (the object is a zero-fill static, four references in the image, no
+name string); and what `player+0xAF8` holds. The changelog says "bug fix" but does not name the
+bug; the mechanism above is what the shipped code does, not an identification of RobTop's
+original defect.

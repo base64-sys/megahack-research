@@ -13,7 +13,7 @@
 | `mapped` | The feature has its own evidence: a note that names it, its settings key(s) and default, and/or its implementing function(s) with VAs. |
 | `alias` / `dead` | A restatement of an earlier feature / absent from this build, with the evidence for that call. |
 
-All 389 rows below were `cluster` at the 2026-10-23 baseline. **Seventy-four are now
+All 389 rows below were `cluster` at the 2026-10-23 baseline. **Seventy-six are now
 `mapped`**; the [Mapped rows](#mapped-rows) table below is the authoritative list, with
 tag, registration site and hook address for each one.
 
@@ -52,7 +52,9 @@ closing a week later were the same mechanism from two sides: both funnel a coin 
 host RVA `0x2161B0`, one from a post-`resetLevel` pass and one from the object scan inside
 `collisionCheckObjects`. **Toolbox Button Bypass** replaced two editor steppers outright, so
 they count without a host bound. **Jumpscare** builds its own overlay and sound from
-`jumpscare.png`/`jumpscare.mp3` after a probability gate passes on death. The other 315 rows
+`jumpscare.png`/`jumpscare.mp3` after a probability gate passes on death. **Practice Bug Fix**
+re-applies the newest checkpoint's two player-state blocks after `resetLevel`, one tag serving
+both its changelog wordings. The other 313 rows
 remain `cluster`.
 
 A keyword check at the baseline found that **185 of 389** rows point at a note that
@@ -137,6 +139,7 @@ reported as progress.
 | Added Safe Mode Popup | tag 483 (`0x1E3`, `HACK_SAFE_MODE_POPUP`); three code-cave detours (`0x18019a4d0` `LevelInfoLayer::onPlay`, `0x18019a520` `EditLevelLayer::onPlay`, `0x18019a570` `LevelPage::onPlay`) tail-jump to the cached original when byte `0x18080cbb0` is non-zero or `areCheatsEnabled` (`0x18019b350`) is false; otherwise they jump to `0x18019a5c0`, the alert that renders "Safe Mode" / "You have cheats enabled, are you sure you want to play this level?" with Play and Cancel. See [safe-mode-feature.md](safe-mode-feature.md#evidence--the-play-button-popup-2026-10-25). |
 | Added Replay Last Checkpoint (all three wordings) | tag 316 (`0x13C`, `HACK_REPLAY_LAST_CHECKPOINT`, static map `0x180063DF7`); registered at `0x1800b2a6e`, callback `FUN_18017ecb0` hooks `EndLevelLayer::onReplay` (RVA 0x134E80); detour `0x18017ed20` reroutes to host RVA 0x1354C0 with `edx=0` when the second argument is null and `[playlayer+0x31f0] == 1`, otherwise to the cached original. One tag and one hook serve the v6.2.0, v7.0 and v8.0.0-alpha9 rows, so they are promoted together. See [gameplay-hooks.md](gameplay-hooks.md#evidence--replay-last-checkpoint-2026-10-25). |
 | Added Toolbox Button Bypass | tag 47 (`0x02F`, `HACK_TOOLBOX_BUTTON_BYPASS`, static map `0x1800644EA`); registered at `0x1800b0604`, callback `FUN_180163f50` installs two code-cave replacements: `EditorOptionsLayer::onButtonRows` (RVA 0x291A00) -> `0x180164020` and `onButtonsPerRow` (RVA 0x291970) -> `0x1801641b0`. Both read a direction from `[[arg2]+0x38]`, `inc` the stored count at `+0x3F4`/`+0x3F0` with no ceiling, format it with `"{}"` through `0x18000AE30` and push it into the label at `[[this+0x400]+0x168]`/`[[this+0x3F8]+0x168]`. See [ui-addons.md](ui-addons.md#evidence--toolbox-button-bypass-2026-10-25). |
+| Added Practice Bug Fix (both wordings) | tag 317 (`0x13D`, `HACK_PRACTICE_BUG_FIX`, static map `0x180063CD1`, key `LEVEL/HACK_PRACTICE_BUG_FIX`); registered at `0x1800b288d`, callback `FUN_18017b620` installs detour `0x18017b690` on `PlayLayer::resetLevel` (RVA 0x3B8EB0). The detour runs the original first, takes the last `CCArray` element at `[layer+0x3888]`, verifies via RTTI that it has a `cocos2d::CCNode` base, then copies the state blocks at element+0x148 and (when byte `+0xC38 == 1`) element+0x6C0 into `[layer+0xDA0]`/`[layer+0xDA8]` through `0x180207470`. The v8.0.0-alpha10b and v8.0.1-alpha.5 rows are the same toggle. See [gameplay-hooks.md](gameplay-hooks.md#evidence--practice-bug-fix-2026-10-25). |
 | Added Jumpscare | tag 291 (`0x123`, `HACK_JUMPSCARE`, static map `0x180063420`); registered at `0x1800b26a7`, callback `0x180178d10` hooks `PlayLayer::destroyPlayer` (RVA 0x3B39D0) with code-cave detour `0x180178d80`, which runs the original through the trampoline `0x1801a3d20`, tests tags 0x127/0x126/0x125/0x124 (only-from-0, time threshold, percentage, probability) in gate `0x180179ae0`, then adds a black `CCLayerColor` carrying `jumpscare.png` to `[layer+0x3540]` at z-order 100 and tail-calls `0x180179260` to play `jumpscare.mp3` and run the fade/scale chain. See [gameplay-hooks.md](gameplay-hooks.md#evidence--jumpscare-2026-10-25). |
 | Added Auto Song Downloader | tag 323 (`0x143`, `HACK_AUTO_SONG_DOWNLOAD`, static map `0x180062C24`); registered at `0x1800b1fa4`, callback `FUN_180175640` hooks `LevelInfoLayer::init` (RVA 0x2F7340) with code-cave detour `0x1801756b0`; the detour calls the original first, then runs `CCCallFuncO::create(subObject, <host 0xCABC0>, subObject)` on `[[layer+0x2D0]+0x180]` when that object's vtable slot `+0x148` returns true. See [ui-addons.md](ui-addons.md#evidence--auto-song-downloader-2026-10-25). |
 
@@ -295,7 +298,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v8.0.1-alpha.5 | Added Attempt Status | cluster | [status-labels-feature.md](status-labels-feature.md) |
 | v8.0.1-alpha.5 | Added Menu Keybind Fallthrough option | cluster | [ui-addons.md](ui-addons.md) |
 | v8.0.1-alpha.5 | Added menu-wide pasting | cluster | [ui-addons.md](ui-addons.md) |
-| v8.0.1-alpha.5 | Added an improved Practice Bug Fix | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
+| v8.0.1-alpha.5 | Added an improved Practice Bug Fix | mapped | [gameplay-hooks.md](gameplay-hooks.md#evidence--practice-bug-fix-2026-10-25) | same tag 317 as the v8.0.0-alpha10b row; this build has one `HACK_PRACTICE_BUG_FIX` label and one settings key, so the improved revision ships as the same detour. |
 | v8.0.1-alpha.4 | Added No Wave Trail Behind | mapped | [gameplay-hooks.md](gameplay-hooks.md) | tag 414 (`HACK_NO_WAVE_TRAIL_BEHIND`, 0x19E); registered in `FUN_1800afae0` at `0x1800b182a`, callback `FUN_180172280` (hooks `PlayerObject::activateStreak`). See no-wave-trail-behind-feature.md. |
 | v8.0.1-alpha.3 | Added Icon Randomiser with editor support | cluster | [iconic-feature.md](iconic-feature.md) |
 | v8.0.1-alpha.3 | Added Icon Effects with editor support | cluster | [iconic-feature.md](iconic-feature.md) |
@@ -324,7 +327,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v8.0.0-alpha10b | Added Wave Trail Fix | mapped | [render-hooks.md](render-hooks.md#evidence--wave-trail-fix-2026-10-25) | tag 411 (`0x19B`, `HACK_WAVE_TRAIL_FIX`); registered at `0x1800b094a`, callback `FUN_180166a80` hooks `HardStreak::updateStroke` (RVA 0x2B8EF0); detour `0x180166af0` never calls the original: it clears the `CCDrawNode`, then draws a 6.0x-width ribbon and a 2.0x white ribbon at 0.65x opacity through helper `0x180166c40`. |
 | v8.0.0-alpha10b | Added Smooth Editor Trail | mapped | [creator-feature.md](creator-feature.md#evidence--smooth-editor-trail-2026-10-25) | tag 55 (`0x37`, `HACK_SMOOTH_EDITOR_TRAIL`, static map `0x180064222`); registered at `0x1800b058d`, callback `FUN_180163ec0` hooks `LevelEditorLayer::postUpdate` (RVA 0x2E0F40); detour `0x180163f30` stores `0x3D088889` (1/30 s) at `[layer+0x3898]` then jumps to the original. |
 | v8.0.0-alpha10b | Added Screenshots | cluster | [ui-addons.md](ui-addons.md) |
-| v8.0.0-alpha10b | Added Practice Bug Fix | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
+| v8.0.0-alpha10b | Added Practice Bug Fix | mapped | [gameplay-hooks.md](gameplay-hooks.md#evidence--practice-bug-fix-2026-10-25) | tag 317 (`0x13D`, `HACK_PRACTICE_BUG_FIX`, static map `0x180063CD1`); post-hook on `PlayLayer::resetLevel` re-applies the newest checkpoint's saved player state. |
 | v8.0.0-alpha10b | Added custom click/move keybinds | cluster | [input-hooks.md](input-hooks.md) |
 | v8.0.0-alpha10b | Added Best Run | cluster | [best-run-feature.md](best-run-feature.md) |
 | v8.0.0-alpha10b | Added Collect Coins in Practice | mapped | [gameplay-hooks.md](gameplay-hooks.md#evidence--the-two-coin-collection-hooks-2026-10-25) | tag 297 (`0x129`, `HACK_COLLECT_COINS_IN_PRACTICE`); registered at `0x1800b2185`, callback `FUN_180176ea0` hooks `GJBaseGameLayer::collisionCheckObjects` (RVA 0x214960); detour `0x180176f10` keeps type ids `0x1F`/`0x16` with `+0x3d2` clear that pass `0x1802045d0`, calls host RVAs `0x2161b0` and `0x216090`, then tail-jumps to the original. |
@@ -593,5 +596,5 @@ Correction (2026-10-25): the earlier version of this paragraph named `Force Plat
 (`0x0F2`, `HACK_FORCE_PLATFORMER`) and 49 (`0x031`, `HACK_DEFAULT_SONG_BYPASS`) — but **neither
 has a row in the 389**: no `Added Force Platformer` and no `Added Default Song Bypass` bullet
 exists. Mapping them would add entries to "Toggles outside the 389" at best, so they are not
-progress against the milestone. The next rows must be chosen from the 315 remaining changelog
+progress against the milestone. The next rows must be chosen from the 313 remaining changelog
 bullets.
