@@ -13,7 +13,7 @@
 | `mapped` | The feature has its own evidence: a note that names it, its settings key(s) and default, and/or its implementing function(s) with VAs. |
 | `alias` / `dead` | A restatement of an earlier feature / absent from this build, with the evidence for that call. |
 
-All 389 rows below were `cluster` at the 2026-10-23 baseline. **Forty-three are now
+All 389 rows below were `cluster` at the 2026-10-23 baseline. **Forty-four are now
 `mapped`**; the [Mapped rows](#mapped-rows) table below is the authoritative list, with
 tag, registration site and hook address for each one.
 
@@ -23,7 +23,9 @@ Trail, No Wave Trail, No Wave Trail Behind, Wave Pulse Size, No Wave Pulse, Trai
 Cutting, No Robot Fire, No Robot/Swing Fire, Classic Particles, No "Do Not" Flip, and
 Auto Deafen — each by the same pattern: a `mov edx, <tag>` / `call FUN_18008f910`
 registration in the shared initialiser `FUN_1800afae0`, plus a callback that installs
-or removes the hook. The other 346 rows remain `cluster`.
+or removes the hook. **Added Hide Player** is the 2026-10-25 promotion, and the only one
+whose detour body was read as well: it forces `edx=0` and jumps to the visibility setter.
+The other 345 rows remain `cluster`.
 
 A keyword check at the baseline found that **185 of 389** rows point at a note that
 never mentions the feature at all, so for those even the cluster assignment is only a
@@ -73,6 +75,7 @@ lead. That count predates every promotion since the baseline; the method is reco
 | Added Classic Particles | tag 390 (`HACK_CLASSIC_PARTICLES`, 0x186); registered in `FUN_1800afae0` at `0x1800b085c`, callback `FUN_180166270` (hooks `cocos2d::CCParticleSystem::loadScaledDefaults`). See classic-particles-feature.md. |
 | Added No "Do Not" Flip | tag 412 (`HACK_NO_DO_NOT_FLIP`, 0x19C); registered in `FUN_1800afae0` at `0x1800b0e67`, callback `FUN_1801696e0` (hooks `EndLevelLayer::customSetup` + `PlayLayer::setupHasCompleted`). See no-do-not-flip-feature.md. |
 | Added Auto Deafen | tag 279 (`HACK_AUTO_DEAFEN`, 0x117); registered in `FUN_1800afae0` at `0x1800b1dc8`, callback `FUN_180174a80` (hooks `PlayLayer::resetLevel`, RVA 0x3B8EB0). See auto-deafen-feature.md. |
+| Added Hide Player | tag 386 (`0x182`, `HACK_HIDE_PLAYER`); registered in `FUN_1800afae0` at `0x1800b0aaf`, callback `FUN_180167a60` hooks `PlayerObject::toggleVisibility` (RVA 0x38B440), detour `0x180167b10` forces `edx=0` before `jmp 0x1801a9b70`. See [render-hooks.md](render-hooks.md#evidence---hide-player-verified-2026-10-25). |
 | Added No (C) Mark | tag 44 (`HACK_NO_C_MARK`, 0x02C); registered in `FUN_1800afae0` at `0x1800b049a`, callback `FUN_180162d20` (hooks `ShareLevelLayer::onShare`, RVA 0x490270). See no-c-mark-feature.md. |
 | Added No Respawn Flash | tag 398 (`HACK_NO_RESPAWN_FLASH`, 0x18E); registered in `FUN_1800afae0` at `0x1800b13fb`, callback `FUN_1801714c0` (hooks `PlayerObject::playSpawnEffect`, RVA 0x397480). See no-respawn-flash-feature.md. |
 | Added No Death Effect mod | tag 399 (`HACK_NO_DEATH_EFFECT`, 0x18F); registered in `FUN_1800afae0` at `0x1800b0df0`, callback `FUN_180169330` (hooks `PlayerObject::playDeathEffect`, RVA 0x37EF10, with a bare-`ret` detour at `0x180169400`). See no-death-effect-feature.md. |
@@ -244,7 +247,7 @@ as "every feature named anywhere in the changelog", these three are the first ro
 | v8.0.0-alpha12 | Added Confirm Reset | cluster | [ui-addons.md](ui-addons.md) |
 | v8.0.0-alpha12 | Added Confirm Full-Reset | cluster | [ui-addons.md](ui-addons.md) |
 | v8.0.0-alpha12 | Added Confirm Practice | cluster | [ui-addons.md](ui-addons.md) |
-| v8.0.0-alpha12 | Added Hide Player | cluster | [render-hooks.md](render-hooks.md) |
+| v8.0.0-alpha12 | Added Hide Player | mapped | [render-hooks.md](render-hooks.md#evidence---hide-player-verified-2026-10-25) | tag 386 (`0x182`, `HACK_HIDE_PLAYER`); callback `FUN_180167a60` hooks `PlayerObject::toggleVisibility` (RVA 0x38B440), detour `0x180167b10` forces `edx=0` before `jmp 0x1801a9b70`. |
 | v8.0.0-alpha12 | Added Hide Pause Button | cluster | [render-hooks.md](render-hooks.md) |
 | v8.0.0-alpha12 | Added Thread Priority | mapped | [render-hooks.md](render-hooks.md) | tag 454 (`HACK_THREAD_PRIORITY`); `FUN_18018ADF0`/`FUN_18018AE50` call `SetThreadPriority` when enabled. Tag 0x1C7 (455) is the priority level. See render-hooks.md. |
 | v8.0.0-alpha12 | Added Switch After Death to StartPos Switcher | cluster | [startpos-switcher-feature.md](startpos-switcher-feature.md) |

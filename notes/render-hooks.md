@@ -149,6 +149,47 @@ Effect, No Wave Trail, No Shaders) exactly. One new fact came out of the first r
 Effect installs a **second** hook, on `PlayLayer::destroyPlayer` (RVA `0x3B39D0`).
 
 
+## Evidence - Hide Player (verified 2026-10-25)
+
+`HACK_HIDE_PLAYER` (tag 386, `0x182`) registers at `0x1800b0aaf` with callback
+`FUN_180167A60`, which hooks `PlayerObject::toggleVisibility` (RVA `0x38B440`, name string
+`"PlayerObject::toggleVisibility"`, installer `FUN_180167B20`). The detour is only two
+instructions:
+
+```
+0x180167b10  31 d2        xor    edx, edx      ; visible = false
+0x180167b12  e9 ...       jmp    0x1801a9b70   ; PlayerObject::setVisible(this, false)
+```
+
+The detour discards the incoming `edx` (the visibility the caller asked for) and always
+forwards `false`, so the player object cannot become visible while the toggle is on. The
+callback also applies the toggle directly: after installing, it reads both player slots
+`PlayLayer+0xDA0` and `+0xDA8`, computes `!*param_2` (`xor bl,1` at `0x180167AC9`) and
+calls the same `0x1801A9B70` on each player object, which is why a dual is handled in one
+pass. The two-argument reading of `0x1801A9B70` as a visibility setter is consistent with
+both call sites; UNVERIFIED: its symbol, which is not resolved by name anywhere in this
+callback.
+
+This is the first row promoted from the [hook-registrations.md](hook-registrations.md)
+table on detour evidence, and it is `mapped` in
+[feature-inventory.md](feature-inventory.md).
+
+### Four more detours read, mechanisms not yet established
+
+The same pass read the detours of four neighbouring toggles. Their targets are verified;
+what the detour does is not, so they stay `cluster`:
+
+| Toggle | Target (RVA) | Detour | What the bytes show | Status |
+| --- | --- | --- | --- | --- |
+| Hide Pause Button | `UILayer::init` `0x4CCB00` | `0x180167D80` | calls `0x1801E9E10`; if true, takes `this+0x238`, loads its vtable, calls slot `+0x140` with `edx=0`, returns non-zero | UNVERIFIED: slot identity and whether it suppresses or hides the button |
+| Hide Pause Menu | `PauseLayer::customSetup` `0x37C870` | `0x1801680A0` | calls `0x1801A2C30`, then tail-calls `[[this]+0x140]` with `edx=0` | UNVERIFIED: same vtable-slot question |
+| Stop Triggers on Death | `GJBaseGameLayer::update` `0x237850` | `0x180172E50` | calls `0x1801ACDB0`; if the result equals `this`, skips the tail `jmp 0x1801149B0`, otherwise forwards | UNVERIFIED: which branch suppresses trigger updates, and which object `0x1801ACDB0` returns |
+| Wave Trail Fix | `HardStreak::updateStroke` `0x2B8EF0` | `0x180166AF0` | tests `byte [this+0x1BA] == 1`, then calls `0x1805330B0` and `0x180532410` before touching the streak vector at `+0x140` | UNVERIFIED: the whole body; only the entry condition was read |
+
+Recording the negative result is the point: each of these needs its vtable slot or callee
+identified before a mechanism claim can be made, and a friendly name such as
+`UILayer::init` does not tell you what the detour does to the layer.
+
 ## Evidence - No Shake (corrected 2026-10-25)
 
 `HACK_NO_SHAKE` (tag 409, `0x199`) is registered as a hook in `FUN_1800afae0`
