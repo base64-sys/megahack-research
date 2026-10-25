@@ -113,6 +113,25 @@ verified hook from a guess:
 A note that only gives the friendly name and no RVA or mangled symbol has not yet shown
 which function is hooked.
 
+### Verification tool
+
+`scripts/tag_callback_map.py` reproduces the tag → callback table from the instruction bytes,
+with no third-party packages:
+
+```
+python3 scripts/tag_callback_map.py samples/absolllute.hackmega/absolllute.hackmega_original.dll
+```
+
+It finds every `mov edx,<tag>` / `mov rcx,rax` / `mov r8,rsi` / `call 0x18008f910` sequence in
+`FUN_1800afae0` and resolves the callback as the nearest preceding `lea rcx,[rip+disp]`, which
+is the rule step 1 above establishes. Running it on 2026-10-25 yields **79 registrations**;
+all twenty tag→callback pairs recorded in this note and in the per-feature notes match its
+output, apart from the No Shake row corrected in this batch. That is the check that catches
+the adjacency error: the callback belongs to the block *before* the tag, not after it.
+
+The remaining **59 callbacks are unnamed leads** — one function each, almost all still
+unidentified — and are the cheapest next step for the rest of the feature inventory.
+
 
 ## Evidence - No Shake (corrected 2026-10-25)
 

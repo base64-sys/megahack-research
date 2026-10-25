@@ -266,6 +266,11 @@ Exit criteria:
       in the changelog" is unresolved, and the row count would grow if the latter.
 - [ ] Each feature mapped to its implementing function(s) with VAs, its settings keys, its
       default, and its interactions.
+      **New 2026-10-25:** `scripts/tag_callback_map.py` (dependency-free) enumerates every
+      tag → callback binding in `FUN_1800afae0` from the instruction bytes: **79
+      registrations**, of which 20 are now tied to a named feature and 59 callbacks remain
+      unnamed leads. The callback is the nearest *preceding* `lea rcx,[rip+disp]`, not the
+      block after the tag.
       **New 2026-10-23:** the CRT initializer `FUN_180062940` statically enumerates 85
       `HACK_*` names (Map B hack-flag tags, consumed by the profile loader) and 21
       `CHECKBOX_*` boolean options (Map A config tags, 19 accessor-confirmed). The settings
