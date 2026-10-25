@@ -249,10 +249,10 @@ Exit criteria:
 
 - [ ] Every feature listed in `changelog.md` accounted for: implemented, alias, or dead.
       **Measured 2026-10-23:** the 414 `Added …` changelog bullets collapse to **389 unique
-      feature wordings**, each assigned to a subsystem note. **Sixty-six now have
+      feature wordings**, each assigned to a subsystem note. **Sixty-nine now have
       per-feature evidence and are `mapped`**; the authoritative list, with tag and hook
       address per row, is the mapped-rows table in
-      [feature-inventory.md](../notes/feature-inventory.md). The other **323** remain
+      [feature-inventory.md](../notes/feature-inventory.md). The other **320** remain
       `cluster`, and for **185 of 389** the linked note never mentioned the feature at the
       baseline (before the promotions). The criterion stays open. See
       [m3-validation.md](../notes/m3-validation.md).

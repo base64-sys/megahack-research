@@ -513,3 +513,76 @@ symbol names it); the identity of host RVA `0x17B4A0`, whose `+0x208` field is c
 `this`; and whether `getModifiedDelta` has side effects that matter when it stands in for
 `update`. Whether the freeze this produces is the whole intended effect, or only the intended
 visible part of it, cannot be settled without the host image.
+
+## Evidence — Replay Last Checkpoint (2026-10-25)
+
+Tag 316 (`0x13C`, `HACK_REPLAY_LAST_CHECKPOINT`, static-map entry 56, store VA
+`0x180063DF7`) is registered at `0x1800B2A6E`. Callback `FUN_18017ECB0` installs one hook:
+
+| Target | RVA | Detour | Installer | Order |
+| --- | ---: | --- | --- | --- |
+| `EndLevelLayer::onReplay` | `0x134E80` | `0x18017ED20` | `0x18017ED60` | `0xFFFFFFE0` |
+
+The callback is the usual enable/disable pair — `cmp bl, 1`, resolve `0x134E80` through
+`0x18010A370`, `lea r8` = detour, `lea r9` = the `EndLevelLayer::onReplay` name string at
+`0x180577F6C`, call the installer; on the other branch it calls `0x180108A80` with the detour
+to uninstall. `.pdata` bounds the detour to `0x18017ED20..0x18017ED5E` (0x3E bytes), so this
+is the whole body:
+
+```
+0x18017ED26  test rdx, rdx              ; the second argument (sender)
+0x18017ED29  jne  0x18017ED52           ; non-null -> the original
+0x18017ED2B  mov  rsi, rcx
+0x18017ED2E  mov  rdi, rdx
+0x18017ED31  call 0x1801ACDB0           ; [host 0x17B4A0 + 0x208] = the play layer
+0x18017ED3C  cmp  byte [rax+0x31F0], 1  ; level state byte
+0x18017ED43  jne  0x18017ED52           ; not set -> the original
+0x18017ED45  xor  edx, edx              ; argument = 0
+0x18017ED4D  jmp  0x180110DC0           ; gateway -> host RVA 0x1354C0
+0x18017ED52  ...
+0x18017ED59  jmp  0x180110CF0           ; gateway -> host RVA 0x134E80 (onReplay)
+```
+
+Both tail targets are lazy gateways whose initialisers carry the host RVA, and the second one
+matches the hooked method exactly, which is what makes the first one readable as *a different
+host procedure* rather than a helper:
+
+```
+0x180110D61  lea rcx, [rax + 0x134E80]  ; EndLevelLayer::onReplay gateway (0x180110CF0)
+0x180110E31  lea rcx, [rax + 0x1354C0]  ; the substitute (0x180110DC0)
+```
+
+Mechanism: with the toggle on, a call to `EndLevelLayer::onReplay` whose second argument is
+null and whose play layer carries byte `+0x31F0 == 1` is rerouted to host RVA `0x1354C0` with
+`edx = 0` instead of the normal replay handler. Everything else reaches the original.
+
+`+0x31F0` is not free-standing: a full-`.text` displacement scan finds exactly ten sites, all
+in mod code, and **none of them writes `1`** — the only writes are `0`, and they sit in the
+two Practice Complete detours (tag 296, `HACK_0_PRACTICE_COMPLETE`, callback `FUN_18017E0B0`):
+
+| Site | Instruction | Owner |
+| --- | --- | --- |
+| `0x18017E19E` | `cmp byte [rcx+0x31F0], 1` | Practice Complete, `playEndAnimationToPos` detour |
+| `0x18017E1B6` | `mov byte [rsi+0x31F0], 0` | same detour, after vtable `+0x568` |
+| `0x18017E22F` | `cmp byte [rcx+0x31F0], 1` | Practice Complete, platformer variant |
+| `0x18017E24A` | `mov byte [rsi+0x31F0], 0` | same detour |
+| `0x18017ED3C` | `cmp byte [rax+0x31F0], 1` | this feature |
+| `0x180155609`, `0x180174D05`, `0x180176F34`, `0x18018579E`, `0x18019024E` | reads only | other detours |
+
+Because the field is read as `1` but never written as `1` in this image, the value has to come
+from the host, and the mod clears it after the practice-complete end animation. The name
+"Replay Last Checkpoint" therefore rests on the changelog row and on the redirection away from
+the start-of-level replay handler; the bytes prove the redirection, not the destination.
+
+### Tag map
+
+| Tag (hex) | Tag (dec) | Accessor | Static-map name | Role |
+| --- | --- | --- | --- | --- |
+| 0x13C | 316 | `isHackEnabled` (Map B) | `HACK_REPLAY_LAST_CHECKPOINT` | Reroute the endscreen replay to a different host procedure |
+
+UNVERIFIED: what host RVA `0x1354C0` does (it is 0x640 bytes after `onReplay` and carries no
+name string anywhere in the image, so "replays from the last checkpoint" is the changelog's
+word, not the bytes'); what `+0x31F0` means and which host code sets it to 1; and which call
+site invokes `onReplay` with a null second argument. One tag and one hook serve all three
+changelog wordings (v6.2.0 "mod", v7.0 "to Endscreen", v8.0.0-alpha9), so they are promoted
+together rather than counted as three implementations.
