@@ -332,10 +332,34 @@ shop, tower & garage layers":
 - `LevelAreaLayer::onClickDoor` detour is a bare forward: `jmp 0x18014D3E0`.
 - `GJShopLayer::onBack` detour calls `0x180146F20`, then tail-jumps `vtable+0x200`.
 
-Those three forward into `0x18014CF80` / `0x18014D3E0` / `0x180146F20`, which have the shape of
-MSVC incremental-link thunks (`mov eax,[rip+…]`, `gs:[0x58]`, `cmp eax,[r8+0x10]`,
-`jmp qword [rip+slot]`) rather than real bodies. **UNVERIFIED:** where those slots point at
-runtime, and therefore whether `dl=1` is a "skip transition" flag or something else.
+Those three forward into `0x18014CF80` / `0x18014D3E0` / `0x180146F20`. The earlier
+"MSVC incremental-link thunk" description is **withdrawn**: reading the bodies shows a
+lazy-binding stub, not an ILT shim. In full, `0x18014CF80`:
+
+```
+0x18014CF94  mov  eax, [rip+...]          ; cached generation counter
+0x18014CF9A  mov  r8d, [rip+...]          ; per-thread slot index
+0x18014CFA1  mov  r9, qword gs:[0x58]     ; thread-local block
+0x18014CFAA  mov  r8, [r9+r8*8]           ; per-thread table
+0x18014CFAE  cmp  eax, [r8+0x10]          ; already resolved?
+0x18014CFC5  jmp  rax                     ; cached target, fast path
+0x18014CFD7  call 0x1803A5140             ; slow path: resolver
+0x18014CFE1  cmp  dword [rip+...], -1     ; ...
+```
+
+The slow path obtains a module base from `0x18010DDC0`, adds a fixed offset
+(`lea rcx,[rax+0x2C57E0]` at `0x18014D444`), calls `0x18014D230`, and caches the result.
+That is **MH's own lazy host-symbol binder**, not a PE delay-load table: the image's
+delay-import data directory (index 13) is **empty** (`rva=0 size=0`), while the IAT
+directory (index 12) is `0x642CB8`/`0x2080`. The stub family is large — `mov r9, gs:[0x58]`
+appears **81** times and the sibling `mov r8, gs:[0x58]` **110** times in the image — so MH
+reaches host functions through a per-thread cache that is populated on first call.
+
+The consequence for feature mapping is concrete: the detour calls *MH's own* entry point for
+the original function, so the detour body tells us the argument it passes but not the host
+address it reaches. `LevelAreaInnerLayer::init` is therefore "call the original with `dl=1`",
+and whether `dl=1` suppresses the transition remains **UNVERIFIED**; so does the host target
+beyond the symbol name the hook was registered with.
 
 ### Scope note
 
@@ -349,6 +373,7 @@ the changelog only as a fix bullet, which widens the M3 scope gap recorded in
 | --- | --- | --- | --- | --- |
 | 0x1C1 | 449 | `isHackEnabled` (Map B) | `HACK_NO_TRANSITION` | Master toggle (No Transition) |
 
-UNVERIFIED: the JSON key for tag 449; the three thunk destinations above; whether the
-`vtable+0x200` tail call in `onBack` reaches the original handler.
+UNVERIFIED: the JSON key for tag 449; the host address behind each lazy-binding stub;
+whether the `vtable+0x200` tail call in `onBack` reaches the original handler. The binder
+itself is described in [host-abi.md](host-abi.md#how-mega-hack-calls-host-functions-it-does-not-import).
 

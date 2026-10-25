@@ -246,6 +246,40 @@ the two standard `TypeDescriptor` pointers (`pVFTable`, `spare`) — at `0x1807F
 `56 50 6c 61 79 4c 61 79 65 72 40 40 50 45 41 56`, which is ASCII `VPlayLayer@@PEAV`, i.e.
 *not* pointers. That contradicts the RTTI reading and leaves both interpretations open.
 
+## How Mega Hack calls host functions it does not import
+
+The import table has zero GD gameplay symbols, yet the code calls GD methods — so the call
+path itself is worth recording. It is a **lazy binder in Mega Hack's own image**, and the
+stub bodies are the evidence (read 2026-10-25 from No Transition's menu detours, which tail
+into them):
+
+```
+0x18014CF94  mov   eax, [rip+...]         ; cached generation counter
+0x18014CF9A  mov   r8d, [rip+...]         ; per-thread slot index
+0x18014CFA1  mov   r9, qword gs:[0x58]    ; thread-local storage block
+0x18014CFAA  mov   r8, [r9+r8*8]          ; per-thread table
+0x18014CFAE  cmp   eax, [r8+0x10]         ; already resolved?
+0x18014CFC5  jmp   rax                    ; fast path: cached pointer
+0x18014CFD7  call  0x1803A5140            ; slow path: resolver
+```
+
+The slow path gets a module base from `0x18010DDC0`, adds a fixed offset
+(`lea rcx,[rax+0x2C57E0]` at `0x18014D444`), calls `0x18014D230`, and caches the result.
+The cache lives in `.data`'s zero-fill tail, which reads as zero in the file — consistent
+with first-call population.
+
+This is **not** a PE delay-import table: data directory 13 is empty (`rva=0 size=0`), while
+directory 12 (IAT) is `0x642CB8` size `0x2080`. The stub family is large: `mov r9, gs:[0x58]`
+occurs **81** times and `mov r8, gs:[0x58]` **110** times in the image.
+
+Consequence for mapping: when a detour tail-jumps into one of these stubs, the detour shows
+the arguments it passes to the original and nothing about the host address, which is why a
+hook's friendly name is the only identifier for those targets.
+
+UNVERIFIED: whether the resolver is Mega Hack's own or a Geode-provided helper reached
+through the same image, and what `0x2C57E0` indexes (it sits in the GD code RVA range, so
+it may be a host-side descriptor rather than an image offset).
+
 ## Deliberately not pursued
 
 The import list includes Geode's web utility in full: `WebRequest`, `WebResponse`,
