@@ -13,7 +13,7 @@
 | `mapped` | The feature has its own evidence: a note that names it, its settings key(s) and default, and/or its implementing function(s) with VAs. |
 | `alias` / `dead` | A restatement of an earlier feature / absent from this build, with the evidence for that call. |
 
-All 389 rows below were `cluster` at the 2026-10-23 baseline. **Fifty-nine are now
+All 389 rows below were `cluster` at the 2026-10-23 baseline. **Sixty are now
 `mapped`**; the [Mapped rows](#mapped-rows) table below is the authoritative list, with
 tag, registration site and hook address for each one.
 
@@ -34,9 +34,9 @@ Limit Bypass, Allow Low Volume, Fast Chests) needed no inference: their static
 `HACK_*` label matches a changelog row verbatim, and their detours were read. **Four more
 came from detour bodies** (Place Over, Confirm Practice, Confirm Reset, Confirm
 Full-Reset), including a shared confirmation-dialog wrapper. **Show Triggers, Main Menu
-Gameplay and the three editor/UI toggles below** (Text Length Bypass, Hide UI, Smooth
-Editor Trail) each came from reading every detour installed by the callback. The other
-330 rows remain `cluster`.
+Gameplay, Show Layout and the three editor/UI toggles below** (Text Length Bypass, Hide UI,
+Smooth Editor Trail) each came from reading every detour installed by the callback. The other
+329 rows remain `cluster`.
 
 A keyword check at the baseline found that **185 of 389** rows point at a note that
 never mentions the feature at all, so for those even the cluster assignment is only a
@@ -105,6 +105,7 @@ reported as progress.
 | Added Text Length Bypass | tag 37 (`0x25`, `HACK_TEXT_LENGTH`, static map `0x180064420`); registered at `0x1800afe13`, callback `FUN_18015d6d0` hooks `CCTextInputNode::onTextFieldAttachWithIME` (RVA 0x508F0); detour `0x18015d740` sets the cap to `0x7FFFFFFF` via `0x1801e6d20` before tail-jumping the original. See [ui-addons.md](ui-addons.md#evidence--text-length-bypass-2026-10-25). |
 | Added Hide UI | tag 53 (`0x35`, `HACK_HIDE_UI`, static map `0x180063372`); registered at `0x1800b0330`, callback `FUN_18015fa70` hooks `EditorUI::init` (RVA 0xDF390); detour `0x18015fb20` calls vtable `+0x140` with `edx=0`. See [render-hooks.md](render-hooks.md#evidence--hide-ui-2026-10-25). |
 | Added Smooth Editor Trail | tag 55 (`0x37`, `HACK_SMOOTH_EDITOR_TRAIL`, static map `0x180064222`); registered at `0x1800b058d`, callback `FUN_180163ec0` hooks `LevelEditorLayer::postUpdate` (RVA 0x2E0F40); detour `0x180163f30` stores `0x3D088889` (1/30 s) at `[layer+0x3898]`. See [creator-feature.md](creator-feature.md#evidence--smooth-editor-trail-2026-10-25). |
+| Added Show Layout | tag 260 (`0x104`, `HACK_SHOW_LAYOUT`, static map `0x180064095`); registered at `0x1800b2b5c`, callback `FUN_18017f0f0` installs six hooks (`resetLevel`, `applyEnterEffect`, `applyCustomEnterEffect`, `triggerObject`, `addGlow`, `saveActiveColors`); the resetLevel detour reads Map A tags 262/263. See [gameplay-hooks.md](gameplay-hooks.md#evidence--show-layout-2026-10-25). |
 | Added Main Menu Gameplay | tag 457 (`0x1C9`, `HACK_MAIN_MENU_PLAY`, static map `0x180063529`); registered at `0x1800b308d`, callback `FUN_180189260` hooks `MenuGameLayer::tryJump`/`update`/`ccTouchBegan` (RVAs 0x331F70, 0x332240, 0x333600) around flag `0x18080C920`. See [gameplay-hooks.md](gameplay-hooks.md#evidence--main-menu-gameplay-2026-10-25). |
 | Added No (C) Mark | tag 44 (`HACK_NO_C_MARK`, 0x02C); registered in `FUN_1800afae0` at `0x1800b049a`, callback `FUN_180162d20` (hooks `ShareLevelLayer::onShare`, RVA 0x490270). See no-c-mark-feature.md. |
 | Added No Respawn Flash | tag 398 (`HACK_NO_RESPAWN_FLASH`, 0x18E); registered in `FUN_1800afae0` at `0x1800b13fb`, callback `FUN_1801714c0` (hooks `PlayerObject::playSpawnEffect`, RVA 0x397480). See no-respawn-flash-feature.md. |
@@ -159,7 +160,7 @@ as "every feature named anywhere in the changelog", these three are the first ro
 | v9.0.8 | Added No End Shake | cluster | [render-hooks.md](render-hooks.md) |
 | v9.0.8 | Added No Robot/Swing Fire | mapped | [render-hooks.md](render-hooks.md) | tags 440/441 (0x1B8/0x1B9, runtime-assigned); registered in `FUN_1800afae0` at `0x1800b1472`/`0x1800b164e`, callbacks `FUN_180171550`/`FUN_180171ca0` (hooks `PlayerObject::toggleRobotMode`/`toggleSwingMode`). See no-robot-swing-fire-feature.md. |
 | v9.0.8 | Added Replay option to block inputs | cluster | [replay-feature.md](replay-feature.md) |
-| v9.0.8 | Added Show Layout colour options | cluster | [render-hooks.md](render-hooks.md) |
+| v9.0.8 | Added Show Layout colour options | cluster | [gameplay-hooks.md](gameplay-hooks.md#evidence--show-layout-2026-10-25) — the Show Layout `resetLevel` detour reads Map A tags 262/263, a candidate binding for these options; keys and defaults UNVERIFIED. |
 | v9.0.8 | Added Show Trajectory iterations/thickness options | cluster | [show-trajectory-feature.md](show-trajectory-feature.md) |
 | v9.0.8 | Added a small delay when auto-selecting Search | cluster | [ui-addons.md](ui-addons.md) |
 | v9.0.8 | Added Festive theme | cluster | [cosmetic-feature.md](cosmetic-feature.md) |
@@ -317,7 +318,7 @@ as "every feature named anywhere in the changelog", these three are the first ro
 | v8.0.0-alpha7 | Added Cheat Indicator with breakdown | cluster | [ui-addons.md](ui-addons.md) |
 | v8.0.0-alpha7 | Added FPS & CPS Statuses | cluster | [status-labels-feature.md](status-labels-feature.md) |
 | v8.0.0-alpha7 | Added Message, Percentage & Level Time Statuses | cluster | [status-labels-feature.md](status-labels-feature.md) |
-| v8.0.0-alpha6 | Added Show Layout | cluster | [render-hooks.md](render-hooks.md) |
+| v8.0.0-alpha6 | Added Show Layout | mapped | [gameplay-hooks.md](gameplay-hooks.md#evidence--show-layout-2026-10-25) | tag 260 (`0x104`, `HACK_SHOW_LAYOUT`, static map `0x180064095`); registered at `0x1800b2b5c`, callback `FUN_18017f0f0` installs six hooks (`resetLevel`, `applyEnterEffect`, `applyCustomEnterEffect`, `triggerObject`, `addGlow`, `saveActiveColors`); the resetLevel detour reads Map A tags 262 and 263. |
 | v8.0.0-alpha6 | Added Endscreen Hider | cluster | [render-hooks.md](render-hooks.md) |
 | v8.0.0-alpha5 | Added Smart StartPos | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v8.0.0-alpha5 | Added Respawn Time modifier | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
