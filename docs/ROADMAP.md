@@ -263,8 +263,9 @@ Exit criteria:
       `no-camera-feature.md`, `no-camera-zoom-feature.md`) and are listed in the
       "Toggles outside the 389" table of the inventory, which now also holds **No Transition**
       (tag 449) — recovered from its hook set, and named in the changelog only in a fix
-      bullet ("No Transition now works on shop, tower & garage layers"), so the gap is not
-      limited to the non-`Added` sections.
+      bullet ("No Transition now works on shop, tower & garage layers") — plus **Unlock Icons**
+      (tag 32) and **Music Unlocker** (tag 36) from `unlock-bypasses.md`, named only in fix
+      bullets. The gap is therefore not limited to the non-`Added` sections.
       Whether this criterion means "every added feature" or "every feature named anywhere
       in the changelog" is unresolved, and the row count would grow if the latter.
 - [ ] Each feature mapped to its implementing function(s) with VAs, its settings keys, its

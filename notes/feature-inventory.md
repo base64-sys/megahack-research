@@ -113,9 +113,10 @@ reported as progress.
 
 ## Toggles outside the 389
 
-The row universe above is the `Added …` changelog bullets. Four toggles are named elsewhere in
+The row universe above is the `Added …` changelog bullets. Six toggles are named elsewhere in
 the changelog and are mapped in their own notes, but have no row here: three under
-`New For 2.2 Mods`, and No Transition only in a fix bullet.
+`New For 2.2 Mods`, No Transition only in a fix bullet, and the unlock-bypass family only in
+fix bullets.
 
 | Feature | Evidence |
 | --- | --- |
@@ -123,10 +124,12 @@ the changelog and are mapped in their own notes, but have no row here: three und
 | No Camera | tag 387 (`HACK_NO_CAMERA`, 0x183); registered in `FUN_1800afae0` at `0x1800b0c14`, callback `FUN_1801680e0` (hooks `CameraTriggerGameObject::triggerObject`, RVA 0x4BD820). See [no-camera-feature.md](no-camera-feature.md). |
 | No Camera Zoom | tag 388 (`HACK_NO_CAMERA_ZOOM`, 0x184); registered in `FUN_1800afae0` at `0x1800b0c8b`, callback `FUN_1801682c0` (hooks `EffectGameObject::triggerObject`, RVA 0x4A5F30). See [no-camera-zoom-feature.md](no-camera-zoom-feature.md). |
 | No Transition | tag 449 (`HACK_NO_TRANSITION`, 0x1C1); registered at `0x1800b317b`, callback `FUN_180189a70` forces the duration argument of `cocos2d::CCTransitionFade::create` and `cocos2d::CCTransitionMoveInT::create` to 0, and adds three menu-transition hooks. Named only in a changelog fix bullet ("No Transition now works on shop, tower & garage layers"), never in an `Added …` line. See [ui-addons.md](ui-addons.md#evidence--no-transition-2026-10-25). |
+| Unlock Icons | tag 32 (`HACK_UNLOCK_ICONS`, 0x020); registered at `0x1800aff01`, callback `FUN_18015dc00` replaces `GameManager::isIconUnlocked` (RVA 0x17C500) and `isColorUnlocked` (0x17C8E0) with `mov al,1; ret`, so colours are covered too. Named only in fix bullets. See [unlock-bypasses.md](unlock-bypasses.md). |
+| Music Unlocker | tag 36 (`HACK_MUSIC_UNLOCKER`, 0x024); registered at `0x1800afd25`, callback `FUN_18015d130` hooks `GameStatsManager::isItemUnlocked` (RVA 0x1E5820) and answers `true` only for argument pair `(12,16)`, forwarding the rest. Named only in fix bullets. See [unlock-bypasses.md](unlock-bypasses.md). |
 
 Adding them to the counts would mix two different universes. If the M3 criterion is later read
-as "every feature named anywhere in the changelog", these four are the first rows to add — and
-No Transition shows the gap is wider than `New For 2.2 Mods`: a feature can be named only in a
+as "every feature named anywhere in the changelog", these six are the first rows to add — and
+No Transition and the unlock bypasses show the gap is wider than `New For 2.2 Mods`: a feature can be named only in a
 fix bullet, so a row universe built from `Added …` alone will always miss some.
 
 | Version | Feature (changelog wording) | Status | Notes |

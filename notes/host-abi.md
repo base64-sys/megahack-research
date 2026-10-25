@@ -317,6 +317,34 @@ bytes; GD's binary would settle it and is not part of this baseline. **UNVERIFIE
 UNVERIFIED: whether the resolver (`0x18014D230` and its siblings, one per stub) is Mega Hack's
 own or a Geode-provided helper compiled into the same image, and what its second argument is.
 
+### Recovering the RVA from a symbol-only hook
+
+The previous subsection said the friendly name is the only identifier for a stub target. A pass
+over all 125 registrations on 2026-10-25 shows that is stronger than it needs to be: **every
+hook that resolves by mangled symbol also has an RVA recorded against its method name**, and a
+large fraction have a lazy stub as well.
+
+| Measure | Count |
+| --- | ---: |
+| Registrations | 125 |
+| Tags with at least one symbol-only hook | 120 |
+| Symbol-only hook rows | 201 |
+| Rows whose method name is in the hook-site table | 185 |
+| Rows that additionally have a lazy stub immediate | 148 |
+
+Two caveats, both load-bearing:
+
+1. The name→RVA join is a **cross-reference, not an independent observation**. The hook-site
+   table was produced by the same research pass that recorded these symbol hooks, so agreement
+   there only proves consistency. Independence comes from the stub: a stub immediate is a
+   second, separately encoded statement of the host RVA (`module_base + imm32`).
+2. Sixteen rows have no name in the table at all and remain unresolved by this method.
+
+Worked example, Unlock Icons (tag 32, `0x020`): both hooks resolve by symbol and both have a
+stub, so the target is confirmed twice — `0x180148B82` → `0x17C500`
+(`GameManager::isIconUnlocked`) and `0x180148932` → `0x17C8E0` (`GameManager::isColorUnlocked`).
+See [unlock-bypasses.md](unlock-bypasses.md).
+
 ## Deliberately not pursued
 
 The import list includes Geode's web utility in full: `WebRequest`, `WebResponse`,
