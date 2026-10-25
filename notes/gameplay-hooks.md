@@ -206,15 +206,20 @@ byte, call the original work, then clear the byte:
 0x180187CFB  ret
 ```
 
-| Feature | Flag global | Writers |
-| --- | --- | --- |
-| Instant Complete | `0x18080C8C8` | `0x180178BC4` (set) / `0x180178BD0` (clear) in the `levelComplete` detour |
-| Fast Chests | `0x18080C8E0` | `0x180187CE4` / `0x180187CF0` (`init`) and `0x180187D04` / `0x180187D10` (`playRewardEffect`) |
+| Feature | Flag global | Writers | Reader |
+| --- | --- | --- | --- |
+| Instant Complete | `0x18080C6C8` | `0x180178BC4` (set) / `0x180178BD0` (clear) in the `levelComplete` detour | `0x180178BED` (`cmp byte [flag],1`, same detour) |
+| Fast Chests | `0x18080C8E0` | `0x180187CE4` / `0x180187CF0` (`init`) and `0x180187D04` / `0x180187D10` (`playRewardEffect`) | `0x180187D40` / `0x180187D60` (`cmp byte [flag],0`, same callback) |
 
-The two flags are adjacent but distinct (`0x18080C8C8` vs `0x18080C8E0`), so they do not
-share state. **UNVERIFIED:** which code reads either flag, and therefore what is accelerated;
-both are in `.data`'s zero-fill tail and no reader was located this pass. The idiom is
-recorded because it distinguishes these toggles from the one-byte-`ret` suppressions.
+**Correction (2026-10-25):** the Instant Complete flag was first recorded as
+`0x18080C8C8`, a transposition of `0x18080C6C8`. A full `.text` scan for rip-relative
+references to the wrong address found only unrelated instructions (`lea r8`/`lea rdx`/
+`mov word [..],0x3333`), which is what exposed it; the right address has exactly the
+expected set / clear / compare triple. The two flags are therefore **not** adjacent.
+
+Both readers are inside the detour that writes the flag, so each flag is scoped to its own
+wrapper rather than read by game code. **UNVERIFIED:** what the wrapper changes while the
+flag is set, since the reader's branch was not followed this pass.
 
 ### Checkpoint Limit Bypass rewrites an argument
 

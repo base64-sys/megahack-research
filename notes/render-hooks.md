@@ -457,3 +457,42 @@ tag 0x1EC (492) is enabled, calls `FUN_1801964D0(1)`.
 
 UNVERIFIED: which JSON key binds to tag 0x1EC; the vtable's owning class; the
 exact GWL style bits modified; the code location being NOP-patched.
+
+## Evidence — Show Triggers (2026-10-25)
+
+`HACK_SHOW_TRIGGERS` (tag 286, `0x11E`; entry #64 in the static label map, store VA
+`0x1800640F7`) is registered in `FUN_1800AFAE0` at `0x1800B2CC6`; the callback is
+`FUN_180183790`. It installs **three** hooks, which together explain the feature:
+
+| Target | RVA | Detour | Installer |
+| --- | ---: | --- | --- |
+| `PlayLayer::addObject` | `0x3ADD70` | `0x1801838C0` | `0x18015B2C0` |
+| `GJBaseGameLayer::addToSection` | `0x226500` | `0x180183910` | `0x180183AB0` |
+| `GameObject::customSetup` | `0x190E20` | `0x180183920` | `0x18017EB00` |
+
+The three detours share one `.data` byte at `0x18080C840`, and it has exactly three
+rip-relative references in `.text`, all inside these detours:
+
+```
+0x1801838CC  mov  byte [0x18080C840], 0    ; addObject: clear before the original
+0x1801838DD  test byte [0x18080C840], 1    ; after it: did the add already run?
+0x180183910  mov  byte [0x18080C840], 1    ; addToSection detour
+0x180183917  jmp  0x180114EE0              ; ...then continue into the original
+```
+
+`GameObject::customSetup` is where the toggle becomes visible: the detour reads the object
+ID at `[this+0x40C]`, requires it to be **greater than 0x7DE** (`0x18018392F`), subtracts
+`0xB53` and accepts the result when it is `<= 0x86` (`0x180183936`-`0x180183942`), so the
+accepted window is the inclusive ID range **0xB53..0xBD9** (2899..3033). Those are 2.2
+trigger object IDs, so "Show Triggers" marks trigger objects as they initialise rather than
+drawing every object.
+
+### Tag map
+
+| Tag (hex) | Tag (dec) | Accessor | Static-map name | Role |
+| --- | --- | --- | --- | --- |
+| 0x11E | 286 | `isHackEnabled` (Map B) | `HACK_SHOW_TRIGGERS` | Master toggle (Show Triggers) |
+
+UNVERIFIED: what `addObject`'s guarded tail call (`vtable+0x478`, `0x1801838FC`) does; whether
+the ID window is the complete trigger range or one branch of a larger test; which JSON key
+binds to tag 0x11E; how the marked object is drawn.
