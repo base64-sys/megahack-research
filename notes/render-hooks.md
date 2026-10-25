@@ -496,3 +496,27 @@ drawing every object.
 UNVERIFIED: what `addObject`'s guarded tail call (`vtable+0x478`, `0x1801838FC`) does; whether
 the ID window is the complete trigger range or one branch of a larger test; which JSON key
 binds to tag 0x11E; how the marked object is drawn.
+
+## Evidence — Hide UI (2026-10-25)
+
+`HACK_HIDE_UI` (tag 53, `0x35`, static-map entry #26, store VA `0x180063372`) is registered
+at `0x1800B0330`; callback `FUN_18015FA70` hooks `EditorUI::init` (RVA `0xDF390`) with detour
+`0x18015FB20`, installer `0x18015FB50`.
+
+```
+0x18015FB29  call  0x18010FC00             ; gate: returns a bool in al
+0x18015FB32  mov   r8, [rsi]               ; vtable
+0x18015FB3C  call  qword [r8+0x140]        ; setVisible(false)
+```
+
+The detour calls the gate, then calls the object's own vtable slot `+0x140` with `edx = 0`
+while preserving the gate's return value in `eax`. That is the same `+0x140` "hide this node"
+idiom used by Hide Pause Button and Hide Pause Menu, so the three toggles share one visibility
+mechanism even though their targets differ.
+
+Note the hook is on `EditorUI::init` only: the hide is applied once at construction, so the
+editor UI stays hidden for that layer's lifetime rather than being re-hidden every frame.
+
+UNVERIFIED: what `FUN_18010FC00` tests and returns (it is a normal function with a frame
+prologue, not a thunk); whether the toggle also covers the playtest UI; the JSON key for tag
+0x35.

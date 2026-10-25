@@ -13,7 +13,7 @@
 | `mapped` | The feature has its own evidence: a note that names it, its settings key(s) and default, and/or its implementing function(s) with VAs. |
 | `alias` / `dead` | A restatement of an earlier feature / absent from this build, with the evidence for that call. |
 
-All 389 rows below were `cluster` at the 2026-10-23 baseline. **Fifty-four are now
+All 389 rows below were `cluster` at the 2026-10-23 baseline. **Fifty-nine are now
 `mapped`**; the [Mapped rows](#mapped-rows) table below is the authoritative list, with
 tag, registration site and hook address for each one.
 
@@ -33,8 +33,10 @@ toggles recovered by the full-`.text` registration scan** (Instant Complete, Che
 Limit Bypass, Allow Low Volume, Fast Chests) needed no inference: their static
 `HACK_*` label matches a changelog row verbatim, and their detours were read. **Four more
 came from detour bodies** (Place Over, Confirm Practice, Confirm Reset, Confirm
-Full-Reset), including a shared confirmation-dialog wrapper. The other 335 rows remain
-`cluster`.
+Full-Reset), including a shared confirmation-dialog wrapper. **Show Triggers, Main Menu
+Gameplay and the three editor/UI toggles below** (Text Length Bypass, Hide UI, Smooth
+Editor Trail) each came from reading every detour installed by the callback. The other
+330 rows remain `cluster`.
 
 A keyword check at the baseline found that **185 of 389** rows point at a note that
 never mentions the feature at all, so for those even the cluster assignment is only a
@@ -100,6 +102,9 @@ reported as progress.
 | Added Confirm Reset | tag 313 (`0x139`, `HACK_CONFIRM_RESET`); registered at `0x1800b22ea`, callback `FUN_1801774b0` hooks `PauseLayer::onRestart` (RVA 0x37E410), detour `0x180177520`. See [ui-addons.md](ui-addons.md#evidence--confirmation-dialogs-and-place-over-2026-10-25). |
 | Added Confirm Full-Reset | tag 314 (`0x13A`, `HACK_CONFIRM_FULL_RESET`); registered at `0x1800b2361`, callback `FUN_180177680` hooks `PauseLayer::onRestartFull` (RVA 0x37E4B0), detour `0x1801776f0`. See [ui-addons.md](ui-addons.md#evidence--confirmation-dialogs-and-place-over-2026-10-25). |
 | Added Show Triggers | tag 286 (`0x11E`, `HACK_SHOW_TRIGGERS`, static map `0x1800640F7`); registered at `0x1800b2cc6`, callback `FUN_180183790` installs three hooks (`addObject`, `addToSection`, `customSetup`) sharing flag `0x18080C840`; the customSetup detour accepts IDs 0xB53..0xBD9. See [render-hooks.md](render-hooks.md#evidence--show-triggers-2026-10-25). |
+| Added Text Length Bypass | tag 37 (`0x25`, `HACK_TEXT_LENGTH`, static map `0x180064420`); registered at `0x1800afe13`, callback `FUN_18015d6d0` hooks `CCTextInputNode::onTextFieldAttachWithIME` (RVA 0x508F0); detour `0x18015d740` sets the cap to `0x7FFFFFFF` via `0x1801e6d20` before tail-jumping the original. See [ui-addons.md](ui-addons.md#evidence--text-length-bypass-2026-10-25). |
+| Added Hide UI | tag 53 (`0x35`, `HACK_HIDE_UI`, static map `0x180063372`); registered at `0x1800b0330`, callback `FUN_18015fa70` hooks `EditorUI::init` (RVA 0xDF390); detour `0x18015fb20` calls vtable `+0x140` with `edx=0`. See [render-hooks.md](render-hooks.md#evidence--hide-ui-2026-10-25). |
+| Added Smooth Editor Trail | tag 55 (`0x37`, `HACK_SMOOTH_EDITOR_TRAIL`, static map `0x180064222`); registered at `0x1800b058d`, callback `FUN_180163ec0` hooks `LevelEditorLayer::postUpdate` (RVA 0x2E0F40); detour `0x180163f30` stores `0x3D088889` (1/30 s) at `[layer+0x3898]`. See [creator-feature.md](creator-feature.md#evidence--smooth-editor-trail-2026-10-25). |
 | Added Main Menu Gameplay | tag 457 (`0x1C9`, `HACK_MAIN_MENU_PLAY`, static map `0x180063529`); registered at `0x1800b308d`, callback `FUN_180189260` hooks `MenuGameLayer::tryJump`/`update`/`ccTouchBegan` (RVAs 0x331F70, 0x332240, 0x333600) around flag `0x18080C920`. See [gameplay-hooks.md](gameplay-hooks.md#evidence--main-menu-gameplay-2026-10-25). |
 | Added No (C) Mark | tag 44 (`HACK_NO_C_MARK`, 0x02C); registered in `FUN_1800afae0` at `0x1800b049a`, callback `FUN_180162d20` (hooks `ShareLevelLayer::onShare`, RVA 0x490270). See no-c-mark-feature.md. |
 | Added No Respawn Flash | tag 398 (`HACK_NO_RESPAWN_FLASH`, 0x18E); registered in `FUN_1800afae0` at `0x1800b13fb`, callback `FUN_1801714c0` (hooks `PlayerObject::playSpawnEffect`, RVA 0x397480). See no-respawn-flash-feature.md. |
@@ -278,7 +283,7 @@ as "every feature named anywhere in the changelog", these three are the first ro
 | v8.0.0-alpha12 | Added Switch After Death to StartPos Switcher | cluster | [startpos-switcher-feature.md](startpos-switcher-feature.md) |
 | v8.0.0-alpha12 | Added support for NodeIDs (Geode) | cluster | [ui-addons.md](ui-addons.md) |
 | v8.0.0-alpha10b | Added Wave Trail Fix | cluster | [render-hooks.md](render-hooks.md) |
-| v8.0.0-alpha10b | Added Smooth Editor Trail | cluster | [creator-feature.md](creator-feature.md) |
+| v8.0.0-alpha10b | Added Smooth Editor Trail | mapped | [creator-feature.md](creator-feature.md#evidence--smooth-editor-trail-2026-10-25) | tag 55 (`0x37`, `HACK_SMOOTH_EDITOR_TRAIL`, static map `0x180064222`); registered at `0x1800b058d`, callback `FUN_180163ec0` hooks `LevelEditorLayer::postUpdate` (RVA 0x2E0F40); detour `0x180163f30` stores `0x3D088889` (1/30 s) at `[layer+0x3898]` then jumps to the original. |
 | v8.0.0-alpha10b | Added Screenshots | cluster | [ui-addons.md](ui-addons.md) |
 | v8.0.0-alpha10b | Added Practice Bug Fix | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v8.0.0-alpha10b | Added custom click/move keybinds | cluster | [input-hooks.md](input-hooks.md) |
@@ -298,7 +303,7 @@ as "every feature named anywhere in the changelog", these three are the first ro
 | v8.0.0-alpha9 | Added Uncomplete Level | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v8.0.0-alpha9 | Added Trigger Value Bypass | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v8.0.0-alpha9 | Added Hide Pause Menu | cluster | [render-hooks.md](render-hooks.md) |
-| v8.0.0-alpha9 | Added Hide UI | cluster | [render-hooks.md](render-hooks.md) |
+| v8.0.0-alpha9 | Added Hide UI | mapped | [render-hooks.md](render-hooks.md#evidence--hide-ui-2026-10-25) | tag 53 (`0x35`, `HACK_HIDE_UI`, static map `0x180063372`); registered at `0x1800b0330`, callback `FUN_18015fa70` hooks `EditorUI::init` (RVA 0xDF390); detour `0x18015fb20` calls vtable `+0x140` with `edx=0` (hide) when its gate returns true. |
 | v8.0.0-alpha9 | Added Restart, Practice & folder shortcuts | cluster | [ui-addons.md](ui-addons.md) |
 | v8.0.0-alpha8 | Added Show Hitboxes | mapped | [show-hitboxes-feature.md](show-hitboxes-feature.md) | tag 192 (`HACK_SHOW_HITBOXES`); gate `FUN_180203EE0`, draw `FUN_180203F60`→`FUN_180204000`/`FUN_180204150`; per-object draw `FUN_180203070`. See show-hitboxes-feature.md. |
 | v8.0.0-alpha8 | Added Show Hitboxes on Death | mapped | [show-hitboxes-feature.md](show-hitboxes-feature.md) | tag 216 (`HACK_SHOW_HITBOXES_ON_DEATH`); gate `FUN_180203EE0` branch 2, death-object draw via `FUN_180204000` (uses `DAT_18080CB80` from `destroyPlayer` callback). See show-hitboxes-feature.md. |
@@ -332,7 +337,7 @@ as "every feature named anywhere in the changelog", these three are the first ro
 | v8.0.0-alpha4 | Added Platformer Practice | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v8.0.0-alpha4 | Added Trail Cutting | mapped | [render-hooks.md](render-hooks.md) | tag 392 (`HACK_TRAIL_CUTTING`, 0x188); registered in `FUN_1800afae0` at `0x1800b1be2`, callback `FUN_1801732c0` (hooks `cocos2d::CCMotionStreak::initWithFade`). See trail-cutting-feature.md. |
 | v8.0.0-alpha4 | Added Zero Delay | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
-| v8.0.0-alpha4 | Added Text Length Bypass | cluster | [ui-addons.md](ui-addons.md) |
+| v8.0.0-alpha4 | Added Text Length Bypass | mapped | [ui-addons.md](ui-addons.md#evidence--text-length-bypass-2026-10-25) | tag 37 (`0x25`, `HACK_TEXT_LENGTH`, static map `0x180064420`); registered at `0x1800afe13`, callback `FUN_18015d6d0` hooks `CCTextInputNode::onTextFieldAttachWithIME` (RVA 0x508F0); detour `0x18015d740` calls `0x1801e6d20(rcx-0x1A0, 0x7FFFFFFF)` then tail-jumps the original. |
 | v8.0.0-alpha4 | Added Slider Bypass | cluster | [ui-addons.md](ui-addons.md) |
 | v8.0.0-alpha4 | Added No Trail | mapped | [render-hooks.md](render-hooks.md) | tag 395 (`HACK_NO_TRAIL`, 0x18B); registered in `FUN_1800afae0` at `0x1800b16c5`, callback `FUN_180171db0` (hooks `cocos2d::CCMotionStreak::draw`). See no-trail-feature.md. |
 | v8.0.0-alpha4 | Added No Wave Pulse | mapped | [render-hooks.md](render-hooks.md) | tag 394 (`HACK_NO_WAVE_PULSE`, 0x18A); registered in `FUN_1800afae0` at `0x1800b173c`, callback `FUN_180172160` (hooks `PlayerObject::update`). See no-wave-pulse-feature.md. |

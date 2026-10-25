@@ -274,3 +274,26 @@ vtable slot: the qword before it is `0x180576920`, not a COL).
 UNVERIFIED: the dialog class behind `0x1801E7F50` and the descriptor at `0x180576388`;
 which JSON keys bind to three of the four confirm tags.
 
+## Evidence — Text Length Bypass (2026-10-25)
+
+`HACK_TEXT_LENGTH` (tag 37, `0x25`, static-map entry #72, store VA `0x180064420`) is
+registered at `0x1800AFE13`; callback `FUN_18015D6D0` hooks
+`CCTextInputNode::onTextFieldAttachWithIME` (RVA `0x508F0`) with detour `0x18015D740`,
+installer `0x18015D770`.
+
+The detour raises the input's length cap to `INT_MAX` before the original runs:
+
+```
+0x18015D74C  add   rcx, -0x1A0              ; the owning node, not the input
+0x18015D753  mov   edx, 0x7FFFFFFF
+0x18015D758  call  0x1801E6D20              ; set the cap
+0x18015D769  jmp   0x1801EB310              ; original onTextFieldAttachWithIME
+```
+
+The choke point is chosen well: the limit is re-applied every time the text field gains IME
+focus, so it also covers fields created after the toggle was enabled. `INT_MAX` rather than a
+large finite value means the cap is effectively removed.
+
+UNVERIFIED: which field `0x1801E6D20` writes (the `rcx-0x1A0` back-reference is inferred from
+this one detour); the JSON key for tag 0x25.
+

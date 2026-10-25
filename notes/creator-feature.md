@@ -40,6 +40,29 @@ From [ui-addons.md](ui-addons.md) and [hook-dispatch.md](hook-dispatch.md):
   `onSaveAndExit` and `onExitNoSave` are hooked.
 - `EditorOptionsLayer::onButtonRows` and `onButtonsPerRow` are hooked.
 
+## Evidence — Smooth Editor Trail (2026-10-25)
+
+`HACK_SMOOTH_EDITOR_TRAIL` (tag 55, `0x37`, static label map entry #67, store VA
+`0x180064222`) is registered at `0x1800B058D`; callback `FUN_180163EC0` hooks
+`LevelEditorLayer::postUpdate` (RVA `0x2E0F40`, name string from the `lea r9` operand)
+with detour `0x180163F30`, installed by `0x180158CC0`.
+
+The detour is two instructions before the original:
+
+```
+0x180163F30  mov  dword [rcx+0x3898], 0x3D088889   ; 0.033333335f = 1/30 s
+0x180163F3A  jmp  0x18019FFD0                       ; original postUpdate
+```
+
+So the toggle sets the editor's trail sample interval field at `LevelEditorLayer+0x3898` to
+exactly 1/30 s and then runs the unmodified `postUpdate`. That is a smoothing interval, not a
+suppression: the trail refresh is pinned to 30 Hz instead of whatever GD computes per frame.
+
+UNVERIFIED: the field's declaration/type (`+0x3898` is inferred from this single store), what
+GD writes there normally, and whether `MULTIPLE_EDITOR_TRAILS` (tag 55, `0x37`) is what sets
+`+0x3898` when this toggle is off — the adjacency of the two tags in the static map is not
+evidence of a shared field.
+
 ## Open questions
 
 - UNVERIFIED: which settings tags correspond to each creator hack.
@@ -49,5 +72,3 @@ From [ui-addons.md](ui-addons.md) and [hook-dispatch.md](hook-dispatch.md):
   `HACK_TRIGGER_VALUE_BYPASS` veto or modify editor operations.
 - UNVERIFIED: whether `HACK_ACCURATE_SAVE` changes `LevelEditorLayer::saveLevel`
   or GD's save path.
-- UNVERIFIED: whether `HACK_SMOOTH_EDITOR_TRAIL` and
-  `MULTIPLE_EDITOR_TRAILS` share a render helper.

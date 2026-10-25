@@ -312,3 +312,39 @@ UNVERIFIED: what `0x18019EF10` and `0x1801A85A0`/`0x1801A8920` are (names not re
 what the icon-state bytes `+0x9BB`/`+0x9BE` mean; why `tryJump` must be suppressed rather
 than left to run; which JSON key binds to tag 0x1C9.
 
+## Lead — Show Layout installs six hooks (2026-10-25, not promoted)
+
+`HACK_SHOW_LAYOUT` (tag 260, `0x104`, static-map entry #63 store VA `0x180064095`) is bound
+to callback `FUN_18017F0F0`, which installs six same-image hooks:
+
+| Target | RVA | Detour | Installer |
+| --- | ---: | --- | --- |
+| `PlayLayer::resetLevel` | `0x3B8EB0` | `0x18017F330` | `0x1800AB850` |
+| `PlayLayer::applyEnterEffect` | `0x3B1660` | `0x18017F750` | `0x18017FAA0` |
+| `PlayLayer::applyCustomEnterEffect` | `0x3B0970` | `0x18017F7C0` | `0x18017FD40` |
+| `EffectGameObject::triggerObject` | `0x4A5F30` | `0x18017F830` | `0x180168350` |
+| `GameObject::addGlow` | `0x18DEE0` | `0x18017F8E0` | `0x18017FF90` |
+| `GameObject::saveActiveColors` | `0x1A08D0` | `0x18017FA60` | `0x18017EB00` |
+
+Literal observations from the detour bytes:
+
+- **`resetLevel`** calls the original (`0x1801A4300`), reads config tag `0x106` (262) through
+  `0x18002DE50`, and on a true result reads tag `0x107` (263) as an int via `0x18002E4C0`
+  and passes `&local` with it to `0x1801F15E0`. So the toggle has two Map A sub-keys, not one.
+- **`applyEnterEffect` / `applyCustomEnterEffect`** both require `[object+0x3A0] == 7` and
+  then skip the effect for object IDs `0x26`, `0x2C`, `0x2ED` and `0x64F`, falling through to
+  a virtual call for everything else.
+- **`triggerObject`** is a jump-table dispatch: it accepts IDs `> 0x630` with
+  `id - 0xB57 <= 0x80` and jumps through a 4-byte table at `0x180575020`, otherwise returns
+  without calling anything.
+- **`saveActiveColors`** tests byte `[this+0x516]`, clears it, calls `0x18014A4D0`, then
+  restores it to 1 — a scoped flag around a single call.
+- **`addGlow`** begins by reading and clearing `[this+0x516]`, then immediately performs
+  `std::string` operations on its second argument (`[arg+0x10]` length, `[arg+0x18]` capacity,
+  `[arg]` buffer). That does not look like a glow write, so either the detour is a logging
+  wrapper or the target assignment for this row is wrong. Flagged rather than explained.
+
+UNVERIFIED: which of the six hooks renders the layout; the meaning of tags 262/263; the
+jump-table destinations; and whether the `addGlow` target is correct. Nothing here is
+promoted to `mapped` on this evidence.
+
