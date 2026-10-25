@@ -272,13 +272,50 @@ This is **not** a PE delay-import table: data directory 13 is empty (`rva=0 size
 directory 12 (IAT) is `0x642CB8` size `0x2080`. The stub family is large: `mov r9, gs:[0x58]`
 occurs **81** times and `mov r8, gs:[0x58]` **110** times in the image.
 
-Consequence for mapping: when a detour tail-jumps into one of these stubs, the detour shows
-the arguments it passes to the original and nothing about the host address, which is why a
-hook's friendly name is the only identifier for those targets.
+### The base is the game module, and the offset is the host RVA
 
-UNVERIFIED: whether the resolver is Mega Hack's own or a Geode-provided helper reached
-through the same image, and what `0x2C57E0` indexes (it sits in the GD code RVA range, so
-it may be a host-side descriptor rather than an image offset).
+`0x18010DDC0` is a cached `GetModuleHandleA(NULL)`: it takes no argument, loads
+`qword [rip+0x53515A]` → import pointer `0x180642F68` with `ecx=0`, stores the result in
+`.data`, and returns it. Two independent readings agree on the import: the Ghidra symbol
+table names that slot `PTR_GetModuleHandleA_180642f68`, and the slot's bytes in the file are
+`60 60 64 00 00 00 00 00`, i.e. an import-table entry at RVA `0x646060` rather than code.
+
+Therefore each stub computes `game_module_base + immediate`, which makes **the immediate the
+host function's RVA**. Scanning `.text` for the `call 0x18010DDC0` / `lea rcx,[rax+imm32]`
+pair (`scripts/lazy_stubs.py`) finds **277 stubs over 276 distinct host RVAs** — one RVA has
+two stubs.
+
+That converts the stubs from anonymous trampolines into named targets. Joining the 276 RVAs
+against the named hook-site table names **148** of them without any runtime observation, and
+the names are the expected GD methods:
+
+| Host RVA | Method |
+| ---: | --- |
+| `0x03C020` | `BoomListView::init` |
+| `0x0508F0` | `CCTextInputNode::onTextFieldAttachWithIME` |
+| `0x0AB610` | `CustomListView::loadCell` |
+| `0x0DF390` | `EditorUI::init` |
+| `0x4A5F30` | `EffectGameObject::triggerObject` |
+
+This is also an independent check on the name-resolved hook targets recorded elsewhere: the
+same method arrives at the same RVA from two unrelated directions — a `mov edx,<rva>` in a
+callback and the immediate in a generated stub. `LevelAreaInnerLayer::init` agrees exactly
+(`0x2C64E0`).
+
+Consequence for mapping: a detour that tail-jumps into one of these stubs shows the
+arguments it passes to the original, not the host address. The stub's immediate supplies the
+address; the arguments still need reading separately.
+
+### One disagreement, left open
+
+`LevelAreaLayer::onClickDoor` is name-resolved to RVA `0x2C55C0` in No Transition's callback,
+but the stub that No Transition's detour jumps into adds `0x2C57E0` — `0x220` higher, and
+`0x2C57E0` is not named by any hook site. Either the named `0x2C55C0` is a wrapper that
+reaches `0x2C57E0`, or the two are different functions. Both readings are consistent with the
+bytes; GD's binary would settle it and is not part of this baseline. **UNVERIFIED.**
+
+UNVERIFIED: whether the resolver (`0x18014D230` and its siblings, one per stub) is Mega Hack's
+own or a Geode-provided helper compiled into the same image, and what its second argument is.
 
 ## Deliberately not pursued
 

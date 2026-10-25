@@ -187,6 +187,7 @@ These live in `scripts/`, so they exist on a fresh clone. Neither needs `samples
 | `hook_sites.py`             | Enumerate every hook Mega Hack installs: method, host RVA and callback       |
 | `tag_callback_map.py`         | Map all 125 tag registrations to their callbacks from instruction bytes      |
 | `callback_hooks.py`           | Read each callback's hook targets, detours and installers off the bytes      |
+| `lazy_stubs.py`               | List MH's lazily-bound host calls, with the host RVA behind each stub         |
 | `check_inventory_evidence.py` | Fail if any label, registration or callback cited in the feature inventory disagrees with the binary |
 | `init_table.py`              | Recover the CRT `_initterm` tables and the functions they call indirectly   |
 | `test_init_table.py`         | Pin those tables and the zero-caller counts; skips without a sample set       |

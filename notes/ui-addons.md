@@ -356,10 +356,13 @@ appears **81** times and the sibling `mov r8, gs:[0x58]` **110** times in the im
 reaches host functions through a per-thread cache that is populated on first call.
 
 The consequence for feature mapping is concrete: the detour calls *MH's own* entry point for
-the original function, so the detour body tells us the argument it passes but not the host
-address it reaches. `LevelAreaInnerLayer::init` is therefore "call the original with `dl=1`",
-and whether `dl=1` suppresses the transition remains **UNVERIFIED**; so does the host target
-beyond the symbol name the hook was registered with.
+the original function, so the detour body tells us the argument it passes. The host address is
+recoverable statically — the binder's base is `GetModuleHandleA(NULL)` and the stub adds the
+host RVA — so `LevelAreaInnerLayer::init` reaches host RVA `0x2C64E0` and `GJShopLayer::onBack`
+`0x2ACD70`, both matching the names the hooks were registered with. `onClickDoor`'s stub adds
+`0x2C57E0`, while the callback names `0x2C55C0`; that `0x220` disagreement is recorded as
+**UNVERIFIED** in [host-abi.md](host-abi.md#one-disagreement-left-open) rather than smoothed
+over. Whether `dl=1` suppresses the transition remains **UNVERIFIED**.
 
 ### Scope note
 
@@ -373,7 +376,8 @@ the changelog only as a fix bullet, which widens the M3 scope gap recorded in
 | --- | --- | --- | --- | --- |
 | 0x1C1 | 449 | `isHackEnabled` (Map B) | `HACK_NO_TRANSITION` | Master toggle (No Transition) |
 
-UNVERIFIED: the JSON key for tag 449; the host address behind each lazy-binding stub;
-whether the `vtable+0x200` tail call in `onBack` reaches the original handler. The binder
-itself is described in [host-abi.md](host-abi.md#how-mega-hack-calls-host-functions-it-does-not-import).
+UNVERIFIED: the JSON key for tag 449; whether the `vtable+0x200` tail call in `onBack`
+reaches the original handler; whether `dl=1` skips the transition. The binder and the host
+RVAs are described in
+[host-abi.md](host-abi.md#how-mega-hack-calls-host-functions-it-does-not-import).
 
