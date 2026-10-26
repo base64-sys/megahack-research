@@ -182,7 +182,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v9.1.0-beta.6 | Added Replay Open Folder | cluster | [replay-feature.md](replay-feature.md) |
 | v9.1.0-beta.6 | Added Crash Game to Utilities | cluster | [ui-addons.md](ui-addons.md) |
 | v9.1.0-beta.5 | Added Accurate Percentage Better Calculation (fixes StartPos!) | cluster | [best-run-feature.md](best-run-feature.md) |
-| v9.1.0-beta.3 | Added CBS Tick Highlighting in Show Hitbox Trail | cluster | [render-hooks.md](render-hooks.md) |
+| v9.1.0-beta.3 | Added CBS Tick Highlighting in Show Hitbox Trail | cluster | [show-trajectory-feature.md](show-trajectory-feature.md#lead--the-half-tick-trajectory-builder-and-tag-361-2026-10-26) | The half-tick sampler is `0x180182AA0`: tag 361 read once at `0x180182B71`, used as a count floored at one, driving a simulated player that appends trail points. Which of `HIGHLIGHT_HALFTICKS` / `UNCAPPED_EDITOR_LENGTH` tag 361 is remains open, so the row stays cluster. |
 | v9.1.0-beta.3 | Added Show Hitbox Trail Opacity | mapped | [show-hitboxes-feature.md](show-hitboxes-feature.md#evidence--show-hitbox-trail-opacity-2026-10-26) | tag 228 (`0xE4`, runtime-assigned, single read site `0x180180A2D`); `getConfigVar<double>` through `0x180003D80`, divided by 100.0 and passed as the third argument to the trail geometry helper `0x180202BD0` from the rebuild in `0x1801809A0`. |
 | v9.1.0-beta.3 | Added Trail Always On | cluster | [render-hooks.md](render-hooks.md) |
 | v9.1.0-beta.1 | Added Auto-Update | cluster | [ui-addons.md](ui-addons.md) |
