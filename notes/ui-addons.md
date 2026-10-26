@@ -540,3 +540,70 @@ the identity of the virtual at `[[arg2]+0x38]` (a direction/step selector is inf
 `cmp eax,1` branch, not proven); the names of `EditorOptionsLayer+0x3F0`/`+0x3F4` and whether
 host code reads them too; and what the objects at `+0x3F8`/`+0x400` are, whose `+0x168`
 sub-object's slot 0 is only shape-compatible with a label `setString`.
+
+## Evidence — Slider Bypass (2026-10-26)
+
+Tag 38 (`0x026`, `HACK_SLIDER_LIMIT`, static map entry 65, store `0x180064155`) has one
+hook, and its detour is a replacement rather than a wrapper: there is no reference to a
+cached original anywhere in the cave.
+
+| Field | Value |
+| --- | --- |
+| Registration | `0x1800AFD9C` |
+| Callback | `FUN_18015D320` (body `0x18015D320..0x18015D378`) |
+| Disable branch | `0x18015D379` tail-jumps `0x180108A80` with the same detour |
+| Target | `SliderTouchLogic::ccTouchMoved`, RVA `0x715D0` |
+| Detour | `0x18015D390`, `.pdata` extent `0x18015D390..0x18015D46C` |
+| Installer | `0x18015D470`, order `0xBD8`, sixth argument 1 |
+| Name string | `0x1805751AE` "SliderTouchLogic::ccTouchMoved" |
+
+Callback shape is the usual one: `movzx ebx,[rdx]` reads the enable byte, `0x180108960`
+opens the settings context, `cmp bl,1` selects install, `0x18010A250` returns the module
+base and `0x18010A370` resolves RVA `0x715D0`; `[rsp+0x28]=1` and `[rsp+0x20]=0xBD8` are
+the last two installer arguments.
+
+### The detour body
+
+`/GS` cookie from `0x1807F7040`; `rsi = this` then `add rsi,-0x140`, so every later
+`[rsi+X]` is `[this+X-0x140]` and the meaningful offsets are `+0x88` and `+0x90`.
+
+```
+0x18015d397  mov rsi,rcx
+0x18015d3a9  mov rdi,[rcx+0x88]                 ; slider object
+0x18015d3b7  cmp byte [rdi+0x194],1
+0x18015d3be  jne 0x18015d3f4
+0x18015d3c0  lea rbx,[rsp+0x28]; mov rcx,rdx; mov rdx,rbx
+0x18015d3cb  call 0x180532B60                   ; CCTouch::getLocation
+0x18015d3d5  mov rcx,rsi; lea rdx,[rsp+0x30]; mov r8,rbx
+0x18015d3db  call 0x180532B70                   ; CCNode::convertToNodeSpace
+0x18015d3e0  movss xmm1,[rsp+0x34]              ; node-space y
+0x18015d3e6  mov rax,[rdi]; mov rcx,rdi
+0x18015d3ec  call [rax+0xE0]                    ; vertical path
+0x18015d3f2  jmp 0x18015d426
+0x18015d3f4  ... same two calls ...
+0x18015d414  movss xmm1,[rsp+0x30]              ; node-space x
+0x18015d41a  mov rax,[rdi]; mov rcx,rdi
+0x18015d420  call [rax+0xD0]                    ; horizontal path
+0x18015d426  mov rcx,[rsi+0x1D0]                ; = [this+0x90]
+0x18015d42d  call 0x1801FF740
+0x18015d432  mov rcx,[rsi+0x1C8]                ; = [this+0x88], same object as rdi
+0x18015d439  mov rax,[rcx]
+0x18015d43c  call [rax+0x368]
+0x18015d456  ... epilogue, cookie check ...
+0x18015d45d  ret
+```
+
+The two import calls resolve by name from the import table: `0x180532B60` is
+`libcocos2d.dll!CCTouch::getLocation`, `0x180532B70` is
+`libcocos2d.dll!CCNode::convertToNodeSpace`. So the body converts the touch position into
+the slider node's space and hands the raw coordinate to one of two virtual slots, choosing
+by `[slider+0x194]` (a vertical-slider flag), then refreshes the label/thumb through
+`0x1801FF740` and a second virtual call at `+0x368`. What is missing compared with a normal
+`ccTouchMoved` is exactly the usual min/max clamp and the mapping to a value range, which is
+consistent with the changelog's "Slider Bypass" and with the label `HACK_SLIDER_LIMIT`.
+
+UNVERIFIED: names of `SliderTouchLogic+0x88`/`+0x90`, of `[slider+0x194]` and of the two
+virtual slots `+0xD0`/`+0xE0`/`+0x368`; whether the receiving setter re-clamps (in which case
+the bound would be lifted by the *absence* of the pre-clamp only); and what `0x1801FF740`
+does to `[this+0x90]`. The vanilla `ccTouchMoved` is host code and is not called here, so
+its arithmetic cannot be compared inside this image.

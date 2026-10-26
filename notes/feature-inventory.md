@@ -13,7 +13,7 @@
 | `mapped` | The feature has its own evidence: a note that names it, its settings key(s) and default, and/or its implementing function(s) with VAs. |
 | `alias` / `dead` | A restatement of an earlier feature / absent from this build, with the evidence for that call. |
 
-All 389 rows below were `cluster` at the 2026-10-23 baseline. **Ninety-two are now
+All 389 rows below were `cluster` at the 2026-10-23 baseline. **Ninety-four are now
 `mapped`**; the [Mapped rows](#mapped-rows) table below is the authoritative list, with
 tag, registration site and hook address for each one.
 
@@ -56,8 +56,11 @@ they count without a host bound. **Jumpscare** builds its own overlay and sound 
 re-applies the newest checkpoint's two player-state blocks after `resetLevel`, one tag serving
 both its changelog wordings. **Show Layout colour options** turned out to be four
 (bool, colour) config pairs read by the existing Show Layout `resetLevel` detour. **Force StartPos Reset Camera** post-hooks `loadStartPosObject` and forces an unnamed host
-routine (RVA `0x23FDE0`) whenever a start position was loaded. The other
-297 rows remain `cluster`.
+routine (RVA `0x23FDE0`) whenever a start position was loaded. **Slider Bypass** replaces
+`SliderTouchLogic::ccTouchMoved` outright, feeding the raw touch coordinate to the slider
+instead of a clamped value, and **Main Level Bypass** raises a private flag around
+`LevelPage::onPlay`/`updateDynamicPage` so `GameStatsManager::getStat(0x38, 0)` answers 999.
+The other 295 rows remain `cluster`.
 
 A keyword check at the baseline found that **185 of 389** rows point at a note that
 never mentions the feature at all, so for those even the cluster assignment is only a
@@ -151,6 +154,9 @@ reported as progress.
 | StartPos Switcher interface family (six rows) | the interface is installed unconditionally by `0x180184490` from the shared initialiser at `0x1800B2DEE`; its three hooks (`PlayLayer::init` RVA 0x3A5B00 -> `0x1801846C0`, `setupHasCompleted` 0x3A66D0 -> `0x1801846D0`, `UILayer::init` 0x4CCB00 -> `0x180184710`) and the tag-169/170 listeners `0x1801848A0`/`0x1801848E0` are read, and the remaining behaviour lives in tag 130's detours: `0x180185070` reads keybinds 131/132 and quick-switch tag 149 with the 17-entry table `0x1805793A8`, `0x180185CE0` defers through tag 168, and the reset hook `0x180184A80` applies the pending startpos. See [startpos-switcher-feature.md](startpos-switcher-feature.md#evidence--startpos-switcher-family-2026-10-26). |
 | Added Auto Music Sync | tag 326 (`0x146`, `HACK_AUTO_MUSIC_SYNC`, store `0x180062AFF`); registered at `0x1800b1eb6`, callback `0x1801751e0` installs `0x180175250` on `PlayLayer::postUpdate` (RVA 0x3B4BA0). The detour skips platformer levels, the `0x18015A2F0`/`0x180129AB0` state checks and non-empty dictionary groups 6/7/8, then calls `0x180175310`, which reads the music channel through `[engine+0x228]`, `getChannel` and `getPosition`, computes the target from the player position (tag 328 selects the source) plus `[engine+0x264]` and `[layer+0xDB0]+0x158`, and re-seats the channel with `setPosition` when the drift exceeds tag 327. See [audio-sync-feature.md](audio-sync-feature.md#evidence--auto-music-sync-2026-10-26). |
 | Added Auto Song Downloader | tag 323 (`0x143`, `HACK_AUTO_SONG_DOWNLOAD`, static map `0x180062C24`); registered at `0x1800b1fa4`, callback `FUN_180175640` hooks `LevelInfoLayer::init` (RVA 0x2F7340) with code-cave detour `0x1801756b0`; the detour calls the original first, then runs `CCCallFuncO::create(subObject, <host 0xCABC0>, subObject)` on `[[layer+0x2D0]+0x180]` when that object's vtable slot `+0x148` returns true. See [ui-addons.md](ui-addons.md#evidence--auto-song-downloader-2026-10-25). |
+
+| Slider Bypass | tag 38 (`0x026`, `HACK_SLIDER_LIMIT`, static map `0x180064155`); registered at `0x1800afd9c`, callback `FUN_18015d320` installs detour `0x18015d390` (`.pdata` `0x18015d390..0x18015d46c`) on `SliderTouchLogic::ccTouchMoved` (RVA 0x715D0). The detour never calls the cached original: it converts the touch with `CCTouch::getLocation` and `CCNode::convertToNodeSpace`, then passes the node-space y to `[[this+0x88]+vtable+0xE0]` when `[[this+0x88]+0x194]==1` and the x to `+0xD0` otherwise, before `0x1801ff740([this+0x90])` and a `+0x368` virtual on the same slider object. See [ui-addons.md](ui-addons.md#evidence--slider-bypass-2026-10-26). |
+| Main Level Bypass | tag 39 (`0x027`, `HACK_MAIN_LEVELS`, static map `0x1800634C6`); registered at `0x1800afcb1`, callback `FUN_18015c9e0` installs three detours: `0x18015cb10` on `LevelPage::onPlay` (RVA 0x31D880) and `0x18015cb30` on `LevelPage::updateDynamicPage` (0x31A8B0) set byte `0x18080C078` around the cached original, and `0x18015cb50` on `GameStatsManager::getStat` (0x1D51B0) returns `0x3E7` for key byte `0x38`/sub-key `0` while it is set and tail-jumps the cached original otherwise. See [gameplay-hooks.md](gameplay-hooks.md#evidence--main-level-bypass-2026-10-26). |
 
 ## Toggles outside the 389
 
@@ -295,7 +301,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v8.0.2-alpha.1 | Added Auto Music Sync | mapped | [audio-sync-feature.md](audio-sync-feature.md#evidence--auto-music-sync-2026-10-26) | tag 326 (`0x146`, `HACK_AUTO_MUSIC_SYNC`, store `0x180062AFF`); registered at `0x1800b1eb6`, callback `0x1801751e0` hooks `PlayLayer::postUpdate` (RVA 0x3B4BA0) with `0x180175250`, which after six gates calls `0x180175310`: read the music channel position via `FMOD::Channel::getPosition`, compare against the player position plus music offset and the 40 ms constant, and `setPosition` when the drift exceeds tag 327. |
 | v8.0.2-alpha.1 | Added Fast Chests | mapped | [gameplay-hooks.md](gameplay-hooks.md#evidence--four-labelled-tags-found-by-the-full-section-scan-2026-10-25) | tag 461 (`0x1CD`, `HACK_FAST_CHESTS`); registered in `FUN_1800afae0` at `0x1800b300c`, callback `FUN_180187820` hooks `RewardUnlockLayer::init` (RVA 0x3CDDF0) and `playRewardEffect`/`showCloseButton`; detours set flag `0x18080C8E0` around the original call. |
 | v8.0.2-alpha.1 | Added No Portal Lightning | mapped | [render-hooks.md](render-hooks.md) | tag 416 (`HACK_NO_PORTAL_LIGHTNING`, 0x1A0); registered in `FUN_1800afae0` at `0x1800b1296`, callback `FUN_180171170` (hooks `GJBaseGameLayer::lightningFlash`). See no-portal-lightning-feature.md. |
-| v8.0.2-alpha.1 | Added Main Level Bypass | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
+| v8.0.2-alpha.1 | Added Main Level Bypass | mapped | [gameplay-hooks.md](gameplay-hooks.md#evidence--main-level-bypass-2026-10-26) | tag 39 (`0x027`, `HACK_MAIN_LEVELS`, static map `0x1800634C6`); registered at `0x1800afcb1`, callback `FUN_18015c9e0` installs three code caves: `LevelPage::onPlay` (RVA 0x31D880) and `LevelPage::updateDynamicPage` (0x31A8B0) set `0x18080C078` around the cached original, and `GameStatsManager::getStat` (0x1D51B0) returns 999 for `(0x38, 0)` while it is set. |
 | v8.0.2-alpha.1 | Added Disable Keybinds in Editor | cluster | [ui-addons.md](ui-addons.md) |
 | v8.0.2-alpha.1 | Added Best Run option to only show current startpos runs | cluster | [startpos-switcher-feature.md](startpos-switcher-feature.md) |
 | v8.0.1-alpha.9 | Added Stop Triggers on Death | mapped | [gameplay-hooks.md](gameplay-hooks.md#evidence--stop-triggers-on-death-2026-10-25) | tag 415 (`0x19F`, `HACK_STOP_TRIGGERS_ON_DEATH`); registered at `0x1800b1af4`, callback `FUN_180172de0` hooks `GJBaseGameLayer::update` (RVA 0x237850); detour `0x180172e50` tail-jumps to the `getModifiedDelta` gateway (RVA 0x2377B0) when `[host_0x17B4A0+0x208] == this` and a player slot at `layer+0xDA0`/`0xDA8` carries byte `+0x9C0`, otherwise to the cached original. |
@@ -392,7 +398,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v8.0.0-alpha4 | Added Trail Cutting | mapped | [render-hooks.md](render-hooks.md) | tag 392 (`HACK_TRAIL_CUTTING`, 0x188); registered in `FUN_1800afae0` at `0x1800b1be2`, callback `FUN_1801732c0` (hooks `cocos2d::CCMotionStreak::initWithFade`). See trail-cutting-feature.md. |
 | v8.0.0-alpha4 | Added Zero Delay | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v8.0.0-alpha4 | Added Text Length Bypass | mapped | [ui-addons.md](ui-addons.md#evidence--text-length-bypass-2026-10-25) | tag 37 (`0x25`, `HACK_TEXT_LENGTH`, static map `0x180064420`); registered at `0x1800afe13`, callback `FUN_18015d6d0` hooks `CCTextInputNode::onTextFieldAttachWithIME` (RVA 0x508F0); detour `0x18015d740` calls `0x1801e6d20(rcx-0x1A0, 0x7FFFFFFF)` then tail-jumps the original. |
-| v8.0.0-alpha4 | Added Slider Bypass | cluster | [ui-addons.md](ui-addons.md) |
+| v8.0.0-alpha4 | Added Slider Bypass | mapped | [ui-addons.md](ui-addons.md#evidence--slider-bypass-2026-10-26) | tag 38 (`0x026`, `HACK_SLIDER_LIMIT`, static map `0x180064155`); registered at `0x1800afd9c`, callback `FUN_18015d320` installs a replacement for `SliderTouchLogic::ccTouchMoved` (RVA 0x715D0) at `0x18015d390` that passes the converted touch coordinate straight to the slider. |
 | v8.0.0-alpha4 | Added No Trail | mapped | [render-hooks.md](render-hooks.md) | tag 395 (`HACK_NO_TRAIL`, 0x18B); registered in `FUN_1800afae0` at `0x1800b16c5`, callback `FUN_180171db0` (hooks `cocos2d::CCMotionStreak::draw`). See no-trail-feature.md. |
 | v8.0.0-alpha4 | Added No Wave Pulse | mapped | [render-hooks.md](render-hooks.md) | tag 394 (`HACK_NO_WAVE_PULSE`, 0x18A); registered in `FUN_1800afae0` at `0x1800b173c`, callback `FUN_180172160` (hooks `PlayerObject::update`). See no-wave-pulse-feature.md. |
 | v8.0.0-alpha4 | Added Disable Progress to Noclip | mapped | [noclip-feature.md](noclip-feature.md) |
@@ -608,5 +614,5 @@ Correction (2026-10-25): the earlier version of this paragraph named `Force Plat
 (`0x0F2`, `HACK_FORCE_PLATFORMER`) and 49 (`0x031`, `HACK_DEFAULT_SONG_BYPASS`) — but **neither
 has a row in the 389**: no `Added Force Platformer` and no `Added Default Song Bypass` bullet
 exists. Mapping them would add entries to "Toggles outside the 389" at best, so they are not
-progress against the milestone. The next rows must be chosen from the 297 remaining changelog
+progress against the milestone. The next rows must be chosen from the 295 remaining changelog
 bullets.

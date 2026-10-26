@@ -1205,3 +1205,70 @@ attribution.
 UNVERIFIED: the identity of host RVA `0x23FDE0` (camera reset, camera snap, or something else
 the loader triggers); what its two `1` arguments select; whether the call is a one-shot or
 persists; and whether the vanilla loader already performs the same call under other conditions.
+
+## Evidence — Main Level Bypass (2026-10-26)
+
+Tag 39 (`0x027`, `HACK_MAIN_LEVELS`, static map entry 30, store `0x1800634C6`) installs
+three hooks from one callback, and all three are tiny code caves around a single global
+flag. The whole mechanism is scoped: two of the detours raise the flag only for the
+duration of a vanilla call, and the third answers a statistic read while it is raised.
+
+| Field | Value |
+| --- | --- |
+| Registration | `0x1800AFCB1` |
+| Callback | `FUN_18015C9E0` (body `0x18015C9E0..0x18015CAF5`) |
+| Hook 1 | `LevelPage::onPlay`, RVA `0x31D880`, detour `0x18015CB10`, installer `0x18015CB80`, name `0x180575144` |
+| Hook 2 | `LevelPage::updateDynamicPage`, RVA `0x31A8B0`, detour `0x18015CB30`, installer `0x18015CD60`, name `0x180575156` |
+| Hook 3 | `GameStatsManager::getStat`, RVA `0x1D51B0`, detour `0x18015CB50`, installer `0x18015CF40`, name `0x180575173` |
+
+Each install site passes `[rsp+0x28]=1` and `[rsp+0x20]=0xFFFFFFE0`; each disable site
+(`0x18015CA41`, `0x18015CA9D`, `0x18015CAF6` region) calls `0x180108A80` with the same
+detour address.
+
+### Wrappers
+
+```
+0x18015CB10  sub rsp,0x28
+0x18015CB14  mov byte [rip+0x6AF55D],1        ; -> 0x18080C078
+0x18015CB1B  call 0x1801A1440                 ; cached original LevelPage::onPlay
+0x18015CB20  mov byte [rip+0x6AF551],0
+0x18015CB27  add rsp,0x28; ret
+
+0x18015CB30  sub rsp,0x28
+0x18015CB34  mov byte [rip+0x6AF53D],1
+0x18015CB3B  call 0x1801A1510                 ; cached original updateDynamicPage
+0x18015CB40  mov byte [rip+0x6AF531],0
+0x18015CB47  add rsp,0x28; ret
+```
+
+Both gateways are delayed-bind trampolines: `0x1801A1440` contains
+`lea rcx,[rax+0x31D880]` at `0x1801A14B1`, `0x1801A1510` contains
+`lea rcx,[rax+0x31A8B0]` at `0x1801A1581`. So the flag is 1 exactly while the vanilla
+`LevelPage::onPlay` / `updateDynamicPage` runs.
+
+### The statistic override
+
+```
+0x18015CB50  cmp byte [0x18080C078],1
+0x18015CB57  jne 0x18014B4D0                  ; cached original GameStatsManager::getStat
+0x18015CB5D  cmp byte [rdx],0x38              ; stat key 56
+0x18015CB60  jne 0x18014B4D0
+0x18015CB66  cmp byte [rdx+1],0               ; sub-key 0
+0x18015CB6A  jne 0x18014B4D0
+0x18015CB70  mov eax,0x3E7                    ; 999
+0x18015CB75  ret
+```
+
+`0x18014B4D0` is the delayed-bind trampoline for RVA `0x1D51B0`
+(`lea rcx,[rax+0x1D51B0]` at `0x18014B541`), so every other statistic is forwarded
+unchanged. A scan of the whole `.text` for references to `0x18080C078` returns exactly five
+sites — the three writers above and this one reader — so the flag has no other effect.
+
+The stat argument is read as two bytes (`[rdx]`, `[rdx+1]`), i.e. `getStat(key, subKey)`;
+only `(0x38, 0)` is overridden, and only during a level-page entry or refresh.
+
+UNVERIFIED: what stat `(0x38, 0)` means in GD's statistic enum (the value 999 is consistent
+with a completion/unlock counter but no name string or enum table in this image identifies
+it); why both `onPlay` and `updateDynamicPage` need the override; and whether the vanilla
+`getStat` also feeds the page's "locked" decoration through another field, which would
+explain why the page still needs the real values elsewhere.
