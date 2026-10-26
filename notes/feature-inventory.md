@@ -13,7 +13,7 @@
 | `mapped` | The feature has its own evidence: a note that names it, its settings key(s) and default, and/or its implementing function(s) with VAs. |
 | `alias` / `dead` | A restatement of an earlier feature / absent from this build, with the evidence for that call. |
 
-All 389 rows below were `cluster` at the 2026-10-23 baseline. **One hundred and one are now
+All 389 rows below were `cluster` at the 2026-10-23 baseline. **One hundred and two are now
 `mapped`**; the [Mapped rows](#mapped-rows) table below is the authoritative list, with
 tag, registration site and hook address for each one.
 
@@ -60,7 +60,7 @@ routine (RVA `0x23FDE0`) whenever a start position was loaded. **Slider Bypass**
 `SliderTouchLogic::ccTouchMoved` outright, feeding the raw touch coordinate to the slider
 instead of a clamped value, and **Main Level Bypass** raises a private flag around
 `LevelPage::onPlay`/`updateDynamicPage` so `GameStatsManager::getStat(0x38, 0)` answers 999.
-The other 288 rows remain `cluster`.
+The other 287 rows remain `cluster`.
 
 A keyword check at the baseline found that **185 of 389** rows point at a note that
 never mentions the feature at all, so for those even the cluster assignment is only a
@@ -161,6 +161,7 @@ reported as progress.
 | No Portal Circle | tag 421 (`0x1A5`, runtime-assigned, no static label); registered at `0x1800B130D`, callback `FUN_180171350` hooks `PlayerObject::spawnPortalCircle` (RVA 0x397760), detour `0x1801713C0` is a bare `ret`. See [render-hooks.md](render-hooks.md#evidence---no-portal-circle-and-no-ghost-trail-2026-10-26). |
 | No Ghost Trail | tag 432 (`0x1B0`, runtime-assigned, no static label); registered at `0x1800B0F55`, callback `FUN_180169AE0` hooks `PlayerObject::toggleGhostEffect` (RVA 0x39EE30), detour `0x180169B50` is a bare `ret`. See [render-hooks.md](render-hooks.md#evidence---no-portal-circle-and-no-ghost-trail-2026-10-26). |
 | Wave Trail on Death | tag 419 (`0x1A3`, `HACK_WAVE_TRAIL_ON_DEATH`); no `mov edx,<tag>` registration. The condition registration `0x180173A30` (leaves at `0x180173A7E`/`0x180173A96` = tags 399 and 419, composed by `0x180107CE0`, bound through `0x1800915B0`) installs the action `0x180173D00`, which hooks `PlayerObject::playerDestroyed` (RVA `0x397D40`, detour `0x180173E30`, installer `0x180167B20`) and `PlayerObject::fadeOutStreak2` (`0x3A0190`, detour `0x180173E50`, installer `0x1800AAC20`). `0x180173E30` sets `byte [0x18080C538]` around the `playerDestroyed` trampoline `0x1801A8010`; `0x180173E50` returns without calling the `fadeOutStreak2` trampoline `0x1801A76A0` while that byte is set. See [gameplay-hooks.md](gameplay-hooks.md#evidence--wave-trail-on-death-and-the-trail-preservation-hooks-2026-10-26). |
+| No Circle Effect | tag 437 (`0x1B5`, no static label); registered at `0x1800B0D02`, callback `FUN_1801684B0` installs eight detours in one callback: bare-`ret` suppression of `PlayerObject::spawnPortalCircle` (RVA `0x397760`) and `spawnDualCircle` (`0x397B70`), scoped-flag wrappers (`byte [0x18080C2F0]`) around `playBumpEffect` (`0x39FA50`), `ringJump` (`0x398C00`), `toggleDartMode` (`0x39AF90`), `togglePlayerScale` (`0x3A0700`) and `playDestroyObjectAnim` (`0x1AA4A0`), and a `CCCircleWave::create` (`0x42870`) detour that hides the node it returns while that flag is set - the flag's only reader. See [render-hooks.md](render-hooks.md#evidence---no-circle-effect-2026-10-26). |
 | No End Shake | tag 439 (`0x1B7`, unlabelled); registered at `0x1800B0EDE`, callback `FUN_180169A40` installs detour `0x180169AB0` on `PlayLayer::showCompleteEffect` (RVA `0x3A8F30`, installer `0x1800AB850`). The detour forwards to the original via the delayed-bind trampoline `0x1801A5AC0` (`lea rcx,[base+0x3a8f30]` at `0x1801A5B24`) and then writes `dword [layer+0x520]=0` - the only non-frame reference to that field in `.text`. Key `COSMETIC/HACK_NO_END_SHAKE`. UNVERIFIED: that the field is the end-of-level shake rather than the completion flash. See [render-hooks.md](render-hooks.md#evidence---no-end-shake-2026-10-26). |
 | Frozen Animations | tag 433 (`0x1B1`, runtime-assigned, no static label); registered at `0x1800B0A38`, callback `FUN_180167490` hooks `CCAnimatedSprite::runAnimation` (RVA 0x40CF0) and `CCAnimatedSprite::tweenToAnimation` (0x40D60); the detours `0x180167560`/`0x1801675C0` destroy the by-value animation-name argument and return. See [render-hooks.md](render-hooks.md#evidence---frozen-animations-and-no-dash-fire-2026-10-26). |
 | No Dash Fire | tag 436 (`0x1B4`, runtime-assigned, no static label); registered at `0x1800B0D79`, callback `FUN_180169260` hooks `PlayerObject::updateDashAnimation` (RVA 0x396D20); detour `0x1801692D0` hides `[player+0x660]` via vtable `+0x140(0)` and returns without calling the original. See [render-hooks.md](render-hooks.md#evidence---frozen-animations-and-no-dash-fire-2026-10-26). |
@@ -228,7 +229,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v9.0.8 | Added Show Trajectory iterations/thickness options | cluster | [show-trajectory-feature.md](show-trajectory-feature.md) |
 | v9.0.8 | Added a small delay when auto-selecting Search | cluster | [ui-addons.md](ui-addons.md) |
 | v9.0.8 | Added Festive theme | cluster | [cosmetic-feature.md](cosmetic-feature.md) |
-| v9.0.7 | Added No Circle Effect | cluster | [render-hooks.md](render-hooks.md#evidence---no-portal-circle-and-no-ghost-trail-2026-10-26) | Most likely tag 437 (`0x1B5`), whose callback `FUN_1801684B0` installs bare-`ret` detours on eight effect routines including `spawnPortalCircle`, `spawnDualCircle` and `CCCircleWave::create`, but the batch has no label or settings key, so the wording is unproven. |
+| v9.0.7 | Added No Circle Effect | mapped | [render-hooks.md](render-hooks.md#evidence---no-circle-effect-2026-10-26) | tag 437 (`0x1B5`, no static label); registered at `0x1800B0D02`, callback `FUN_1801684B0` installs eight detours in one callback: bare-`ret` on `spawnPortalCircle` (`0x397760`) and `spawnDualCircle` (`0x397B70`), scoped-flag wrappers around `playBumpEffect`, `ringJump`, `toggleDartMode`, `togglePlayerScale` and `playDestroyObjectAnim`, and a `CCCircleWave::create` (`0x42870`) detour that hides the node it returns while `byte [0x18080C2F0]` is set. That flag has eleven references, ten writes from these detours and one read in the create detour, so the batch is circle-wave suppression end to end. |
 | v9.0.4 | Added Best Run options "Only from Current %" and "Show Prefix" | cluster | [best-run-feature.md](best-run-feature.md) |
 | v9.0.4 | Added Multiple Editor Trails | cluster | [creator-feature.md](creator-feature.md) |
 | v9.0.4 | Added No Dash Fire | mapped | [render-hooks.md](render-hooks.md#evidence---frozen-animations-and-no-dash-fire-2026-10-26) | tag 436 (`0x1B4`, runtime-assigned, no static label); registered at `0x1800B0D79`, callback `FUN_180169260` hooks `PlayerObject::updateDashAnimation` (RVA 0x396D20) with detour `0x1801692D0`, which hides `[player+0x660]` through vtable `+0x140(0)` and never calls the original. |
@@ -450,7 +451,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v7.1 (Full) | Added No Centre Preview Line | cluster | [render-hooks.md](render-hooks.md) |
 | v7.1 (Full) | Added No Dash Trail | cluster | [render-hooks.md](render-hooks.md) |
 | v7.1 (Full) | Added No Death x to editor | cluster | [render-hooks.md](render-hooks.md) |
-| v7.1 (Full) | Added No Effect Circle | cluster | [render-hooks.md](render-hooks.md) |
+| v7.1 (Full) | Added No Effect Circle | cluster | [render-hooks.md](render-hooks.md#evidence---no-circle-effect-2026-10-26) | Only one unassigned circle-suppression mechanism exists (tag 437), and the narrower wordings are already taken by tags 420 (orb ring) and 421 (portal circle); the v7.1 row is therefore a rename or a predecessor that the image cannot separate from the v9.0.7 row. |
 | v7.1 (Full) | Added No Menu Music | cluster | [audio-sync-feature.md](audio-sync-feature.md) |
 | v7.1 (Full) | Added No Robot Fire | mapped | [render-hooks.md](render-hooks.md) | tag 440 (0x1B8, runtime-assigned); registered in `FUN_1800afae0` at `0x1800b1472`, callback `FUN_180171550` (hooks `PlayerObject::toggleRobotMode`). See no-robot-swing-fire-feature.md. |
 | v7.1 (Full) | Added Noclip for P1/P2 | mapped | [noclip-feature.md](noclip-feature.md#evidence--noclip-for-p1p2-and-the-limit-gate-in-the-destroyplayer-detour-2026-10-26) | tags 77/78 (`0x4D`/`0x4E`, `CHECKBOX_NOCLIP_PLAYER_1`/`_2`) are read at `0x18017A37D`/`0x18017A38C` inside the tag-72 `PlayLayer::destroyPlayer` detour `0x18017A290`; when the two flags differ and `[layer+0x422]==1`, the destroyed player (`[layer+0xDA0]`/`[layer+0xDA8]`) must be the enabled one or the tint block is skipped. |
@@ -621,5 +622,5 @@ Correction (2026-10-25): the earlier version of this paragraph named `Force Plat
 (`0x0F2`, `HACK_FORCE_PLATFORMER`) and 49 (`0x031`, `HACK_DEFAULT_SONG_BYPASS`) — but **neither
 has a row in the 389**: no `Added Force Platformer` and no `Added Default Song Bypass` bullet
 exists. Mapping them would add entries to "Toggles outside the 389" at best, so they are not
-progress against the milestone. The next rows must be chosen from the 288 remaining changelog
+progress against the milestone. The next rows must be chosen from the 287 remaining changelog
 bullets.

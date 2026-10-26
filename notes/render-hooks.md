@@ -776,10 +776,15 @@ now separate them:
    421 is a single-target portal-circle suppression.
 
 **Inference, not proof:** rule 1 depends on the allocator being monotone, which the image
-does not state, and tag 437's wording is not yet corroborated by a label, so "No Circle
-Effect" is still `cluster`. The v9.0.0 row is promoted on the target name plus the
-allocation argument, with that reasoning recorded rather than hidden; if 437 later resolves
-to a different wording, this binding should be re-checked first.
+does not state, so the v9.0.0 row is promoted on the target name plus the allocation
+argument, with that reasoning recorded rather than hidden; if 437 later resolves to a
+different wording, this binding should be re-checked first.
+
+Resolved for tag 437 (2026-10-26): rule 2 is no longer a shape argument. The five "other"
+targets are not generic effects - each is wrapped only so that a circle wave created inside
+it is hidden, and `CCCircleWave::create` is the single reader of that scoped flag. Every one
+of the eight targets therefore bears on circle waves, which is what "No Circle Effect"
+describes. The v9.0.7 row is now `mapped`; see the section at the end of this note.
 
 ### Cancelled lead: No New Best Popup
 
@@ -935,3 +940,83 @@ order that holds for every mapped row. It is also a different tag with a differe
 [no-shake-feature.md](no-shake-feature.md). That note's open question about whether
 `No End Shake` is a separate feature or a refinement resolves to **separate**, with the field
 identity still open.
+
+## Evidence - No Circle Effect (2026-10-26)
+
+Tag 437 (`0x1B5`) installs eight detours in one callback, and together they suppress the
+circular wave effect from every direction: two spawners are disabled outright, five routines
+are wrapped so that any wave they create is hidden, and the wave factory itself is the ninth
+install (the filter). The settings key is absent, but the mechanism is closed enough to name
+the row.
+
+| Field | Value |
+| --- | --- |
+| Row | v9.0.7 `Added No Circle Effect` |
+| Tag | 437 (`0x1B5`), no static label |
+| Registration | `0x1800B0D02`, bytes `ba b5 01 00 00` = `mov edx,0x1B5` |
+| Callback | `FUN_1801684B0`, body `0x1801684B0..0x180168791`; one install + one disable branch per target, disable path tail-jumps `0x180108A80` |
+| Scoped flag | `byte [0x18080C2F0]` (`.bss`), written only by these detours |
+
+### The eight installs
+
+Each row was confirmed three ways: the `mov edx,<RVA>` in the callback, the name string
+passed in `r9`, and the delayed-bind trampoline's `lea rcx,[rax+RVA]`.
+
+| # | Target RVA | Host method (string VA) | Detour | Installer | Behaviour |
+| --- | --- | --- | --- | --- | --- |
+| 1 | `0x39FA50` | `PlayerObject::playBumpEffect` (`0x1805758C1`) | `0x1801687B0` | `0x1801688B0` | flag=1, trampoline `0x1801A7CF0`, flag=0 |
+| 2 | `0x398C00` | `PlayerObject::ringJump` (`0x1805756F5`) | `0x1801687D0` | `0x180165DC0` | flag=1, trampoline `0x1801A89F0`, flag=0 |
+| 3 | `0x397760` | `PlayerObject::spawnPortalCircle` (`0x1805758DE`) | `0x1801687F0` | `0x180168B00` | `c3` - bare `ret`, nothing spawns |
+| 4 | `0x397B70` | `PlayerObject::spawnDualCircle` (`0x1805758FE`) | `0x180168800` | `0x1800AB230` | `c3` - bare `ret` |
+| 5 | `0x39AF90` | `PlayerObject::toggleDartMode` (`0x1805453F6`) | `0x180168810` | `0x1800AAFE0` | flag=1, trampoline `0x1801A9310`, flag=0 |
+| 6 | `0x3A0700` | `PlayerObject::togglePlayerScale` (`0x18057591C`) | `0x180168830` | `0x1800AAFE0` | flag=1, trampoline `0x1801A9760`, flag=0 |
+| 7 | `0x1AA4A0` | `GameObject::playDestroyObjectAnim` (`0x18057593C`) | `0x180168850` | `0x180168D50` | flag=1, trampoline `0x18014A950`, flag=0 |
+| 8 | `0x42870` | `CCCircleWave::create` (`0x18057595E`) | `0x180168870` | `0x180168F30` | calls the factory, then hides the result while the flag is up |
+
+Argument slots: `[rsp+0x28]=1` for all eight; `[rsp+0x20]=0xFFFFF428` for the two circle
+spawners (#3, #4) and `0xFFFFFFE0` for the rest.
+
+### The flag, and why it closes the case
+
+`byte [0x18080C2F0]` has exactly eleven references in `.text` - ten writes (set before and
+cleared after each of the five wrapped calls, rows 1, 2, 5, 6, 7) and **one** read, at
+`0x180168883` in the `CCCircleWave::create` detour:
+
+```
+0x180168870  push rsi
+0x180168871  sub  rsp, 0x30
+0x180168875  movzx eax, byte ptr [rsp + 0x60]     ; forward the 5th stack argument
+0x18016887A  mov  byte ptr [rsp + 0x20], al
+0x18016887E  call 0x1801E5A80                     ; real CCCircleWave::create (RVA 0x42870)
+0x180168883  cmp  byte ptr [rip + ...], 1         ; -> 0x18080C2F0
+0x18016888A  jne  0x1801688A1
+0x18016888C  mov  r8, qword ptr [rax]             ; vtable
+0x18016888F  mov  rcx, rax
+0x180168892  xor  edx, edx                        ; edx = 0
+0x180168894  mov  rsi, rax
+0x180168897  call qword ptr [r8 + 0x140]          ; shared visibility setter -> hide
+0x18016889E  mov  rax, rsi                        ; still return the node
+0x1801688A1  add  rsp, 0x30
+0x1801688A5  pop  rsi
+0x1801688A6  ret
+```
+
+`0x1801E5A80` is the delayed-bind trampoline for RVA `0x42870` (`lea rcx,[rax+0x42870]` at
+`0x1801E5B12`), so the real factory always runs and the mod only hides its product. The
+vtable slot `+0x140` is the same visibility setter used by Hide UI, the pause-button detours,
+the NoClip tint and the No Dash Fire detour - here called with `edx=0`.
+
+So the five wrapped routines are not "other effects" that happen to be in the batch: each is a
+moment at which the game creates a circle wave, and the flag is the marker that says "hide the
+wave this call produces". Nothing else in the image reads that flag.
+
+Corroboration for the era: 437 sits between 436 (`No Dash Fire`, v9.0.4) and 439
+(`No End Shake`, v9.0.8), so it belongs to the v9.0.4-v9.0.8 window where the v9.0.7 row
+lives; the eight targets are all circular-wave producers.
+
+UNVERIFIED: whether the older v7.1 wording `Added No Effect Circle` is the same tag (see
+[feature-inventory.md](feature-inventory.md) - only one unassigned circle-suppression tag
+exists, so the image cannot separate a rename from a duplicate); that `toggleDartMode`,
+`togglePlayerScale` and `playDestroyObjectAnim` call `CCCircleWave::create` internally
+(inferred from the scoped-flag shape plus the single read site, not observed); and the runtime
+appearance, since no session was run.
