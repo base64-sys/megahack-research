@@ -13,7 +13,7 @@
 | `mapped` | The feature has its own evidence: a note that names it, its settings key(s) and default, and/or its implementing function(s) with VAs. |
 | `alias` / `dead` | A restatement of an earlier feature / absent from this build, with the evidence for that call. |
 
-All 389 rows below were `cluster` at the 2026-10-23 baseline. **Seventy-eight are now
+All 389 rows below were `cluster` at the 2026-10-23 baseline. **Eighty-four are now
 `mapped`**; the [Mapped rows](#mapped-rows) table below is the authoritative list, with
 tag, registration site and hook address for each one.
 
@@ -54,7 +54,7 @@ host RVA `0x2161B0`, one from a post-`resetLevel` pass and one from the object s
 they count without a host bound. **Jumpscare** builds its own overlay and sound from
 `jumpscare.png`/`jumpscare.mp3` after a probability gate passes on death. **Practice Bug Fix**
 re-applies the newest checkpoint's two player-state blocks after `resetLevel`, one tag serving
-both its changelog wordings. The other 311 rows
+both its changelog wordings. The other 305 rows
 remain `cluster`.
 
 A keyword check at the baseline found that **185 of 389** rows point at a note that
@@ -142,6 +142,7 @@ reported as progress.
 | Added Practice Bug Fix (both wordings) | tag 317 (`0x13D`, `HACK_PRACTICE_BUG_FIX`, static map `0x180063CD1`, key `LEVEL/HACK_PRACTICE_BUG_FIX`); registered at `0x1800b288d`, callback `FUN_18017b620` installs detour `0x18017b690` on `PlayLayer::resetLevel` (RVA 0x3B8EB0). The detour runs the original first, takes the last `CCArray` element at `[layer+0x3888]`, verifies via RTTI that it has a `cocos2d::CCNode` base, then copies the state blocks at element+0x148 and (when byte `+0xC38 == 1`) element+0x6C0 into `[layer+0xDA0]`/`[layer+0xDA8]` through `0x180207470`. The v8.0.0-alpha10b and v8.0.1-alpha.5 rows are the same toggle. See [gameplay-hooks.md](gameplay-hooks.md#evidence--practice-bug-fix-2026-10-25). |
 | Added Jumpscare | tag 291 (`0x123`, `HACK_JUMPSCARE`, static map `0x180063420`); registered at `0x1800b26a7`, callback `0x180178d10` hooks `PlayLayer::destroyPlayer` (RVA 0x3B39D0) with code-cave detour `0x180178d80`, which runs the original through the trampoline `0x1801a3d20`, tests tags 0x127/0x126/0x125/0x124 (only-from-0, time threshold, percentage, probability) in gate `0x180179ae0`, then adds a black `CCLayerColor` carrying `jumpscare.png` to `[layer+0x3540]` at z-order 100 and tail-calls `0x180179260` to play `jumpscare.mp3` and run the fade/scale chain. See [gameplay-hooks.md](gameplay-hooks.md#evidence--jumpscare-2026-10-25). |
 | Added Smart StartPos (both rows) | tag 235 (`0x0EB`, `HACK_SMART_STARTPOS`, static map `0x1800641B8`); registered at `0x1800b2db4`, callback `FUN_180183e30` installs detour `0x180183ea0` on `PlayLayer::resetLevel` (RVA 0x3B8EB0), which runs the original and then continues into `0x180183ec0`. That body returns unless `[layer+0x3188] != 0` and the `CCArray` at `[layer+0x3888]` is empty, reads four lists from the layer's `absolllute.megahack` user dictionary through `0x18015afd0`, picks in each the nearest object at or before player 1 by `0x1802044b0`, and applies it under tags 237 (gamemode, `0x1801842e0`), 238 (speed, host RVA `0x3A0D50`), 239 (mini, host RVA `0x3A0700`) and 240 (mirror, host RVA `0x2467D0`). The v8.0.0-alpha5 and v9.0.1 rows share this one hook. See [gameplay-hooks.md](gameplay-hooks.md#evidence--smart-startpos-2026-10-25). |
+| StartPos Switcher interface family (six rows) | the interface is installed unconditionally by `0x180184490` from the shared initialiser at `0x1800B2DEE`; its three hooks (`PlayLayer::init` RVA 0x3A5B00 -> `0x1801846C0`, `setupHasCompleted` 0x3A66D0 -> `0x1801846D0`, `UILayer::init` 0x4CCB00 -> `0x180184710`) and the tag-169/170 listeners `0x1801848A0`/`0x1801848E0` are read, and the remaining behaviour lives in tag 130's detours: `0x180185070` reads keybinds 131/132 and quick-switch tag 149 with the 17-entry table `0x1805793A8`, `0x180185CE0` defers through tag 168, and the reset hook `0x180184A80` applies the pending startpos. See [startpos-switcher-feature.md](startpos-switcher-feature.md#evidence--startpos-switcher-family-2026-10-26). |
 | Added Auto Song Downloader | tag 323 (`0x143`, `HACK_AUTO_SONG_DOWNLOAD`, static map `0x180062C24`); registered at `0x1800b1fa4`, callback `FUN_180175640` hooks `LevelInfoLayer::init` (RVA 0x2F7340) with code-cave detour `0x1801756b0`; the detour calls the original first, then runs `CCCallFuncO::create(subObject, <host 0xCABC0>, subObject)` on `[[layer+0x2D0]+0x180]` when that object's vtable slot `+0x148` returns true. See [ui-addons.md](ui-addons.md#evidence--auto-song-downloader-2026-10-25). |
 
 ## Toggles outside the 389
@@ -172,8 +173,8 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | --- | --- | --- | --- |
 | v9.1.0 | Added Icon Stealer | cluster | [iconic-feature.md](iconic-feature.md) |
 | v9.1.0 | Added Selected Objects Only to Show Hitboxes | cluster | [show-hitboxes-feature.md](show-hitboxes-feature.md) |
-| v9.1.0 | Added StartPos Switcher Quick Switch toggle | cluster | [startpos-switcher-feature.md](startpos-switcher-feature.md) |
-| v9.1.0-beta.6 | Added StartPos Switcher quick switch | cluster | [startpos-switcher-feature.md](startpos-switcher-feature.md) |
+| v9.1.0 | Added StartPos Switcher Quick Switch toggle | mapped | [startpos-switcher-feature.md](startpos-switcher-feature.md#evidence--startpos-switcher-family-2026-10-26) | tag 149 (`0x95`) gates the 17-entry shortcut loop in `0x180185070`; the same dispatcher reads keybind tags 131/132 and calls `0x180185CE0` with `list[index - 1]`. |
+| v9.1.0-beta.6 | Added StartPos Switcher quick switch | mapped | [startpos-switcher-feature.md](startpos-switcher-feature.md#evidence--startpos-switcher-family-2026-10-26) | Same mechanism as the v9.1.0 toggle: tag 149 plus the shortcut table `0x1805793A8` (tags 150-165, `0x96` duplicated at index 10), reached from the `UILayer::handleKeypress` and `PauseLayer::keyDown` detours. |
 | v9.1.0-beta.6 | Added Replay Open Folder | cluster | [replay-feature.md](replay-feature.md) |
 | v9.1.0-beta.6 | Added Crash Game to Utilities | cluster | [ui-addons.md](ui-addons.md) |
 | v9.1.0-beta.5 | Added Accurate Percentage Better Calculation (fixes StartPos!) | cluster | [best-run-feature.md](best-run-feature.md) |
@@ -323,7 +324,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v8.0.0-alpha12 | Added Hide Player | mapped | [render-hooks.md](render-hooks.md#evidence---hide-player-verified-2026-10-25) | tag 386 (`0x182`, `HACK_HIDE_PLAYER`); callback `FUN_180167a60` hooks `PlayerObject::toggleVisibility` (RVA 0x38B440), detour `0x180167b10` forces `edx=0` before `jmp 0x1801a9b70`. |
 | v8.0.0-alpha12 | Added Hide Pause Button | mapped | [render-hooks.md](render-hooks.md#evidence--hide-pause-button-and-hide-pause-menu-2026-10-25) | tag 385 (`0x181`, `HACK_HIDE_PAUSE_BUTTON`); registered at `0x1800b0b26`, callback `FUN_180167d10` hooks `UILayer::init` (RVA 0x4CCB00); detour calls `0x1801e9e10`, then hides `[UILayer+0x238]` through vtable slot `+0x140` with `edx=0`. |
 | v8.0.0-alpha12 | Added Thread Priority | mapped | [render-hooks.md](render-hooks.md) | tag 454 (`HACK_THREAD_PRIORITY`); `FUN_18018ADF0`/`FUN_18018AE50` call `SetThreadPriority` when enabled. Tag 0x1C7 (455) is the priority level. See render-hooks.md. |
-| v8.0.0-alpha12 | Added Switch After Death to StartPos Switcher | cluster | [startpos-switcher-feature.md](startpos-switcher-feature.md) |
+| v8.0.0-alpha12 | Added Switch After Death to StartPos Switcher | mapped | [startpos-switcher-feature.md](startpos-switcher-feature.md#evidence--startpos-switcher-family-2026-10-26) | tag 168 (`0xA8`, static map entry 17, store `0x180065055`); `0x180185CE0` parks the choice in `0x18080C878` with flag `0x18080C880`, the reset hook `0x180184A80` applies it, and the `PlayLayer::init` detour `0x1801846C0` clears the flag. |
 | v8.0.0-alpha12 | Added support for NodeIDs (Geode) | cluster | [ui-addons.md](ui-addons.md) |
 | v8.0.0-alpha10b | Added Wave Trail Fix | mapped | [render-hooks.md](render-hooks.md#evidence--wave-trail-fix-2026-10-25) | tag 411 (`0x19B`, `HACK_WAVE_TRAIL_FIX`); registered at `0x1800b094a`, callback `FUN_180166a80` hooks `HardStreak::updateStroke` (RVA 0x2B8EF0); detour `0x180166af0` never calls the original: it clears the `CCDrawNode`, then draws a 6.0x-width ribbon and a 2.0x white ribbon at 0.65x opacity through helper `0x180166c40`. |
 | v8.0.0-alpha10b | Added Smooth Editor Trail | mapped | [creator-feature.md](creator-feature.md#evidence--smooth-editor-trail-2026-10-25) | tag 55 (`0x37`, `HACK_SMOOTH_EDITOR_TRAIL`, static map `0x180064222`); registered at `0x1800b058d`, callback `FUN_180163ec0` hooks `LevelEditorLayer::postUpdate` (RVA 0x2E0F40); detour `0x180163f30` stores `0x3D088889` (1/30 s) at `[layer+0x3898]` then jumps to the original. |
@@ -371,9 +372,9 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v8.0.0-alpha5 | Added Solid Wave Trail | mapped | [cosmetic-feature.md](cosmetic-feature.md) | tag 396 (`HACK_SOLID_WAVE_TRAIL`); blend-func toggle in `FUN_1801EECA0` (solid 0x30300000001 vs blended 0x100000302); registered in `FUN_1800afae0` at `0x1800b1a06`, callback `FUN_1801728c0` hooks `PlayerObject::setupStreak` (RVA 0x3887C0) and `PlayerObject::updateStreakBlend` (0x388CA0). See cosmetic-feature.md and [hook-registrations.md](hook-registrations.md#worked-example-promoting-a-candidate-row-to-verified). |
 | v8.0.0-alpha5 | Added No Respawn Flash | mapped | [render-hooks.md](render-hooks.md) | tag 398 (`HACK_NO_RESPAWN_FLASH`, 0x18E); registered in `FUN_1800afae0` at `0x1800b13fb`, callback `FUN_1801714c0` (hooks `PlayerObject::playSpawnEffect`). See no-respawn-flash-feature.md. |
 | v8.0.0-alpha5 | Added Force StartPos Reset Camera | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
-| v8.0.0-alpha5 | Added StartPos Switcher keybind options | cluster | [startpos-switcher-feature.md](startpos-switcher-feature.md) |
-| v8.0.0-alpha5 | Added StartPos Switcher interface | cluster | [startpos-switcher-feature.md](startpos-switcher-feature.md) |
-| v8.0.0-alpha5 | Added Hide Interface to StartPos Switcher | cluster | [startpos-switcher-feature.md](startpos-switcher-feature.md) |
+| v8.0.0-alpha5 | Added StartPos Switcher keybind options | mapped | [startpos-switcher-feature.md](startpos-switcher-feature.md#evidence--startpos-switcher-family-2026-10-26) | tags 131 (`0x83`) and 132 (`0x84`) are read with `0x18002EE40` in `0x180185070` and compared against the pressed key before next/previous dispatch. |
+| v8.0.0-alpha5 | Added StartPos Switcher interface | mapped | [startpos-switcher-feature.md](startpos-switcher-feature.md#evidence--startpos-switcher-family-2026-10-26) | installed unconditionally by `0x180184490` (called at `0x1800B2DEE`): hooks `PlayLayer::init`, `PlayLayer::setupHasCompleted` and `UILayer::init`; constructor `0x180184710` builds the `0x1E8`-byte node with class pointer `0x180578CF8`. |
+| v8.0.0-alpha5 | Added Hide Interface to StartPos Switcher | mapped | [startpos-switcher-feature.md](startpos-switcher-feature.md#evidence--startpos-switcher-family-2026-10-26) | tag 169 (`0xA9`, static map entry 4, store `0x180064B32`); listener `0x1801848A0` installed from `0x1801845B0` refreshes `0x180184BA0`, which hides `+0x1C0`/`+0x1C8` and shows `+0x1D0` when the tag is set. |
 | v8.0.0-alpha5 | Added Inject DLL | cluster | [ui-addons.md](ui-addons.md) |
 | v8.0.0-alpha4 | Added Safe Mode | mapped | [safe-mode-feature.md](safe-mode-feature.md) |
 | v8.0.0-alpha4 | Added Auto Safe Mode | mapped | [safe-mode-feature.md](safe-mode-feature.md) |
@@ -597,5 +598,5 @@ Correction (2026-10-25): the earlier version of this paragraph named `Force Plat
 (`0x0F2`, `HACK_FORCE_PLATFORMER`) and 49 (`0x031`, `HACK_DEFAULT_SONG_BYPASS`) — but **neither
 has a row in the 389**: no `Added Force Platformer` and no `Added Default Song Bypass` bullet
 exists. Mapping them would add entries to "Toggles outside the 389" at best, so they are not
-progress against the milestone. The next rows must be chosen from the 311 remaining changelog
+progress against the milestone. The next rows must be chosen from the 305 remaining changelog
 bullets.
