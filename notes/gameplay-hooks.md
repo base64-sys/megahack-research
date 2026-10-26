@@ -353,8 +353,63 @@ Both `addGlow` and `saveActiveColors` therefore bracket one call with the same b
 colour/glow bookkeeping while still letting the underlying call run.
 
 UNVERIFIED: which of the six hooks produces the visible layout; the meaning of tags 262/263
-and their defaults; the jump-table destinations; and what `+0x516` actually controls.
+and their defaults (now measured as one of four Show Layout colour pairs, see the
+colour-options section below); the jump-table destinations; and what `+0x516` actually controls.
 Nothing was inferred about the visual result from the feature's name.
+
+## Evidence — Show Layout colour options (2026-10-26)
+
+Extends the Show Layout section above. The `resetLevel` detour (`0x18017F330`, installed by
+`FUN_18017F0F0` with installer `0x1800AB850`, name string `0x180545515`, hook RVA `0x3B8EB0`)
+does not stop at tags 262/263: it carries four independent `(bool, colour)` config pairs and
+writes one colour per pair into objects fetched from the host through `0x180144ED0`. That is
+what the v9.0.8 row "Added Show Layout colour options" is.
+
+Body extent `0x18017F330..0x18017F739` (`ret` at `0x18017F739`, 0x40A bytes, no `.pdata`),
+`/GS` cookie `0x1807F7040`, failure funclet at `0x18017F73A`.
+
+| Bool tag | Colour tag | Ids passed to `0x180144ED0` | Fallback bytes | Fallback colour |
+| --- | --- | --- | --- | --- |
+| 262 (`0x106`) | 263 (`0x107`) | `0x3E8` (1000) | `0x18080C7B8..BA` | `0x287DFF` |
+| 265 (`0x109`) | 266 (`0x10A`) | `0x3E9` (1001), `0x3F1` (1009) | `0x18080C7BB..BD` | `0x0066FF` |
+| 271 (`0x10F`) | 272 (`0x110`) | `0x3EA`, `0x3EB`, `0x3EC` (1002-1004) | `0x18080C7C1..C3` | `0x287DFF` |
+| 268 (`0x10C`) | 269 (`0x10D`) | `0x3F5`, `0x3F6` (1005, 1006) | `0x18080C7BE..C0` | `0xFFFFFF` |
+
+Per pair the detour calls the original `resetLevel` first (`call 0x1801A4300`), reloads the
+settings context (`0x18008A510`), reads the bool with `0x18002DE50`, and on a true result reads
+the colour with `0x18002E4C0` and decomposes it through `0x1801F15E0`. That helper is six
+instructions: `out[0] = v >> 16`, `out[1] = (v >> 8) & 0xFF`, `out[2] = v & 0xFF`. On a false
+result the same three bytes are copied from a static fallback triple. Then
+`0x180144ED0([layer+0x950], id)` returns an object and the detour stores
+`[obj+0x3A] = out[0]`, `[obj+0x3B] = out[1]`, `[obj+0x3C] = out[2]`.
+
+`0x180144ED0` is another delayed-bind thunk, not a mod function: `recovered/functions/_wrappers.tsv`
+lists thunk `0x180144ED0`, resolver `0x180144FA0`, target RVA **`0x25BC00`**, contained in
+`FUN_18025B08D+0xB73` (the initialiser at `0x180144F3A..0x180144F4B` does
+`lea rcx,[rax+0x25BC00]` and stores the result at `0x180807270`).
+
+The four fallback triples are initialised by one static function at `0x180180170`
+(`sub rsp,0x28`; `lea rcx,[0x18080C7A8]`; `call 0x180106DC0`; then the eight immediate stores
+`0x180180180..0x1801801B9`). Measured values: `0x287DFF`, `0x0066FF`, `0x287DFF`, `0xFFFFFF`.
+
+Binding to the settings keys: `notes/settings-contents.md` lists exactly four Show Layout
+colour pairs, `LEVEL/SHOW_LAYOUT/DROPDOWN/{BG,GROUND,MG,OBJ}/ENABLED` (lines 68-71) and
+`.../COL` (lines 186-189), with `COL` defaults BG `2653695` (`0x287EBF`), GROUND `26367`
+(`0x0066FF`), MG `2653695`, OBJ `16777215` (`0xFFFFFF`). Two fallback colours match the JSON
+defaults exactly, which binds **265/266 = GROUND** and **268/269 = OBJ**. BG and MG share one
+default (`0x287EBF`), while the two remaining fallbacks are both `0x287DFF`, so which of
+262/263 and 271/272 is BG is **not** proven; the only hint is that pair 262/263 writes id 1000
+and 1000 is the background channel in GD's colour numbering.
+
+After the eight writes the detour walks the vector `[layer+0x950]+0x2E0..+0x2E8` (8-byte
+stride, count capped at `0x3E7`) and resets every non-null element to white:
+`[+0x3A] = 0xFFFF`, `[+0x3C] = 0xFF`, `[+0x40] = 1.0f`, `[+0x54] = 0`, `[+0x78] = 0`,
+`[+0x58] = 0`.
+
+UNVERIFIED: what host RVA `0x25BC00` is and what the ids `0x3E8..0x3F6` name (they behave like
+colour-channel or colour-trigger ids, but no name string in the image says so); the BG/MG order;
+why 272 covers three ids and 266 covers two; what `[+0x40]`, `[+0x54]`, `[+0x78]`, `[+0x58]`
+are on the returned object; and whether `[layer+0x950]` is the layer's colour-trigger container.
 
 ## Evidence — Respawn Time modifier (2026-10-25)
 
