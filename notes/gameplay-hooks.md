@@ -965,3 +965,124 @@ sentinel immediately after the second one); what host RVA `0x39F100` does and wh
 name string); and what `player+0xAF8` holds. The changelog says "bug fix" but does not name the
 bug; the mechanism above is what the shipped code does, not an identification of RobTop's
 original defect.
+
+## Evidence — Smart StartPos (2026-10-25)
+
+One tag, one hook, and four sub-toggles read from the replacement body. Two changelog rows are
+promoted on this evidence: v8.0.0-alpha5 "Added Smart StartPos" and v9.0.1 "Added Smart StartPos
+toggles (Gamemode, Speed, Size, Mirror)". The v7.1 "Editor Support for Smart StartPos" row stays
+`cluster`: the callback installs exactly one hook, on `PlayLayer::resetLevel`, and nothing in
+that path touches an editor layer.
+
+| Field | Value |
+| --- | --- |
+| Tag | 235 (`0x0EB`, `HACK_SMART_STARTPOS`) |
+| Static label | map entry 66, store `0x1800641B8` |
+| Registration | `0x1800B2DB4` (`notes/hook-registrations.md`) |
+| Callback | `FUN_180183E30` |
+| Installer | `0x1800AB850` (shared with the coin and practice hooks) |
+| Target | `PlayLayer::resetLevel`, RVA `0x3B8EB0`, name string `0x180545515` |
+| Detour | `0x180183EA0`, 0x20 bytes, install order `0xFFFFFBF8` |
+
+### Hook
+
+`FUN_180183E30` follows the standard shape: enable byte from `[rdx]`, settings context through
+`0x180108960`, `cmp bl,1` (disable branch `0x180183E89`), module base through `0x18010A250`,
+RVA resolved by `0x18010A370`, then the installer with `r8` = detour, `r9` = name,
+`[rsp+0x20] = 0xFFFFFBF8` and `[rsp+0x28] = 1`.
+
+The detour itself only calls the original and continues into the mod body, so the vanilla reset
+runs first:
+
+```
+0x180183EA0  push rsi; sub rsp,0x20; mov rsi,rcx
+0x180183EA8  call 0x1801A4300        ; delayed bind -> host RVA 0x3B8EB0
+0x180183EAD  mov rcx,rsi; add rsp,0x20; pop rsi
+0x180183EB5  jmp 0x180183EC0         ; mod body
+```
+
+`0x1801A4300` resolves `base + 0x3B8EB0` at `0x1801A4364` and caches it at `0x18080FE48`
+(guard dword `0x18080FE50`, builder `0x1801A33C0`, base from `0x18010DDC0`).
+
+### Replacement body `0x180183EC0..0x1801842CD`
+
+No `.pdata` record; the body ends in `ret` at `0x1801842CD` after the `/GS` cookie check against
+`0x1807F7040`. It is skipped entirely unless both gates hold:
+
+- `[layer+0x3188] != 0` (`cmp qword ptr [rcx+0x3188],0` / `je 0x180184299`);
+- `CCArray::count([layer+0x3888]) == 0` — the same "no checkpoint yet" test the Jumpscare gate
+  uses.
+
+It then reads four stored object lists and picks one object from each:
+
+```
+for group in (2, 3, 4, 5):
+    pair = helper_0x18015AFD0(layer, group)      ; {first, count} view of a CCArray
+    best = null; bestX = x_of(layer, player1)
+    for obj in pair:
+        x = 0x1802044B0(layer, obj, 0)
+        if x > bestX: continue                   ; obj is ahead of the player
+        if best != null and x < 0: continue      ; ignore negative-x objects once one is chosen
+        best = obj; bestX = x
+```
+
+`0x1802044B0(layer, object, bool)` reads a double from `[object vtable+0xC8]` and passes it
+through `[layer vtable+0x4B8]`; the same call with `[layer+0xDA0]` (player 1) produces the
+reference coordinate, so the comparison is "nearest object at or before the player".
+
+The four selected objects are then applied under separate runtime-assigned tags:
+
+| Tag | Object list | Effect | Call |
+| --- | --- | --- | --- |
+| 237 (`0xED`) | group 2 | gamemode of the object | `0x1801842E0(layer, obj)` |
+| 238 (`0xEE`) | group 3 | speed | `0x1801AA600(player, float, 0)` (host RVA `0x3A0D50`) |
+| 239 (`0xEF`) | group 4 | mini/size | `0x1801A9760(player, bool, 0)` (host RVA `0x3A0700`) |
+| 240 (`0xF0`) | group 5 | mirror | `0x180116CA0(layer, bool, 1)` (host RVA `0x2467D0`) |
+
+Speed path: a selected object with `[obj+0x40C]` in `0xC8..0xCB` jumps through the table at
+`0x180578BE0` to the four portal constants, and id `0x536` maps to `0x180572A9C`; with no object
+selected the code reads the level's current speed index from `[layer+0xDB0]+0x14C` and indexes
+the five-float table at `0x180578BC0`.
+
+| Constant | Value | Used for |
+| --- | --- | --- |
+| `0x180572B00` | 0.7 | slow portal (id 0xC8) |
+| `0x18054CCA4` | 0.9 | normal portal (id 0xCB) |
+| `0x180572AD4` | 1.1 | fast portal (id 0xC9) |
+| `0x180572B14` | 1.3 | faster portal (id 0xCA) |
+| `0x180572A9C` | 1.6 | fastest (id 0x536) |
+| `0x180578BC0` | 0.9, 0.7, 1.1, 1.3, 1.6 | fallback by current speed index |
+
+Size path: `[obj+0x3A0] == 0x12` means mini on, `0x11` means off; otherwise the flag comes from
+`byte [layer+0xDB0+0x150]`. Mirror path: object id `0xE` means flipped, `0xF` means not; both
+players' speed and size setters are called (the second player at `[layer+0xDA8]`), while the
+mirror call passes the layer.
+
+Gamemode path `0x1801842E0`: switches on `[obj+0x3A0] - 5` over 0x25 entries (table
+`0x180578BF0`), calls `0x180129B30(layer, player, obj, id, 1)` for both players where the jump
+table routes there, then `0x180116E40(layer, player1, id, 0, 1)`.
+
+### The shared object dictionary
+
+`0x18015AFD0(layer, out_pair, group)` builds the lists the body consumes:
+
+- `CCNode::getUserObject("absolllute.megahack")` on the layer (import hint/name entry
+  `0x180645526`, `CCNode::getUserObject`); if absent it creates a `CCDictionary` and stores it
+  with `CCNode::setUserObject` (hint/name `0x180645B3E`);
+- `CCDictionary::objectForKey(group)` (integer key), `retain`, then `[obj+0x38]` data pointer and
+  `CCArray::count` produce the `{first, count}` pair, `release`;
+- an empty dictionary returns `{0, 0}`.
+
+Only five call sites read or write that user object, so the writer side is small, but it is not
+read here: `0x18015AB56`/`0x18015AEDB` are the writer path and `0x18015AB10` sorts each stored
+list. `0x18015AFD0` is also called from the StartPos Switcher family (`0x18018573E`,
+`0x180185813`, `0x180185933`) and from `0x180175298`, so the dictionary is shared infrastructure,
+not Smart StartPos alone.
+
+UNVERIFIED: the names of `[layer+0x3188]`, `[layer+0x3888]`, `[layer+0xDB0]` and its `+0x14C`/
+`+0x150` fields (only the guards and reads above are measured); the exact coordinate returned by
+`0x1802044B0` and the vtable slot identities it uses; which site populates groups 2..5 and when;
+the binding between tag numbers 237..240 and the four `LEVEL/SMART_STARTPOS/DROPDOWN/*` key
+names — the order matches the code and the changelog, but no site reads a key string next to a
+tag number, and the fifth key (`LEGACY_CALCULATION`) has no located tag read. The v7.1 editor
+row is unmapped because the only hook in this path is on `PlayLayer::resetLevel`.

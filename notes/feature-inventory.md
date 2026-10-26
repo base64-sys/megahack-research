@@ -13,7 +13,7 @@
 | `mapped` | The feature has its own evidence: a note that names it, its settings key(s) and default, and/or its implementing function(s) with VAs. |
 | `alias` / `dead` | A restatement of an earlier feature / absent from this build, with the evidence for that call. |
 
-All 389 rows below were `cluster` at the 2026-10-23 baseline. **Seventy-six are now
+All 389 rows below were `cluster` at the 2026-10-23 baseline. **Seventy-eight are now
 `mapped`**; the [Mapped rows](#mapped-rows) table below is the authoritative list, with
 tag, registration site and hook address for each one.
 
@@ -54,7 +54,7 @@ host RVA `0x2161B0`, one from a post-`resetLevel` pass and one from the object s
 they count without a host bound. **Jumpscare** builds its own overlay and sound from
 `jumpscare.png`/`jumpscare.mp3` after a probability gate passes on death. **Practice Bug Fix**
 re-applies the newest checkpoint's two player-state blocks after `resetLevel`, one tag serving
-both its changelog wordings. The other 313 rows
+both its changelog wordings. The other 311 rows
 remain `cluster`.
 
 A keyword check at the baseline found that **185 of 389** rows point at a note that
@@ -141,6 +141,7 @@ reported as progress.
 | Added Toolbox Button Bypass | tag 47 (`0x02F`, `HACK_TOOLBOX_BUTTON_BYPASS`, static map `0x1800644EA`); registered at `0x1800b0604`, callback `FUN_180163f50` installs two code-cave replacements: `EditorOptionsLayer::onButtonRows` (RVA 0x291A00) -> `0x180164020` and `onButtonsPerRow` (RVA 0x291970) -> `0x1801641b0`. Both read a direction from `[[arg2]+0x38]`, `inc` the stored count at `+0x3F4`/`+0x3F0` with no ceiling, format it with `"{}"` through `0x18000AE30` and push it into the label at `[[this+0x400]+0x168]`/`[[this+0x3F8]+0x168]`. See [ui-addons.md](ui-addons.md#evidence--toolbox-button-bypass-2026-10-25). |
 | Added Practice Bug Fix (both wordings) | tag 317 (`0x13D`, `HACK_PRACTICE_BUG_FIX`, static map `0x180063CD1`, key `LEVEL/HACK_PRACTICE_BUG_FIX`); registered at `0x1800b288d`, callback `FUN_18017b620` installs detour `0x18017b690` on `PlayLayer::resetLevel` (RVA 0x3B8EB0). The detour runs the original first, takes the last `CCArray` element at `[layer+0x3888]`, verifies via RTTI that it has a `cocos2d::CCNode` base, then copies the state blocks at element+0x148 and (when byte `+0xC38 == 1`) element+0x6C0 into `[layer+0xDA0]`/`[layer+0xDA8]` through `0x180207470`. The v8.0.0-alpha10b and v8.0.1-alpha.5 rows are the same toggle. See [gameplay-hooks.md](gameplay-hooks.md#evidence--practice-bug-fix-2026-10-25). |
 | Added Jumpscare | tag 291 (`0x123`, `HACK_JUMPSCARE`, static map `0x180063420`); registered at `0x1800b26a7`, callback `0x180178d10` hooks `PlayLayer::destroyPlayer` (RVA 0x3B39D0) with code-cave detour `0x180178d80`, which runs the original through the trampoline `0x1801a3d20`, tests tags 0x127/0x126/0x125/0x124 (only-from-0, time threshold, percentage, probability) in gate `0x180179ae0`, then adds a black `CCLayerColor` carrying `jumpscare.png` to `[layer+0x3540]` at z-order 100 and tail-calls `0x180179260` to play `jumpscare.mp3` and run the fade/scale chain. See [gameplay-hooks.md](gameplay-hooks.md#evidence--jumpscare-2026-10-25). |
+| Added Smart StartPos (both rows) | tag 235 (`0x0EB`, `HACK_SMART_STARTPOS`, static map `0x1800641B8`); registered at `0x1800b2db4`, callback `FUN_180183e30` installs detour `0x180183ea0` on `PlayLayer::resetLevel` (RVA 0x3B8EB0), which runs the original and then continues into `0x180183ec0`. That body returns unless `[layer+0x3188] != 0` and the `CCArray` at `[layer+0x3888]` is empty, reads four lists from the layer's `absolllute.megahack` user dictionary through `0x18015afd0`, picks in each the nearest object at or before player 1 by `0x1802044b0`, and applies it under tags 237 (gamemode, `0x1801842e0`), 238 (speed, host RVA `0x3A0D50`), 239 (mini, host RVA `0x3A0700`) and 240 (mirror, host RVA `0x2467D0`). The v8.0.0-alpha5 and v9.0.1 rows share this one hook. See [gameplay-hooks.md](gameplay-hooks.md#evidence--smart-startpos-2026-10-25). |
 | Added Auto Song Downloader | tag 323 (`0x143`, `HACK_AUTO_SONG_DOWNLOAD`, static map `0x180062C24`); registered at `0x1800b1fa4`, callback `FUN_180175640` hooks `LevelInfoLayer::init` (RVA 0x2F7340) with code-cave detour `0x1801756b0`; the detour calls the original first, then runs `CCCallFuncO::create(subObject, <host 0xCABC0>, subObject)` on `[[layer+0x2D0]+0x180]` when that object's vtable slot `+0x148` returns true. See [ui-addons.md](ui-addons.md#evidence--auto-song-downloader-2026-10-25). |
 
 ## Toggles outside the 389
@@ -223,7 +224,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v9.0.1 | Added Cheat Indicator Hide when Legit option | cluster | [ui-addons.md](ui-addons.md) |
 | v9.0.1 | Added Catppuccin theme | cluster | [cosmetic-feature.md](cosmetic-feature.md) |
 | v9.0.1 | Added Interface tab to disable Mega Hack UI changes | mapped | [ui-addons.md](ui-addons.md) | tag 496 (0x1F0, runtime-assigned Map B); `FUN_1801985F0` hooks `EndLevelLayer::customSetup` (RVA 0x132E50) and adds "v9.1.3" label unless tag is enabled. See ui-addons.md. |
-| v9.0.1 | Added Smart StartPos toggles (Gamemode, Speed, Size, Mirror) | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
+| v9.0.1 | Added Smart StartPos toggles (Gamemode, Speed, Size, Mirror) | mapped | [gameplay-hooks.md](gameplay-hooks.md#evidence--smart-startpos-2026-10-25) | tags 237/238/239/240 (`0xED`..`0xF0`, runtime-assigned) gate the four applications inside the Smart StartPos body. |
 | v9.0.0 | Added Iconic (built-in Icon Effects to the Garage) | cluster | [iconic-feature.md](iconic-feature.md) |
 | v9.0.0 | Added Accurate Percentage | mapped | [best-run-feature.md](best-run-feature.md) | tag 429 (0x1AD, runtime-assigned Map B); `FUN_180165110` hooks `PlayLayer::updateProgressbar` (RVA 0x3B23C0) and formats percentage with configurable decimals (tag 0x1AE = 430). See best-run-feature.md. |
 | v9.0.0 | Added Advanced Formatting to Statuses | cluster | [status-labels-feature.md](status-labels-feature.md) |
@@ -361,7 +362,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v8.0.0-alpha7 | Added Message, Percentage & Level Time Statuses | cluster | [status-labels-feature.md](status-labels-feature.md) |
 | v8.0.0-alpha6 | Added Show Layout | mapped | [gameplay-hooks.md](gameplay-hooks.md#evidence--show-layout-2026-10-25) | tag 260 (`0x104`, `HACK_SHOW_LAYOUT`, static map `0x180064095`); registered at `0x1800b2b5c`, callback `FUN_18017f0f0` installs six hooks (`resetLevel`, `applyEnterEffect`, `applyCustomEnterEffect`, `triggerObject`, `addGlow`, `saveActiveColors`); the resetLevel detour reads Map A tags 262 and 263. |
 | v8.0.0-alpha6 | Added Endscreen Hider | cluster | [render-hooks.md](render-hooks.md) |
-| v8.0.0-alpha5 | Added Smart StartPos | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
+| v8.0.0-alpha5 | Added Smart StartPos | mapped | [gameplay-hooks.md](gameplay-hooks.md#evidence--smart-startpos-2026-10-25) | tag 235 (`0x0EB`, `HACK_SMART_STARTPOS`, static map `0x1800641B8`); replaces `PlayLayer::resetLevel` (RVA 0x3B8EB0) with a post-hook that re-applies the nearest preceding gamemode/speed/size/mirror object. |
 | v8.0.0-alpha5 | Added Respawn Time modifier | mapped | [gameplay-hooks.md](gameplay-hooks.md#evidence--respawn-time-modifier-2026-10-25) | tag 245 (`0x0F5`, `HACK_RESPAWN_TIME`); registered at `0x1800b2ae5`, callback `FUN_18017ef50` hooks `PlayLayer::destroyPlayer` (RVA 0x3B39D0); detour reads the double at tag 246, divides by 1000.0, and hands seconds to helper `0x18017f000`, which clamps to 2^-23 and multiplies by tag 501 when tags 502 and 247 are on. |
 | v8.0.0-alpha5 | Added Confirm Exit | cluster | [ui-addons.md](ui-addons.md) |
 | v8.0.0-alpha5 | Added Allow Low Volume | mapped | [gameplay-hooks.md](gameplay-hooks.md#evidence--four-labelled-tags-found-by-the-full-section-scan-2026-10-25) | tag 451 (`0x1C3`, `HACK_ALLOW_LOW_VOLUME`); registered at `0x1800b2ea7`, callback `FUN_180186100` hooks `PauseLayer`/`OptionsLayer` music and sfx slider callbacks (RVAs 0x37E130, 0x372A90, 0x372990), each detour recomputes the float and tail-jumps to the volume setter `0x180129980`. |
@@ -596,5 +597,5 @@ Correction (2026-10-25): the earlier version of this paragraph named `Force Plat
 (`0x0F2`, `HACK_FORCE_PLATFORMER`) and 49 (`0x031`, `HACK_DEFAULT_SONG_BYPASS`) — but **neither
 has a row in the 389**: no `Added Force Platformer` and no `Added Default Song Bypass` bullet
 exists. Mapping them would add entries to "Toggles outside the 389" at best, so they are not
-progress against the milestone. The next rows must be chosen from the 313 remaining changelog
+progress against the milestone. The next rows must be chosen from the 311 remaining changelog
 bullets.
