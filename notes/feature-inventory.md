@@ -193,8 +193,8 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v9.1.0-beta.1 | Added Icon Randomiser to the Cosmetic menu | cluster | [iconic-feature.md](iconic-feature.md) |
 | v9.1.0-beta.1 | Added Keymaster Vault Room Bypass | cluster | [ui-addons.md](ui-addons.md) |
 | v9.1.0-beta.1 | Added RobsVault shortcuts | cluster | [ui-addons.md](ui-addons.md) |
-| v9.1.0-beta.1 | Added Show Hitboxes Hide Activated Objects option | cluster | [show-hitboxes-feature.md](show-hitboxes-feature.md) |
-| v9.1.0-beta.1 | Added Show Hitboxes Player Rotation option | cluster | [show-hitboxes-feature.md](show-hitboxes-feature.md) |
+| v9.1.0-beta.1 | Added Show Hitboxes Hide Activated Objects option | cluster | [show-hitboxes-feature.md](show-hitboxes-feature.md#evidence---death-hitbox-options-and-the-completed-hitbox-tag-map-2026-10-26) | The five remaining bool tags 207/208/209/210/229 serve four keys, so neither this row nor Player Rotation can be bound yet. |
+| v9.1.0-beta.1 | Added Show Hitboxes Player Rotation option | cluster | [show-hitboxes-feature.md](show-hitboxes-feature.md#evidence---death-hitbox-options-and-the-completed-hitbox-tag-map-2026-10-26) | Tag 207 switches the box to the rotated quad `[obj+0x20]` when `[obj+0x40]==1`, which is the closest match, but the key-to-tag binding is not proven (four keys, five tags). |
 | v9.1.0-beta.1 | Added Velocity & Death options to Status labels | cluster | [status-labels-feature.md](status-labels-feature.md) |
 | v9.1.0-beta.1 | Added show/hide animations to dropdowns and tabs | cluster | [ui-addons.md](ui-addons.md) |
 | v9.0.11 | Added "Requires Show Hitboxes" option to Show Hitbox Trail | mapped | [show-hitboxes-feature.md](show-hitboxes-feature.md) | tag 0xE3 (227, runtime-assigned Map A); gates trail draw on `FUN_180203EE0`. See show-hitboxes-feature.md. |
@@ -266,10 +266,10 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v9.0.0 | Added Show Trajectory | cluster | [show-trajectory-feature.md](show-trajectory-feature.md) |
 | v9.0.0 | Added Transition Customiser (with duration) | mapped | [ui-addons.md](ui-addons.md) | tag 449 (`HACK_NO_TRANSITION`); hooks `CCTransitionFade::create` via `FUN_18018B7F0` (registered by `FUN_18018AEB0`). Tags 0x1D6 (470, duration) and 0x1D8 (472, opacity) are runtime-assigned. See ui-addons.md. |
 | v9.0.0 | Added Transparent Lists | cluster | [cosmetic-feature.md](cosmetic-feature.md) |
-| v9.0.0 | Added Active Only option to Show Hitboxes | cluster | [show-hitboxes-feature.md](show-hitboxes-feature.md) |
-| v9.0.0 | Added Death Object Only option to Show Hitboxes | cluster | [show-hitboxes-feature.md](show-hitboxes-feature.md) |
+| v9.0.0 | Added Active Only option to Show Hitboxes | cluster | [show-hitboxes-feature.md](show-hitboxes-feature.md#evidence---death-hitbox-options-and-the-completed-hitbox-tag-map-2026-10-26) | No third death-path tag exists; the candidate set is 207/208/209/210/229 for four keys. |
+| v9.0.0 | Added Death Object Only option to Show Hitboxes | cluster | [show-hitboxes-feature.md](show-hitboxes-feature.md#evidence---death-hitbox-options-and-the-completed-hitbox-tag-map-2026-10-26) | Tag 218 is a mandatory condition for the death-object-only draw at `0x180204042`, but which of 217/218 is DEATH_OBJ and which is NOCLIP is not decidable from the image. |
 | v9.0.0 | Added Noclip Death Viewer | cluster | [noclip-feature.md](noclip-feature.md) |
-| v9.0.0 | Added Noclip option to Show Hitboxes on Death | cluster | [show-hitboxes-feature.md](show-hitboxes-feature.md) |
+| v9.0.0 | Added Noclip option to Show Hitboxes on Death | cluster | [show-hitboxes-feature.md](show-hitboxes-feature.md#evidence---death-hitbox-options-and-the-completed-hitbox-tag-map-2026-10-26) | Tags 217/218 gate the death path; the two keys DEATH_OBJ and NOCLIP map onto them in an order the image does not fix. |
 | v9.0.0 | Added Ignore Speedhack option to Respawn Time | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v9.0.0 | Added Trail Cutting Rate option | cluster | [render-hooks.md](render-hooks.md) |
 | v9.0.0 | Added Previews | cluster | [ui-addons.md](ui-addons.md) |
@@ -403,13 +403,13 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v8.0.0 (initial release) | Added blurred BG effect (fullscreen/tabs-only/none) | cluster | [cosmetic-feature.md](cosmetic-feature.md) |
 | v7.1.1 (Full) | Added Invisible Dual Fix | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v7.1.1 (Full) | Added Magic Screenshots | cluster | [ui-addons.md](ui-addons.md) |
-| v7.1.1 (Full) | Added Only Death Object option for Hitboxes on Death | cluster | [show-hitboxes-feature.md](show-hitboxes-feature.md) |
+| v7.1.1 (Full) | Added Only Death Object option for Hitboxes on Death | cluster | [show-hitboxes-feature.md](show-hitboxes-feature.md#evidence---death-hitbox-options-and-the-completed-hitbox-tag-map-2026-10-26) | Same mechanism as the v9.0.0 Death Object Only wording; not promoted for the same reason. |
 | v7.1.1 (Full) | Added Quick Chests | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v7.1.1 (Full) | Added Random Menu Music | cluster | [audio-sync-feature.md](audio-sync-feature.md) |
 | v7.1.1 (Full) | Added Random SFX | cluster | [audio-sync-feature.md](audio-sync-feature.md) |
 | v7.1.1 (Full) | Added Secure Servers | cluster | [ui-addons.md](ui-addons.md) |
 | v7.1.1 (Full) | Added Text Cursor | cluster | [ui-addons.md](ui-addons.md) |
-| v7.1.1 (Full) | Added Trigger conditions for Hitboxes on Death | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
+| v7.1.1 (Full) | Added Trigger conditions for Hitboxes on Death | cluster | [show-hitboxes-feature.md](show-hitboxes-feature.md#evidence---death-hitbox-options-and-the-completed-hitbox-tag-map-2026-10-26) | The gate conditions are measured (`FUN_180203EE0`: `[layer+0x309c]`, `[layer+0x324a]`, tag 217), but the three state bytes are unnamed host fields. |
 | v7.1.1 (Full) | Added Extensions Preload Folder (textureldr fix) | cluster | [ui-addons.md](ui-addons.md) |
 | v7.1 (Full) | Added Mega Hack Replay | cluster | [replay-feature.md](replay-feature.md) |
 | v7.1 (Full) | Added Anti Crash-Trigger | cluster | [gameplay-hooks.md](gameplay-hooks.md) |

@@ -375,3 +375,92 @@ UNVERIFIED: that `0x180202BD0` multiplies the third argument into the vertex alp
 using it as a width or distance (the argument position and the `/100` are measured, the
 destination arithmetic is not); and the units documented for the settings slider, which would
 confirm the 0..100 range.
+
+## Evidence - death-hitbox options and the completed hitbox tag map (2026-10-26)
+
+The 2026-10-25 note left "eleven boolean keys, eleven boolean tags, six unbound" as an open
+problem. Both halves of that sentence are now wrong, and the death options are measured but
+still unnamed.
+
+### Correction (2026-10-26): seven hitbox tags are labelled after all
+
+The second table of `notes/static-hack-label-map.md` (the Map A `CHECKBOX_*` bank) already
+names seven of them:
+
+| Setting key | Tag | Label-map entry |
+| --- | --- | --- |
+| `SHOW_HITBOXES/DROPDOWN/FILL` | 211 (`0xD3`) | 2 `CHECKBOX_FILL_HITBOX`, store `0x180064A88` |
+| `SHOW_HITBOXES/DROPDOWN/HAZARDS/CHECKBOX` | 198 (`0xC6`) | 3 `CHECKBOX_HAZARDS_HITBOX`, `0x180064ADD` |
+| `SHOW_HITBOXES/DROPDOWN/PASSABLE/CHECKBOX` | 204 (`0xCC`) | 14 `CHECKBOX_PASSABLE_HITBOX`, `0x180064F2E` |
+| `SHOW_HITBOXES/DROPDOWN/SOLIDS/CHECKBOX` | 195 (`0xC3`) | 15 `CHECKBOX_SOLIDS_HITBOX`, `0x180064F8E` |
+| `SHOW_HITBOXES/DROPDOWN/SPECIALS/CHECKBOX` | 201 (`0xC9`) | 16 `CHECKBOX_SPECIALS_HITBOX`, `0x180064FEE` |
+| `SHOW_HITBOXES/DROPDOWN/PLAYER` | 206 (`0xCE`) | 5 `CHECKBOX_HITBOXES_PLAYER`, `0x180064B8A` |
+| `SHOW_HITBOXES/DROPDOWN/SELECTED_OBJECTS` | 193 (`0xC1`) | none (runtime-assigned) |
+
+So the config refresh's cache slots are now named: `0x1808195A8` (tag 211, ten readers) is
+FILL, `0x1808195A0..A3` are SOLIDS/HAZARDS/SPECIALS/PASSABLE, and the value consumed at the
+head of the geometry function is FILL rather than a generic flag. Tag 206 is independently
+confirmed by the draw path (below), which is why the key-to-tag row above can be stated as
+fact rather than inference: the label table gives the tag, and the code shows the behaviour.
+
+Five bool tags remain for four remaining keys (`AXIS_ALIGNED_BOX`, `HIDE_USED`,
+`PLAYER_ROTATION`, `SECTION`): 207, 208, 209, 210, 229. One of the five is therefore **not** a
+`SHOW_HITBOXES` key, and the "exactly eleven tags" premise is withdrawn.
+
+### Tag 206 draws the player box
+
+`FUN_180204150` (0x180204150..0x180204221, `sub rsp,0xB0`, `/GS` cookie `0x1807F7040`) reads
+bool 206 at `0x18020417F`. When set it builds a rect with `0x180203C20` and submits it through
+`0x180202BD0` at scale `1.0` (`0x180534360`):
+
+- player 1 slot `[layer+0xDA0]`, rect buffer `[rsp+0x64]`, call `0x1802041B2`;
+- player 2 slot `[layer+0xDA8]` only when `[layer+0x422] == 1`, rect buffer `[rsp+0x20]`, call
+  `0x1802041EA`.
+
+No other tag is read in this function, so the player box is a single-key feature.
+
+### Death-hitbox path, measured
+
+Gate `FUN_180203EE0` (0x180203EE0..0x180203F52, no `.pdata`):
+
+```
+call 0x18008A510; mov edx,0xC0; call 0x18008F420   ; show hitboxes on -> return 1
+call 0x18008A510; mov edx,0xD8; call 0x18008F420   ; death hitboxes off -> return 0
+cmp byte [layer+0x309C],0 ; jne -> return 0
+cmp byte [layer+0x324A],0 ; jne -> return 1
+mov edx,0xD9; call 0x18002DE50 ; false -> return 0
+jmp 0x1801994D0                                     ; returns byte [0x18080CB69]
+```
+
+Draw `FUN_180204000` (0x180204000..0x1802040F6):
+
+```
+mov edx,0xD8; call 0x18008F420 ; off -> 0x180204093 (selected/all-object pass)
+cmp byte [layer+0x309C],0 ; jne -> 0x180204093
+cmp byte [layer+0x324A],0 ; je 0x180204079
+0x180204042: mov edx,0xDA; call 0x18002DE50 ; off -> 0x180204093
+             call 0x1801995B0   ; qword [0x18080CB80] = stored death object
+             ... r8 = that object; jmp 0x180203070   ; single-object draw
+0x180204079: mov edx,0xD9; call 0x18002DE50 ; off -> 0x180204093
+             call 0x1801994D0 ; zero -> 0x180204093
+             jmp 0x180204042
+```
+
+Read as control flow: tag **218** (`0xDA`) is a mandatory condition for the death-object-only
+draw, tag **217** (`0xD9`) is the alternative precondition used when `[layer+0x324A] == 0`, and
+the object drawn is whatever `0x1801995B0` returns from the mod global `0x18080CB80`. These are
+the only two tags in the whole death path, and there are exactly two death settings keys
+(`LEVEL/SHOW_HITBOXES_ON_DEATH/DROPDOWN/DEATH_OBJ` False, `.../NOCLIP` True).
+
+A write-site scan of `.text` (every instruction with a memory operand at displacement `0x324A`
+or `0x309C` and write access) found **no** writer in the mod image, so both bytes and the flag
+at `0x18080CB69` appear to be host-owned state. That is why the names cannot be settled from
+this artifact.
+
+UNVERIFIED: which of 217/218 is `DEATH_OBJ` and which is `NOCLIP` — the two candidate readings
+are "218 = death-object-only, 217 = noclip precondition" and its inverse, and the defaults
+(`DEATH_OBJ` False, `NOCLIP` True) fit the second reading as well as the first; the meanings of
+`[layer+0x309C]`, `[layer+0x324A]` and `byte [0x18080CB69]`; what `0x180203070` does with the
+third argument; whether the death-object-only mode also requires the player to be dead at all.
+The five changelog rows for these options therefore stay `cluster` with this section as the
+record of why.
