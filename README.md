@@ -182,8 +182,6 @@ These live in `scripts/`, so they exist on a fresh clone. Neither needs `samples
 | `make_progress_svg.py`        | Generate the four `docs/progress*.svg` graphics from live repo state         |
 | `notify.ps1`                  | Send an indexed ntfy push; all notifications go through it                     |
 | `watchdog.ps1`                | Liveness ping for long runs; refreshes the progress graphic on `-Action Start` |
-| `listloops.ps1`               | Read-only loop status: plugin loops, overdue state, driver PID and log tail    |
-| `loop-driver.ps1`             | Drive agent iterations through the local server API when the loop plugin's timers do not fire |
 | `run_supervised.ps1`          | Run a long command with stall detection; see `AGENTS.md`                     |
 | `keepalive.ps1`             | Idle-detecting keep-alive that re-prompts the AI chat window                 |
 | `compare_platform_classes.py` | Compare Windows/Android class sets across the two ABIs                  |
