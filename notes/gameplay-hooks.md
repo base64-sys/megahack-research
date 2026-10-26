@@ -1504,3 +1504,72 @@ Shake, mapped to v9.0.8), which fits that release group.
 UNVERIFIED: what slot `+0x460` does (a pickup or particle effect is the plausible reading and
 was not observed); whether `+0x3D2 == 1` means collected; and the row binding, since no
 settings key or label in the image names this mechanism.
+
+## Evidence - tag 372 and Pause During Complete (2026-10-26)
+
+`Added Pause During Complete` (v9.0.0) is the only changelog row about pausing while the
+level-complete sequence runs, and tag 372 (`0x174`, no static label) is the only hook on
+`PlayLayer::pauseGame` in the image.
+
+| Field | Value |
+| --- | --- |
+| Registration | `0x1800B2811` |
+| Callback | `FUN_18017B430`, body `0x18017B430..0x18017B4FB` |
+| Target 1 | `PlayLayer::pauseGame`, RVA `0x3BA0E0`; detour `0x18017B500`; installer `0x180174EC0` with `[rsp+0x20]=0xFFFFFFE0`, `[rsp+0x28]=1` |
+| Target 2 | `PlayLayer::resetLevel`, RVA `0x3B8EB0`; detour `0x18017B530`; installer `0x1800AB850` with the same two constants |
+| Settings key | `LEVEL/HACK_PAUSE_DURING_COMPLETE` (present in the user's `hackpro.json`; see `notes/settings-contents.md`) |
+
+The pause hook clears one PlayLayer byte around the original call and puts it back:
+
+```
+0x18017B500  push rsi
+0x18017B501  push rbx
+0x18017B502  sub  rsp, 0x28
+0x18017B506  mov  rsi, rcx
+0x18017B509  movzx ebx, byte [rcx+0x3570]   ; host-owned flag
+0x18017B510  mov  byte [rcx+0x3570], 0
+0x18017B517  call 0x1801A5330               ; original pauseGame (delayed-bind thunk)
+0x18017B51C  mov  byte [rsi+0x3570], bl     ; restore
+0x18017B522  add  rsp, 0x28
+0x18017B526  pop  rbx
+0x18017B527  pop  rsi
+0x18017B528  ret
+```
+
+The reset hook cancels the end animations when that flag is set, then runs the original:
+
+```
+0x18017B530  push rsi
+0x18017B531  sub  rsp, 0x20
+0x18017B535  mov  rsi, rcx
+0x18017B538  cmp  byte [rcx+0x3570], 1
+0x18017B53F  jne  0x18017B561
+0x18017B541  mov  rcx, [rsi+0xDA0]          ; player 1
+0x18017B548  call 0x180532E70               ; CCNode::stopAllActions
+0x18017B54D  mov  rcx, [rsi+0xDA8]          ; player 2
+0x18017B554  call 0x180532E70
+0x18017B559  mov  rcx, rsi                  ; the layer itself
+0x18017B55C  call 0x180532E70
+0x18017B561  mov  rcx, rsi
+0x18017B564  add  rsp, 0x20
+0x18017B568  pop  rsi
+0x18017B569  jmp  0x1801A4300               ; original resetLevel
+```
+
+Three independent pieces line up with the row:
+
+1. `scripts/import_names.py` resolves `0x180532E70` through the IAT slot at `0x180644318` to
+   `libcocos2d.dll!?stopAllActions@CCNode@cocos2d@@QEAAXXZ`, i.e. cancelling animations, not
+   moving objects.
+2. `PlayLayer::pauseGame` has exactly one mod hook (`0x3BA0E0` appears in no other
+   registration), so the mechanism can only serve a pause-related row.
+3. The changelog names the feature once ("Added Pause During Complete", v9.0.0) and its
+   v9.0.10 fix says "not always cancelling the end animation", which is what the
+   `stopAllActions` branch does on the next reset.
+
+UNVERIFIED: the meaning of `byte [PlayLayer+0x3570]`. It is host-owned state - a sweep of
+all 18,825 recovered functions finds the displacement only in these two detours, so Mega
+Hack never sets it - and the reading "the level-complete sequence is running" is inferred
+from the hook pair and the changelog wording, not observed. Also unproven is the tag-to-row
+binding itself: the key name and the hook target corroborate it, but no static label ties
+tag 372 to `LEVEL/HACK_PAUSE_DURING_COMPLETE`.

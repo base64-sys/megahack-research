@@ -30,8 +30,8 @@
 - Runtime comparison of reconstructed hook callbacks against the release's
   observable behaviour.
 - Cluster assignment exists but is only a lead for most rows. Counted from the status
-  column on 2026-10-26: **105 of the 389** changelog rows in
-  [feature-inventory.md](feature-inventory.md) are `mapped` and **284** are `cluster`;
+  column on 2026-10-26: **106 of the 389** changelog rows in
+  [feature-inventory.md](feature-inventory.md) are `mapped` and **283** are `cluster`;
   the authoritative per-row list with tag, registration and hook address is the
   Mapped-rows table there. Four of the `cluster` rows (tags 422, 442, 438, 424) carry
   mechanism evidence but stay `cluster` because their tag→row binding is unresolved.
@@ -39,7 +39,7 @@
   feature at the 2026-10-23 baseline (method below). That number is a dated snapshot: it
   predates every promotion since, the original tokeniser was not kept, and it has not
   been re-run, so it should not be quoted as the current gap.
-- Per-feature settings-key and default mapping for the remaining 284 `cluster` rows
+- Per-feature settings-key and default mapping for the remaining 283 `cluster` rows
   remains open. The mapped rows have tags and code VAs, but their JSON keys and shipped
   defaults are not all confirmed.
 - Alias/dead classification for features absent from the current build remains open.

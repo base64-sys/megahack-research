@@ -13,7 +13,7 @@
 | `mapped` | The feature has its own evidence: a note that names it, its settings key(s) and default, and/or its implementing function(s) with VAs. |
 | `alias` / `dead` | A restatement of an earlier feature / absent from this build, with the evidence for that call. |
 
-All 389 rows below were `cluster` at the 2026-10-23 baseline. **One hundred and five are now
+All 389 rows below were `cluster` at the 2026-10-23 baseline. **One hundred and six are now
 `mapped`**; the [Mapped rows](#mapped-rows) table below is the authoritative list, with
 tag, registration site and hook address for each one.
 
@@ -60,7 +60,7 @@ routine (RVA `0x23FDE0`) whenever a start position was loaded. **Slider Bypass**
 `SliderTouchLogic::ccTouchMoved` outright, feeding the raw touch coordinate to the slider
 instead of a clamped value, and **Main Level Bypass** raises a private flag around
 `LevelPage::onPlay`/`updateDynamicPage` so `GameStatsManager::getStat(0x38, 0)` answers 999.
-The other 284 rows remain `cluster`.
+The other 283 rows remain `cluster`.
 
 Four of those rows now carry mechanism evidence without being promoted (2026-10-26):
 "Player on Top" and "Player 1 on Top" (tags 422 and 442, both on `PlayLayer::resetLevel`),
@@ -288,7 +288,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v9.0.0 | Added No Portal Circle | mapped | [render-hooks.md](render-hooks.md#evidence---no-portal-circle-and-no-ghost-trail-2026-10-26) | tag 421 (`0x1A5`, runtime-assigned, no static label); registered at `0x1800B130D`, callback `FUN_180171350` hooks `PlayerObject::spawnPortalCircle` (RVA 0x397760), detour `0x1801713C0` is a bare `ret`. Bound over the v9.0.7 "No Circle Effect" row by tag-allocation order (inference recorded in the note, not proven). |
 | v9.0.0 | Added Menu Snow in December | mapped | [cosmetic-feature.md](cosmetic-feature.md) | tag 498 (0x1F2, runtime-assigned Map B); `FUN_180154AD0` checks December via `_time64`, registers snow particle creator `FUN_180154C10` on `MenuLayer::init` and listener `FUN_1801550F0`. See cosmetic-feature.md. |
 | v9.0.0 | Added Player on Top | cluster | [render-hooks.md](render-hooks.md#evidence---player-on-top-candidates-tags-422-and-442-2026-10-26) | tag 422 (`0x1A6`, registered at `0x1800B18A1`, callback `FUN_180172330`) hooks `PlayLayer::resetLevel` and sets an integer virtual (`+0x50`) on `[player+0x7B0]` for both players to 99998/99999 while enabled and 58/59 while disabled, on install and on every reset. `+0x50` reads as a draw-priority setter (host sites pass `0x64`, mod sites pass 10/100 on fresh `CCMenu`s) but is not proven, and tag 442 competes for the same row family. |
-| v9.0.0 | Added Pause During Complete | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
+| v9.0.0 | Added Pause During Complete | mapped | [gameplay-hooks.md](gameplay-hooks.md#evidence---tag-372-and-pause-during-complete-2026-10-26) | tag 372 (`0x174`, registered at `0x1800B2811`, callback `FUN_18017B430`) is the only hook on `PlayLayer::pauseGame` (RVA `0x3BA0E0`, detour `0x18017B500`): it zeroes the host flag `[PlayLayer+0x3570]` around the original call and restores it, and the paired `resetLevel` detour (`0x18017B530`) calls `CCNode::stopAllActions` on both players and the layer when that flag is set. Matches `LEVEL/HACK_PAUSE_DURING_COMPLETE` and the v9.0.10 "not always cancelling the end animation" fix. The flag's meaning is UNVERIFIED. |
 | v9.0.0 | Added Shipcopter | cluster | [render-hooks.md](render-hooks.md) |
 | v9.0.0 | Added Show Total Attempts | cluster | [status-labels-feature.md](status-labels-feature.md#evidence---tag-424-and-the-attempt-label-2026-10-26) | tag 424 (`0x1A8`, registered at `0x1800B198F`, callback `FUN_1801726B0`) hooks `PlayLayer::resetLevel` and rewrites a label with `"Attempt {}"` from `[layer+0x878]+0x2F0 - +0x2F4`, caching the result at `+0x2F8`. The subtraction argues against displaying a stored total, so the row stays cluster. |
 | v9.0.0 | Added Show Trajectory | cluster | [show-trajectory-feature.md](show-trajectory-feature.md) |
