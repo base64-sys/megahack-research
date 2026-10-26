@@ -180,10 +180,10 @@ play layer, gets the interface through `0x180185B50`, and tail-jumps `0x180184BA
 (`0x1803A50B4`), constructs `0x1801E85C0`, writes class pointer `[obj+0] = 0x180578CF8` and
 vtable slots `+0x140/+0x148/+0x150/+0x158/+0x160/+0x198` =
 `0x180579108/0x180579168/0x180579178/0x180579198/0x1805791B8/0x1805791D8`, zeroes
-`+0x1C0..+0x1D0`, runs `0x180185370`, and either autoreleases or calls `[vtable+8](1)`.
+`+0x1C0..+0x1D0`, runs `0x180185370`, and either autoreleases or calls `[vtable+8]` with `1`.
 
 `0x180184BA0(this, layer)` (`.pdata` `0x180184BA0..`) shows the interface with
-`[vtable+0x140](1)`; if tag 169 is true it stops the actions on `+0x1C0`, hides `+0x1C0`
+`[vtable+0x140]` called with `1`; if tag 169 is true it stops the actions on `+0x1C0`, hides `+0x1C0`
 and `+0x1C8`, shows `+0x1D0`; otherwise it fades `+0x1D0` out with
 `CCFadeTo::create(0.25, 64)` after `CCDelayTime::create(1.0)`.
 

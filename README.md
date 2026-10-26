@@ -193,6 +193,8 @@ These live in `scripts/`, so they exist on a fresh clone. Neither needs `samples
 | `callback_hooks.py`           | Read each callback's hook targets, detours and installers off the bytes      |
 | `lazy_stubs.py`               | List MH's lazily-bound host calls, with the host RVA behind each stub         |
 | `check_inventory_evidence.py` | Fail if any label, registration or callback cited in the feature inventory disagrees with the binary |
+| `check_doc_links.py`          | Fail if a relative Markdown link or `#anchor` in `notes/`, `docs/` or `README.md` does not resolve |
+| `test_check_doc_links.py`     | Pin the anchor rules and the missing-target/missing-anchor reporting               |
 | `init_table.py`              | Recover the CRT `_initterm` tables and the functions they call indirectly   |
 | `test_init_table.py`         | Pin those tables and the zero-caller counts; skips without a sample set       |
 | `test_settings_index.py`     | Pin the tag table and the argument splitter that has lost tags twice         |
@@ -280,6 +282,8 @@ python scripts/test_func_bounds.py
 python scripts/triage_detours.py <image.dll> --max 0x10
 python scripts/init_table.py
 python scripts/test_init_table.py
+python scripts/check_doc_links.py
+python scripts/test_check_doc_links.py
 python scripts/make_progress_svg.py
 python scripts/make_progress_svg.py --check
 python scripts/make_progress_svg.py --only criteria

@@ -98,7 +98,7 @@ engine grouping, but no name string identifies any of them.
 read this run and are the **hitbox** pass, not a pulse-rate override:
 
 - `0x180158740` first calls the cached original through `0x1801A3A70`, then `0x1802022C0`,
-  shows `[layer+0x3770]` with `[vtable+0x140](1)`, looks up children `0x1E6813A`,
+  shows `[layer+0x3770]` with `[vtable+0x140]` called with `1`, looks up children `0x1E6813A`,
   `0x1E6813B`, `0x1E6813C` with `[vtable+0x1C8]` and routes them to `0x180203F60`
   (hitbox draw), `0x1801809A0` (hitbox trail) and `0x180182520`.
 - Its two call sites (`0x18015834D`, `0x180158416`) are inside one callback body that also
