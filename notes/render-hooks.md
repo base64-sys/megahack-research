@@ -635,3 +635,80 @@ editor UI stays hidden for that layer's lifetime rather than being re-hidden eve
 UNVERIFIED: what `FUN_18010FC00` tests and returns (it is a normal function with a frame
 prologue, not a thunk); whether the toggle also covers the playtest UI; the JSON key for tag
 0x35.
+
+## Evidence — Thread Priority and its v6.2.0 "Switcher" wording (2026-10-26)
+
+Re-read of tag 454 after the static-labelling pass. The tag map and the two bodies in the
+2026-10-23 section above are correct; what follows adds the registration chain, confirms the
+two imports by their hint/name entries, ties the integer tag 455 to a named settings key, and
+establishes that the v6.2.0 changelog wording "Thread Priority Switcher" is the same feature
+as the already-mapped v8.0.0-alpha12 wording "Thread Priority".
+
+### Registration chain
+
+`FUN_18018AC90` (code cave, body `0x18018AC90..0x18018AD6F`, `ret` at `0x18018AD6F`) is the
+registrar, called from the shared settings initialiser at `0x1800B3231`. For each of the two
+tags it builds a `{descriptor, function}` pair on the stack and calls a listener registrar:
+
+| Tag | Registrar call | Function | Descriptor |
+| --- | --- | --- | --- |
+| `0x1C6` (454) | `0x18018ACE7` -> `0x18008F910` | `0x18018ADF0` | `0x180546628` |
+| `0x1C7` (455) | `0x18018AD47` -> `0x180073A70` | `0x18018AE50` | `0x180579678` |
+
+The same two functions are also addressable as 32-bit RVAs at `0x180831048` (`0x0018ADF0`)
+and `0x180831054` (`0x0018AE50`) — the pair the earlier note called vtable entries. Both
+registrations are therefore real: the class table points at the methods, and the settings
+system gets a listener for each tag.
+
+### Bodies
+
+`0x18018ADF0..0x18018AE3A`:
+
+```
+0x18018ADF6  call 0x18008A510                 ; settings context
+0x18018ADFE  mov edx,0x1C6
+0x18018AE06  call 0x18008F420                 ; isHackEnabled(454)
+0x18018AE0B  xor edi,edi
+0x18018AE0F  je 0x18018AE29                   ; disabled -> priority 0 (normal)
+0x18018AE11  mov edx,0x1C7
+0x18018AE19  call 0x18002E4C0                 ; integer config, tag 455
+0x18018AE1E  lea ecx,[rax-2]
+0x18018AE23  cmp eax,5
+0x18018AE26  cmovb edi,ecx                    ; value<5 ? value-2 : 0
+0x18018AE29  call [0x180642F00]               ; GetCurrentThread
+0x18018AE32  mov edx,edi
+0x18018AE3A  jmp [0x1806430B0]                ; SetThreadPriority
+```
+
+`0x18018AE50..0x18018AE98` is the value-listener form: it reads the same master tag, takes
+the new level from `dword [rdx]` instead of re-reading tag 455, applies the same
+`value < 5 ? value-2 : 0` mapping and calls `SetThreadPriority(GetCurrentThread(), level)`;
+when disabled it returns without touching the thread (`0x18018AE92`).
+
+Both import slots were confirmed from their import hint/name entries rather than by name
+inference: slot `0x180642F00` -> hint `0x245` "GetCurrentThread", slot `0x1806430B0` ->
+hint `0x5A7` "SetThreadPriority".
+
+### Settings keys
+
+`notes/settings-contents.md` line 218 `UNIVERSAL/THREAD_PRIORITY/COMBO` = 4 and line 305
+`UNIVERSAL/THREAD_PRIORITY/HACK_THREAD_PRIORITY`. The `COMBO` entry is the priority selector
+the v6.2.0 changelog calls the "Switcher", and its default 4 maps to Windows priority 2
+(`ABOVE_NORMAL`) under the `value - 2` rule.
+
+### Why one tag serves both changelog wordings
+
+There is exactly one static label `HACK_THREAD_PRIORITY` (static-map entry 73, store
+`0x180064483`), one registrar, one master tag and one level tag in the image. The v6.2.0
+"Thread Priority Switcher" row and the v8.0.0-alpha12 "Thread Priority" row therefore
+describe the same toggle-plus-combo pair; the earlier wording is promoted on that shared
+mechanism, not on a second implementation that would have to be found.
+
+Method caution: a raw scan for `mov edx,0x1C7` also hits statically linked OpenSSL at
+`0x180404D59` (`crypto\property\property_parse.c`, `ossl_parse_query`). Tag scans must
+require the adjacent config-accessor call, not just the immediate.
+
+UNVERIFIED: which thread the listener runs on (the call is on the thread that fires the
+settings change); whether `COMBO` stores 0-4 or an offset form; what the game does for a
+stored value >= 5 (the code falls back to normal priority 0); and whether the v6.2.0 build
+exposed the selector with the same key path.

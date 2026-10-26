@@ -13,7 +13,7 @@
 | `mapped` | The feature has its own evidence: a note that names it, its settings key(s) and default, and/or its implementing function(s) with VAs. |
 | `alias` / `dead` | A restatement of an earlier feature / absent from this build, with the evidence for that call. |
 
-All 389 rows below were `cluster` at the 2026-10-23 baseline. **Ninety-one are now
+All 389 rows below were `cluster` at the 2026-10-23 baseline. **Ninety-two are now
 `mapped`**; the [Mapped rows](#mapped-rows) table below is the authoritative list, with
 tag, registration site and hook address for each one.
 
@@ -57,7 +57,7 @@ re-applies the newest checkpoint's two player-state blocks after `resetLevel`, o
 both its changelog wordings. **Show Layout colour options** turned out to be four
 (bool, colour) config pairs read by the existing Show Layout `resetLevel` detour. **Force StartPos Reset Camera** post-hooks `loadStartPosObject` and forces an unnamed host
 routine (RVA `0x23FDE0`) whenever a start position was loaded. The other
-298 rows remain `cluster`.
+297 rows remain `cluster`.
 
 A keyword check at the baseline found that **185 of 389** rows point at a note that
 never mentions the feature at all, so for those even the cluster assignment is only a
@@ -83,7 +83,7 @@ reported as progress.
 | Added Frame Stepper | tag 302 (`0x12E`, `HACK_FRAME_STEPPER`); registrar `FUN_180173FD0` toggles two UILayer hooks (`onPause` RVA 0x4CDF50, `handleKeypress` RVA 0x4CD830). Tag 357 (0x165, runtime-assigned Map B) is an alternate enable. See [gameplay-hooks.md](gameplay-hooks.md). |
 | Added StartPos Switcher | tag 130 (`0x82`, `HACK_STARTPOS_SWITCHER`); gate `FUN_180185710` controls next/prev switching via `FUN_1801857F0`/`FUN_180185910`. Tags 0xA6/0xA7 (166/167) are runtime-assigned Map A. See startpos-switcher-feature.md. |
 | Added Solid Wave Trail | tag 396 (`0x18C`, `HACK_SOLID_WAVE_TRAIL`); blend-func toggle in `FUN_1801EECA0` (solid 0x30300000001 vs blended 0x100000302); registered in `FUN_1800afae0` at `0x1800b1a06`, callback `FUN_1801728c0` hooks `PlayerObject::setupStreak` (RVA 0x3887C0) and `PlayerObject::updateStreakBlend` (0x388CA0). See cosmetic-feature.md and [hook-registrations.md](hook-registrations.md#worked-example-promoting-a-candidate-row-to-verified). |
-| Added Thread Priority | tag 454 (`0x1C6`, `HACK_THREAD_PRIORITY`); `FUN_18018ADF0`/`FUN_18018AE50` call `SetThreadPriority`. Tag 0x1C7 (455) is the priority level. See render-hooks.md. |
+| Added Thread Priority (and its v6.2.0 "Thread Priority Switcher" wording) | tag 454 (`0x1C6`, `HACK_THREAD_PRIORITY`, static map entry 73 store `0x180064483`) is the master; registrar `FUN_18018AC90` (called at `0x1800B3231`) registers `0x18018ADF0` for the master and `0x18018AE50` for the integer level tag 455 (`0x1C7`) through `0x18008F910`/`0x180073A70`. Both listeners read the level, map it as `value<5 ? value-2 : 0` and call `SetThreadPriority(GetCurrentThread(), level)`; the imports were confirmed from their hint/name entries (slots `0x180642F00` and `0x1806430B0`). Keys `UNIVERSAL/THREAD_PRIORITY/HACK_THREAD_PRIORITY` and `.../COMBO` (4) make the combo the "switcher" the v6.2.0 bullet names. See [render-hooks.md](render-hooks.md#evidence--thread-priority-and-its-v620-switcher-wording-2026-10-26). |
 | Added Transition Customiser (with duration) | tag 449 (`0x1C1`, `HACK_NO_TRANSITION`); hooks `CCTransitionFade::create` via `FUN_18018B7F0` (registered by `FUN_18018AEB0`). Tags 0x1D6 (470, duration) and 0x1D8 (472, opacity) are runtime-assigned. See ui-addons.md. |
 | Added Pitch Shifter | tag 459 (`0x1CB`, `HACK_PITCH_SHIFTER`); listener `FUN_18018A740` (tag 0x1CC = 460) calls `FUN_18018A800` → `FUN_18020DA00` (applies pitch to FMOD channels 0–4). See audio-sync-feature.md. |
 | Added TPS Bypass | tag 490 (0x1EA); hooks `GJBaseGameLayer::getModifiedDelta` (RVA 0x2377B0) via `FUN_180196CA0` (registered by `FUN_180196C30`). Tags 0x1E6 (486, TPS value) and 0x1E7 (487, sub-toggle) are runtime-assigned. See gameplay-hooks.md. |
@@ -552,7 +552,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v6.2.0 (Full) | Added Same Dual Colour mod | cluster | [iconic-feature.md](iconic-feature.md) |
 | v6.2.0 (Full) | Added Smart Start Pos | cluster | [startpos-switcher-feature.md](startpos-switcher-feature.md) |
 | v6.2.0 (Full) | Added Solid & Dual options to RGB Icons | cluster | [iconic-feature.md](iconic-feature.md) |
-| v6.2.0 (Full) | Added Thread Priority Switcher | cluster | [render-hooks.md](render-hooks.md) |
+| v6.2.0 (Full) | Added Thread Priority Switcher | mapped | [render-hooks.md](render-hooks.md#evidence--thread-priority-and-its-v620-switcher-wording-2026-10-26) | same mechanism as the v8.0.0-alpha12 row: master tag 454, level tag 455, registrar `0x18018AC90`, and the `UNIVERSAL/THREAD_PRIORITY/COMBO` selector the 6.2 wording describes. |
 | v6.2.0 (Full) | Added Trail Cut Fix | cluster | [render-hooks.md](render-hooks.md) |
 | v6.2.0 (Full) | Added Variable Setter | cluster | [ui-addons.md](ui-addons.md) |
 | v6.2.0 (Full) | Added Vertical Sync & Fullscreen toggle | cluster | [render-hooks.md](render-hooks.md) |
@@ -608,5 +608,5 @@ Correction (2026-10-25): the earlier version of this paragraph named `Force Plat
 (`0x0F2`, `HACK_FORCE_PLATFORMER`) and 49 (`0x031`, `HACK_DEFAULT_SONG_BYPASS`) — but **neither
 has a row in the 389**: no `Added Force Platformer` and no `Added Default Song Bypass` bullet
 exists. Mapping them would add entries to "Toggles outside the 389" at best, so they are not
-progress against the milestone. The next rows must be chosen from the 298 remaining changelog
+progress against the milestone. The next rows must be chosen from the 297 remaining changelog
 bullets.
