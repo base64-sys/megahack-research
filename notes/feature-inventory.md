@@ -13,7 +13,7 @@
 | `mapped` | The feature has its own evidence: a note that names it, its settings key(s) and default, and/or its implementing function(s) with VAs. |
 | `alias` / `dead` | A restatement of an earlier feature / absent from this build, with the evidence for that call. |
 
-All 389 rows below were `cluster` at the 2026-10-23 baseline. **One hundred are now
+All 389 rows below were `cluster` at the 2026-10-23 baseline. **One hundred and one are now
 `mapped`**; the [Mapped rows](#mapped-rows) table below is the authoritative list, with
 tag, registration site and hook address for each one.
 
@@ -60,7 +60,7 @@ routine (RVA `0x23FDE0`) whenever a start position was loaded. **Slider Bypass**
 `SliderTouchLogic::ccTouchMoved` outright, feeding the raw touch coordinate to the slider
 instead of a clamped value, and **Main Level Bypass** raises a private flag around
 `LevelPage::onPlay`/`updateDynamicPage` so `GameStatsManager::getStat(0x38, 0)` answers 999.
-The other 289 rows remain `cluster`.
+The other 288 rows remain `cluster`.
 
 A keyword check at the baseline found that **185 of 389** rows point at a note that
 never mentions the feature at all, so for those even the cluster assignment is only a
@@ -161,6 +161,7 @@ reported as progress.
 | No Portal Circle | tag 421 (`0x1A5`, runtime-assigned, no static label); registered at `0x1800B130D`, callback `FUN_180171350` hooks `PlayerObject::spawnPortalCircle` (RVA 0x397760), detour `0x1801713C0` is a bare `ret`. See [render-hooks.md](render-hooks.md#evidence---no-portal-circle-and-no-ghost-trail-2026-10-26). |
 | No Ghost Trail | tag 432 (`0x1B0`, runtime-assigned, no static label); registered at `0x1800B0F55`, callback `FUN_180169AE0` hooks `PlayerObject::toggleGhostEffect` (RVA 0x39EE30), detour `0x180169B50` is a bare `ret`. See [render-hooks.md](render-hooks.md#evidence---no-portal-circle-and-no-ghost-trail-2026-10-26). |
 | Wave Trail on Death | tag 419 (`0x1A3`, `HACK_WAVE_TRAIL_ON_DEATH`); no `mov edx,<tag>` registration. The condition registration `0x180173A30` (leaves at `0x180173A7E`/`0x180173A96` = tags 399 and 419, composed by `0x180107CE0`, bound through `0x1800915B0`) installs the action `0x180173D00`, which hooks `PlayerObject::playerDestroyed` (RVA `0x397D40`, detour `0x180173E30`, installer `0x180167B20`) and `PlayerObject::fadeOutStreak2` (`0x3A0190`, detour `0x180173E50`, installer `0x1800AAC20`). `0x180173E30` sets `byte [0x18080C538]` around the `playerDestroyed` trampoline `0x1801A8010`; `0x180173E50` returns without calling the `fadeOutStreak2` trampoline `0x1801A76A0` while that byte is set. See [gameplay-hooks.md](gameplay-hooks.md#evidence--wave-trail-on-death-and-the-trail-preservation-hooks-2026-10-26). |
+| No End Shake | tag 439 (`0x1B7`, unlabelled); registered at `0x1800B0EDE`, callback `FUN_180169A40` installs detour `0x180169AB0` on `PlayLayer::showCompleteEffect` (RVA `0x3A8F30`, installer `0x1800AB850`). The detour forwards to the original via the delayed-bind trampoline `0x1801A5AC0` (`lea rcx,[base+0x3a8f30]` at `0x1801A5B24`) and then writes `dword [layer+0x520]=0` - the only non-frame reference to that field in `.text`. Key `COSMETIC/HACK_NO_END_SHAKE`. UNVERIFIED: that the field is the end-of-level shake rather than the completion flash. See [render-hooks.md](render-hooks.md#evidence---no-end-shake-2026-10-26). |
 | Frozen Animations | tag 433 (`0x1B1`, runtime-assigned, no static label); registered at `0x1800B0A38`, callback `FUN_180167490` hooks `CCAnimatedSprite::runAnimation` (RVA 0x40CF0) and `CCAnimatedSprite::tweenToAnimation` (0x40D60); the detours `0x180167560`/`0x1801675C0` destroy the by-value animation-name argument and return. See [render-hooks.md](render-hooks.md#evidence---frozen-animations-and-no-dash-fire-2026-10-26). |
 | No Dash Fire | tag 436 (`0x1B4`, runtime-assigned, no static label); registered at `0x1800B0D79`, callback `FUN_180169260` hooks `PlayerObject::updateDashAnimation` (RVA 0x396D20); detour `0x1801692D0` hides `[player+0x660]` via vtable `+0x140(0)` and returns without calling the original. See [render-hooks.md](render-hooks.md#evidence---frozen-animations-and-no-dash-fire-2026-10-26). |
 
@@ -220,7 +221,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v9.0.8 | Added Auto Clicker | cluster | [input-hooks.md](input-hooks.md) |
 | v9.0.8 | Added Auto-Select toggle for Search | cluster | [ui-addons.md](ui-addons.md) |
 | v9.0.8 | Added Coin Shower | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
-| v9.0.8 | Added No End Shake | cluster | [render-hooks.md](render-hooks.md) |
+| v9.0.8 | Added No End Shake | mapped | [render-hooks.md](render-hooks.md#evidence---no-end-shake-2026-10-26) | tag 439 (`0x1B7`, unlabelled); registered at `0x1800B0EDE`, callback `FUN_180169A40` installs `0x180169AB0` on `PlayLayer::showCompleteEffect` (RVA `0x3A8F30`, installer `0x1800AB850`). The detour calls the original through the delayed-bind trampoline `0x1801A5AC0` and then zeroes `dword [layer+0x520]`, the only non-frame write to that field in the image. |
 | v9.0.8 | Added No Robot/Swing Fire | mapped | [render-hooks.md](render-hooks.md) | tags 440/441 (0x1B8/0x1B9, runtime-assigned); registered in `FUN_1800afae0` at `0x1800b1472`/`0x1800b164e`, callbacks `FUN_180171550`/`FUN_180171ca0` (hooks `PlayerObject::toggleRobotMode`/`toggleSwingMode`). See no-robot-swing-fire-feature.md. |
 | v9.0.8 | Added Replay option to block inputs | cluster | [replay-feature.md](replay-feature.md) |
 | v9.0.8 | Added Show Layout colour options | mapped | [gameplay-hooks.md](gameplay-hooks.md#evidence--show-layout-colour-options-2026-10-26) | four (bool, colour) tag pairs read by the Show Layout `resetLevel` detour `0x18017f330`: 262/263, 265/266, 271/272, 268/269; each colour is decomposed by `0x1801f15e0` and written to `[obj+0x3a..0x3c]` for ids `0x3e8..0x3f6` fetched through host RVA `0x25bc00`. Fallbacks bind 265/266 = GROUND and 268/269 = OBJ; BG/MG order unproven. |
@@ -620,5 +621,5 @@ Correction (2026-10-25): the earlier version of this paragraph named `Force Plat
 (`0x0F2`, `HACK_FORCE_PLATFORMER`) and 49 (`0x031`, `HACK_DEFAULT_SONG_BYPASS`) — but **neither
 has a row in the 389**: no `Added Force Platformer` and no `Added Default Song Bypass` bullet
 exists. Mapping them would add entries to "Toggles outside the 389" at best, so they are not
-progress against the milestone. The next rows must be chosen from the 289 remaining changelog
+progress against the milestone. The next rows must be chosen from the 288 remaining changelog
 bullets.

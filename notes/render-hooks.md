@@ -861,8 +861,77 @@ UNVERIFIED: the settings keys that write tags 433 and 436; that `[this+0x660]` i
 sprite specifically rather than the whole dash-effect node (the instructions only prove that
 a child of the player is hidden inside the dash-animation update); whether clearing the
 animation name also stops an already-running animation, since the code only prevents new
-calls; the runtime effect in a live session; and what tag 435 (`0x1B3`, callback
-`FUN_180169DE0`, hooks `PlayLayer::showNewBest` and `PlayLayer::destroyPlayer`) actually is.
-That callback installs `0x180169EB0`, which sets byte `0x18080C378` and then checks tag 245
-(`HACK_RESPAWN_TIME`); it is still the best remaining candidate for "Added No New Best
-Popup", but the body past `0x180169EDB` has not been read yet, so the row stays `cluster`.
+calls; and the runtime effect in a live session.
+
+Correction (2026-10-26): the tag-435 continuation has now been read, and it changes the
+reading recorded above. `0x180169EB0` sets `byte [0x18080C378]=1`, returns early when tag 245
+is enabled, and otherwise reads host setting `"0052"` and tail-jumps to `0x18017F000` with
+`xmm1` = 1.0 (`0x180534360`) or 0.5 (`0x180534338`). `0x18017F000` reads tags 502 (`0x1F6`,
+bool master), 247 (`0xF7`, bool) and 501 (`0x1F5`, double), calls
+`CCNode::stopActionByTag(0x10)` and clamps a delay with `maxsd`. Tag 245 is not a guess:
+`notes/static-hack-label-map.md` recovers the real `{label -> uint64}` table built by
+`FUN_180062940`, so `HACK_RESPAWN_TIME = 245` is the value the profile loader itself writes,
+and tag 245 is read at exactly two sites in the whole image, both inside this popup path. The
+pair therefore implements "Respawn Time replaces the stock new-best popup" plus a rescheduled
+popup driven by tags 501/502/247, not a No New Best Popup toggle; tag 435 is the mod's own
+popup scheduler. The row stays `cluster` because no changelog wording describes a rescheduled
+popup, and the "no new best popup" wording has no located toggle.
+
+## Evidence - No End Shake (2026-10-26)
+
+`Added No End Shake` (v9.0.8) is the only v9.0.x row about the end-of-level effect, and it has
+a matching settings key, a tag, and a detour whose whole body is a single field write.
+
+| Field | Value |
+| --- | --- |
+| Row | v9.0.8 `Added No End Shake` (`notes/feature-inventory.md`) |
+| Settings key | `COSMETIC/HACK_NO_END_SHAKE` (`notes/settings-contents.md`) |
+| Tag | 439 (`0x1B7`) - unlabelled; absent from the 85-entry static map, which is a real `{label -> uint64}` table, so the absence is meaningful |
+| Registration | `0x1800B0EDE`, bytes `ba b7 01 00 00` = `mov edx,0x1B7` |
+| Callback | `FUN_180169A40`, body `0x180169A40..0x180169A98`; enable path resolves the host RVA, disable path `0x180169A99` tail-jumps `0x180108A80` |
+| Target | `PlayLayer::showCompleteEffect`, RVA `0x3A8F30` (host module), name string `0x1805759AC` |
+| Installer | `0x1800AB850`, `[rsp+0x20]=0xFFFFFFE0`, `[rsp+0x28]=1` |
+| Detour | `0x180169AB0`, 0x1D bytes |
+
+The detour, verbatim:
+
+```
+0x180169AB0  push rsi
+0x180169AB1  sub  rsp, 0x20
+0x180169AB5  mov  rsi, rcx
+0x180169AB8  call 0x1801A5AC0
+0x180169ABD  mov  dword ptr [rsi + 0x520], 0
+0x180169AC7  add  rsp, 0x20
+0x180169ACB  pop  rsi
+0x180169ACC  ret
+```
+
+`0x1801A5AC0` is the delayed-bind trampoline for RVA `0x3A8F30`: it guards on
+`0x1808100C0`, calls `0x18010DDC0` for the host module base at `0x1801A5B1F`, forms
+`lea rcx,[rax+0x3A8F30]` at `0x1801A5B24`, resolves with `0x1801A33C0` and tail-jumps through
+the cache at `0x1808100B8`. So the original `showCompleteEffect` always runs; the mod only adds
+the field write afterwards.
+
+### Why the field write is the whole feature
+
+A `+0x520` displacement scan of the entire `.text` finds 52 memory operands, and exactly one of
+them has a base other than `rsp`/`rbp` - this site (`c7 86 20 05 00 00 00 00 00 00`). No other
+mod code reads or writes that PlayLayer field, so the toggle's only observable effect is
+zeroing it immediately after the completion effect arms it.
+
+UNVERIFIED: the field's identity. The inference is that `[PlayLayer+0x520]` carries the
+end-of-level shake state (amplitude or timer) that `showCompleteEffect` sets, so zeroing it in
+the same frame cancels the shake; "shake" is the only end-of-level cosmetic the v9.0.8 batch
+names and `COSMETIC/HACK_NO_END_SHAKE` is the only matching key. The alternative reading is
+that the dword is the completion flash/tint state, which would make the row a "no end flash".
+Settling it needs a runtime observation of the field across the completion frame, or a GD
+2.2081 binding/header; the sample set holds only the mod's DLL and SO builds, so the host
+routine `0x3A8F30` cannot be disassembled from here.
+
+Corroboration for the era: tag 439 sits between 436 (`No Dash Fire`, v9.0.4) and 440/441
+(`No Robot/Swing Fire`, v9.0.8), which is where a v9.0.8 addition belongs under the release
+order that holds for every mapped row. It is also a different tag with a different target from
+`No Shake` (409), which instead scopes host setting `"0172"` around `PlayLayer::init`; see
+[no-shake-feature.md](no-shake-feature.md). That note's open question about whether
+`No End Shake` is a separate feature or a refinement resolves to **separate**, with the field
+identity still open.

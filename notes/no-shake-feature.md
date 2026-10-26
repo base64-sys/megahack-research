@@ -109,5 +109,9 @@ at 9 sites and 10 functions reference the name string.
   start-of-level shake only. Confirming it needs a runtime consumer of `"0172"`.
 - UNVERIFIED: which JSON key binds to tag 0x199 (the UI toggle) — this is a different
   binding from `"0172"`.
-- UNVERIFIED: whether "No End Shake" (v9.0.8) is a separate feature or a refinement of
-  "No Shake" (v8.0.0-alpha8). There is no `HACK_NO_END_SHAKE` in the static label map.
+- Resolved (2026-10-26): "No End Shake" (v9.0.8) is a **separate** feature - tag 439
+  (`0x1B7`, no static label) installs a detour on `PlayLayer::showCompleteEffect` (RVA
+  `0x3A8F30`) that zeroes `dword [layer+0x520]` after the original runs, whereas `No Shake`
+  scopes host setting `"0172"` around `PlayLayer::init`. Note that `COSMETIC/HACK_NO_END_SHAKE`
+  exists as a settings key. UNVERIFIED: that `[layer+0x520]` is the shake state rather than the
+  completion flash; see [render-hooks.md](render-hooks.md).
