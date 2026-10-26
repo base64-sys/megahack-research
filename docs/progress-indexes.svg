@@ -67,5 +67,5 @@
 <text x="260.0" y="448.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="16" fill="#e6edf3" font-weight="600">37</text>
 <line x1="28.0" y1="486.0" x2="872.0" y2="486.0" stroke="#30363d" stroke-width="1"/>
 <text x="28.0" y="500.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="10" fill="#8b949e">a bigger index is more searchable, not more finished · image 3 of 4</text>
-<text x="872.0" y="500.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">git 83d5d20</text>
+<text x="872.0" y="500.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">git 0e8e297</text>
 </svg>

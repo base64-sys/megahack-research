@@ -78,3 +78,76 @@ UNVERIFIED: whether tag 361 is `HIGHLIGHT_HALFTICKS` or `UNCAPPED_EDITOR_LENGTH`
 the other key uses; the meaning of the `0x18002E4C0` accessor's return type for this tag
 (it is used as an int here, unlike the double reads through `0x180003D80`); and whether the
 8-byte point records are positions only or carry a highlight flag.
+
+## Evidence — CBS Tick Highlighting (2026-10-26)
+
+Row `v9.1.0-beta.3 | Added CBS Tick Highlighting in Show Hitbox Trail`. Two runtime tags carry
+it and both are read only in the hitbox-trail code: **361** (`0x169`) is the integer sub-tick
+count consumed by the sampler, **362** (`0x16A`) is a double converted to float in the
+adjacent highlight draw path.
+
+### Tag 361 — sub-tick count
+
+Read at `0x180182B79` inside the half-tick sampler `0x180182AA0` (no `.pdata` record):
+
+```
+0x180182B6F  call 0x18008A510          ; settings context
+0x180182B74  mov edx, 0x169            ; tag 361
+0x180182B79  call 0x18002E4C0          ; integer accessor -> eax
+0x180182B7E  movsxd rcx, eax
+0x180182B81  shl rax, 0x20
+0x180182B85  mov [rbp-8], rcx
+0x180182B89  cmp rcx, 1
+0x180182B8D  adc rcx, 0                ; floor the count at 1
+```
+
+The loop at `0x180182D25` then runs that many iterations (`r14 = 0 .. count-1`), each one
+stepping a simulated player (`[player vtable+0xC8]` position read, `[player+0x9E4]`/
+`[player+0x7E4]` swapped, `[player+0xA38]` cleared through `CCArray::removeAllObjects`),
+calling `0x1802086C0` and appending an 8-byte point record with `movlps [rdi],xmm7;
+add qword [r13+8],8`. That is a sub-frame trajectory sampler: it emits the intermediate
+positions the trail draws between two game ticks, which is what "CBS tick highlighting"
+describes.
+
+The count is an integer, so it is not `HIGHLIGHT_HALFTICKS` (a boolean in the settings tree)
+— which key feeds 361 is therefore still open, and the row is promoted on the mechanism, not
+on a key binding.
+
+### Tag 362 — highlight colour
+
+Read at `0x180182595` inside `0x180182550` (pushes rsi/rdi/rbx, `sub rsp,0xB0`, /GS cookie
+from `[rip+0x674AC0]`):
+
+```
+0x18018258E  call 0x18008A510          ; settings context
+0x180182593  mov edx, 0x16A            ; tag 362
+0x180182595  call 0x180003D80          ; double accessor
+0x18018259A  xorps xmm6, xmm6
+0x18018259D  cvtsd2ss xmm6, xmm0       ; double -> float
+0x1801825A1  mov rcx, rsi
+0x1801825A4  call 0x1805330B0          ; colour / vertex helper
+0x1801825A9  lea rbx, [rdi+0x160]
+```
+
+The function then copies `[rdi+0x178]`, `[rdi+0x188]`, `[rdi+0x198]`, `[rdi+0x1A8]` into a
+colour/vertex structure alongside flags at `[rdi+0x1B8]`/`[rdi+0x1BC]`, so the converted
+double is consumed as a colour or alpha component of the highlight. `0x180182550` is next
+to the sampler (`0x180182AA0`), which is why the two tags are read as one feature; the
+proximity is inference, not a call edge.
+
+### Tag 226 — MAX_DRAW (corroborating the family)
+
+`0x180180487` reads tag 226 (`0xE2`) through the same integer accessor, then
+`rdx = [0x18080C7F8]` (live point count), `sub rdx, rax`, `jbe skip`, and trims through the
+ring at `0x18080C7D0`/`0x18080C7F8`. The only integer in the
+`LEVEL/SHOW_HITBOXES_TRAIL` family is `MAX_DRAW = 1024`, so tag 226 = MAX_DRAW is a strong
+inference (recorded as such, not as a proven key binding). It matters here because it shows
+the trail code's three numeric reads (226 max draw, 228 opacity, 361 sub-ticks) are each a
+distinct trail setting rather than aliases.
+
+UNVERIFIED: which JSON keys feed tags 361 and 362 (the family's three booleans —
+`HIGHLIGHT_HALFTICKS`, `REQUIRE_SHOW_HITBOXES` (bound to 227) and `UNCAPPED_EDITOR_LENGTH` —
+do not include a numeric or colour key, and the two remaining booleans are not located in
+the trail code either); that `0x180202BD0`'s third argument is vertex alpha rather than
+width; the meaning of `[rdi+0x160..0x1BC]`; and whether the highlight colour is 362 or a
+constant with 362 acting as opacity.
