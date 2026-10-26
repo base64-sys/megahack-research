@@ -148,10 +148,10 @@ reported as progress.
 
 ## Toggles outside the 389
 
-The row universe above is the `Added …` changelog bullets. Nine toggles are named elsewhere in
+The row universe above is the `Added …` changelog bullets. Ten toggles are named elsewhere in
 the changelog and are mapped in their own notes, but have no row here: three under
-`New For 2.2 Mods`, No Transition only in a fix bullet, and five unlock/bypass toggles only in
-fix bullets.
+`New For 2.2 Mods`, No Transition only in a fix bullet, five unlock/bypass toggles only in
+fix bullets, and Copy Hack only in the settings tree.
 
 | Feature | Evidence |
 | --- | --- |
@@ -164,6 +164,7 @@ fix bullets.
 | Unlock Vaults | tag 33 (`HACK_UNLOCK_VAULTS`, 0x021); registered at `0x1800affef`, callback `FUN_18015e220` **replaces** `CreatorLayer::onSecretVault` (RVA 0x9E590) and `OptionsLayer::onSecretVault` (0x372CD0), building the scene and running the 0.5 s fade itself. Named only in fix bullets. See [unlock-bypasses.md](unlock-bypasses.md#vault-shop-and-treasure-room-the-handlers-are-replaced). |
 | Unlock Shops | tag 34 (`HACK_UNLOCK_SHOPS`, 0x022); registered at `0x1800aff78`, callback `FUN_18015dfa0` replaces `SecretRewardsLayer::onShop` (RVA 0x3D66D0) with a forward to `0x1801AD0F0` carrying this plus the button's virtual index. Named only in fix bullets. See [unlock-bypasses.md](unlock-bypasses.md#vault-shop-and-treasure-room-the-handlers-are-replaced). |
 | Treasure Room | tag 35 (`HACK_TREASURE_ROOM`, 0x023); registered at `0x1800afe8a`, callback `FUN_18015d960` replaces `CreatorLayer::onTreasureRoom` (RVA 0x9EDA0), building the scene and running the 0.5 s fade itself. Named only in fix bullets. See [unlock-bypasses.md](unlock-bypasses.md#vault-shop-and-treasure-room-the-handlers-are-replaced). |
+| Copy Hack | tag 43 (`0x02B`, `HACK_COPY_HACK`, static map `0x180062F43`); registered at `0x1800b00dd`, callback `0x18015e920` installs detour `0x18015e9f0` on `LevelInfoLayer::init` (RVA 0x2F7340) and `0x18015ea50` on `LevelInfoLayer::levelDownloadFinished` (RVA 0x2FBA60); both force the dword at `[level+0x3A8]` to `[level+0x3AC]+1` for the duration of the call and restore it after. No `Added ...` bullet names it and the spoofed fields are unidentified. See [creator-feature.md](creator-feature.md#lead--copy-hacks-two-levelinfolayer-spoofs-2026-10-26). |
 
 Adding them to the counts would mix two different universes. If the M3 criterion is later read
 as "every feature named anywhere in the changelog", these nine are the first rows to add — and
