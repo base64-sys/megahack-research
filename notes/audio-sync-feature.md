@@ -174,3 +174,99 @@ hold; the identity of the player-1 vtable slots `+0xC8` and `+0xD8` and of the l
 the changelog fix "not accounting for Music Offset" matches it); and whether `[engine+0x228]`
 is the music channel group rather than another group (FMOD API usage and the name string
 `getChannel@ChannelGroup` are the evidence).
+
+## Evidence - No Fade Out Audio and Load Audio to Memory (2026-10-26)
+
+Two v9.0.0 audio rows resolve to one bare-`ret` suppression and one shared condition bundle.
+Neither row has a static `HACK_*` label: both toggles are read through the tag registry with
+runtime-assigned numbers, which is why the label join never proposed them.
+
+### No Fade Out Audio = tag 477
+
+| Field | Value |
+| --- | --- |
+| Tag | 477 (`0x1DD`), no static label |
+| Registration | `0x1800B3104`, bytes `ba dd 01 00 00` |
+| Callback | `FUN_180189890`, body `0x180189890..0x1801898E8` (`ret` at `0x1801898E8`); disable path `0x1801898E9` calls `0x180108A80` |
+| Target | `FMODAudioEngine::fadeOutMusic`, RVA `0x5C530` (resolved through `0x18010A250` then `0x18010A370`) |
+| Name string | `0x1805798F4` "FMODAudioEngine::fadeOutMusic" |
+| Detour | `0x180189900`, one byte: `c3` (bare `ret`) |
+| Installer | `0x180189910` (the generic name/symbol installer, `0x180108E70`), `[rsp+0x20]=0xFFFFF428`, `[rsp+0x28]=1` |
+
+The detour never enters the original, so every `fadeOutMusic` call becomes a no-op: no fade
+out is started, and whatever music is playing keeps its volume. That is exactly the row's
+wording, and the mechanism is unique in the image - a whole-`.text` scan finds `mov
+edx,0x5C530` exactly once (`0x1801898AB`) and exactly one reference to the name string
+(`0x1801898CF`), so no second fade-suppression path exists.
+
+### Load Audio to Memory = tag 476, inside the {326, 476} condition
+
+| Field | Value |
+| --- | --- |
+| Tag | 476 (`0x1DC`), no static label; exactly one binding site in the image |
+| Condition leaves | `mov edx,0x146` at `0x18018850E` (tag 326, `HACK_AUTO_MUSIC_SYNC`), `mov edx,0x1DC` at `0x180188526` |
+| Composite | `0x180107CE0` at `0x18018854F`, operator `r8d=1`; wrappers `0x1801084E0` / `0x180108610` |
+| Registration | `0x1800915B0` at `0x18018858A` |
+| Action body | `0x180188790` (the `{326,476}` action installs all three hooks below) |
+
+The action installs:
+
+| # | Host routine | RVA / resolution | Detour | Installer | Name string |
+| --- | --- | --- | --- | --- | --- |
+| 1 | `PlayLayer::resumeAndRestart` | `0x3BA3C0` | `0x180188A40` | `0x180174EC0` (`[rsp+0x20]=0xBD8`) | `0x1805797F3` |
+| 2 | `FMOD::System::createStream` | mangled symbol, resolved by `0x18010A5A0` | `0x180188B10` | `0x180188CD0` | `0x18057980F` |
+| 3 | `FMODAudioEngine::preloadMusic` | `0x5C7C0` | `0x180188B40` | `0x180188FF0` | `0x18057988D` |
+
+`createStream` is one of only two targets in the image resolved by mangled symbol (the other
+is `CCMotionStreak::stopStroke`): the action builds the string
+`?createStream@System@FMOD@@QEAA?AW4FMOD_RESULT@@PEBDIPEAUFMOD_CREATESOUNDEXINFO@@PEAPEAVSound@2@@Z`
+in a 0x70-byte heap buffer (`0x1803A50B4`, immediates `0x6C6C642E646F6D66` = "fmod.dll" plus
+four 16-byte chunks copied to `+0x20`, `+0x30`, `+0x40`, `+0x50`) and passes it to the
+resolver at `0x1801888A4`.
+
+### The memory-loading mechanism
+
+`0x180188B10` (the `createStream` detour):
+
+```
+0x180188b10  sub  rsp, 0x28
+0x180188b14  cmp  byte ptr [rip + 0x683ddd], 0     ; byte [0x18080C8F8]
+0x180188b1b  je   0x180188b32                      ; flag clear -> original stream path
+0x180188b1d  mov  rax, [rsp + 0x50]                ; 5th argument (out sound)
+0x180188b22  mov  [rsp + 0x20], rax
+0x180188b27  call 0x180533270                      ; ?createSound@System@FMOD@@...
+0x180188b2c  add  rsp, 0x28
+0x180188b31  ret
+```
+
+`0x180188B32` is `add rsp,0x28; jmp <trampoline>` for the original `createStream`. So while
+the flag is set, a requested *stream* is created with `System::createSound` instead - the
+whole file is decoded into memory rather than streamed from disk.
+
+`0x180188B40` (the `preloadMusic` detour) is what sets the flag: it writes
+`byte [0x18080C8F8]=1` at `0x180188B5B`, makes an SSO-aware `std::string` copy of the path,
+calls `0x1801132D0(engine, &path, r8d, r9d)`, and clears the flag at `0x180188C20` before
+returning. Closure proof: the flag has exactly three reference instructions in `.text` - the
+read at `0x180188B14`, the write of 1 at `0x180188B5B` and the write of 0 at `0x180188C20`.
+Only this detour can enable the substitution, so ordinary streaming outside a preload is
+untouched.
+
+Binding angles: "Load Audio to Memory" is the only row about audio loading, its key
+`UNIVERSAL/HACK_LOAD_AUDIO_TO_MEMORY` is a plain boolean toggle, tag 476 sits in the v9.0.0
+block beside 477, and the row's wording describes exactly this substitution. The pairing with
+tag 326 is consistent: auto music sync repositions the music channel, which needs the audio
+decoded in memory, so the bundle is installed when either toggle is on.
+
+### UNVERIFIED
+
+- The operator semantics of the `{326, 476}` composite (value 1). "Either toggle installs the
+  bundle" is an inference from the two inputs being independent features; whether the
+  evaluator treats 1 as AND or OR is not established, so whether enabling auto music sync
+  alone installs the memory-loading hooks is unproven.
+- What `0x1801132D0` is (read here as a replacement preload that routes through the swapped
+  `createStream`, not observed), what host setting "0128" means in the `resumeAndRestart`
+  detour, and what `[0x180200050 + 0xD9]` tracks.
+- Which half of the bundle the `resumeAndRestart` detour serves; it touches the player, layer
+  node `[+0x3540]` and two engine calls, none of them audio loading.
+- The JSON paths that write tags 476 and 477 (settings keys live in the profile, not in the
+  image), and no runtime observation of either suppression.

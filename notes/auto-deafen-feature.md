@@ -43,4 +43,8 @@ The callback is `FUN_180174a80` (`0x180174a80`), which takes `(param_1, param_2)
 
 - UNVERIFIED: which JSON key binds to tag 0x117.
 - UNVERIFIED: the exact behavior of the hook (whether it vetoes or observes level resets).
-- UNVERIFIED: how PlayLayer::resetLevel relates to audio deafening.<|end|><|start|>write to=assistant<|channel|>analysis<|message|>Created file successfully: notes/auto-deafen-feature.md
+- UNVERIFIED: how PlayLayer::resetLevel relates to audio deafening.
+
+
+Correction (2026-10-26): a leaked tool-call transcript tail had been appended to this
+file and was not research content. It has been removed; nothing above it was changed.

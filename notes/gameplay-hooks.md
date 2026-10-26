@@ -1431,10 +1431,10 @@ When all of that holds the detour builds the animation at `0x180165AAD`:
 | `0x180165AD0` | `xmm7 = 270.0f * xmm6` (constant `0x180572B08` = `00 00 87 43`) |
 | `0x180165AE0` | `[player+0x558]->stopActionByTag(0x1E6813A)` |
 | `0x180165AEC` | `xmm6 = xmm6 * 90.0f` (constant `0x180572A8C` = `00 00 b4 42`) |
-| `0x180165AFA` | `[player+0x558]->vtable[0x150](xmm6)` - snap the node rotation to +/-90 degrees |
+| `0x180165AFA` | vtable slot `+0x150` on `[player+0x558]` called with `xmm6` - snap the node rotation to +/-90 degrees |
 | `0x180165B0B` | `CCRotateBy::create(0.5f, xmm7)` (duration `0x180534410` = `00 00 00 3f`) |
 | `0x180165B1B` | `CCEaseOut::create(action, 1.2f)` (rate `0x1805756D4` = `9a 99 99 3f`) |
-| `0x180165B2E` | `action->vtable[0x40](0x1E6813A)` - set the same tag so a repeat can cancel it |
+| `0x180165B2E` | vtable slot `+0x40` on the action called with `0x1E6813A` - set the same tag so a repeat can cancel it |
 | `0x180165B4C` | tail `jmp 0x180532CE0` = `[player+0x558]->runAction(action)` |
 
 So the detour does not reimplement ball rotation: it normalises it. When the player switches

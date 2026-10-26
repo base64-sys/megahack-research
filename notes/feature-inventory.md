@@ -13,7 +13,7 @@
 | `mapped` | The feature has its own evidence: a note that names it, its settings key(s) and default, and/or its implementing function(s) with VAs. |
 | `alias` / `dead` | A restatement of an earlier feature / absent from this build, with the evidence for that call. |
 
-All 389 rows below were `cluster` at the 2026-10-23 baseline. **One hundred and three are now
+All 389 rows below were `cluster` at the 2026-10-23 baseline. **One hundred and five are now
 `mapped`**; the [Mapped rows](#mapped-rows) table below is the authoritative list, with
 tag, registration site and hook address for each one.
 
@@ -60,7 +60,7 @@ routine (RVA `0x23FDE0`) whenever a start position was loaded. **Slider Bypass**
 `SliderTouchLogic::ccTouchMoved` outright, feeding the raw touch coordinate to the slider
 instead of a clamped value, and **Main Level Bypass** raises a private flag around
 `LevelPage::onPlay`/`updateDynamicPage` so `GameStatsManager::getStat(0x38, 0)` answers 999.
-The other 286 rows remain `cluster`.
+The other 284 rows remain `cluster`.
 
 A keyword check at the baseline found that **185 of 389** rows point at a note that
 never mentions the feature at all, so for those even the cluster assignment is only a
@@ -163,6 +163,8 @@ reported as progress.
 | Wave Trail on Death | tag 419 (`0x1A3`, `HACK_WAVE_TRAIL_ON_DEATH`); no `mov edx,<tag>` registration. The condition registration `0x180173A30` (leaves at `0x180173A7E`/`0x180173A96` = tags 399 and 419, composed by `0x180107CE0`, bound through `0x1800915B0`) installs the action `0x180173D00`, which hooks `PlayerObject::playerDestroyed` (RVA `0x397D40`, detour `0x180173E30`, installer `0x180167B20`) and `PlayerObject::fadeOutStreak2` (`0x3A0190`, detour `0x180173E50`, installer `0x1800AAC20`). `0x180173E30` sets `byte [0x18080C538]` around the `playerDestroyed` trampoline `0x1801A8010`; `0x180173E50` returns without calling the `fadeOutStreak2` trampoline `0x1801A76A0` while that byte is set. See [gameplay-hooks.md](gameplay-hooks.md#evidence--wave-trail-on-death-and-the-trail-preservation-hooks-2026-10-26). |
 | No Circle Effect | tag 437 (`0x1B5`, no static label); registered at `0x1800B0D02`, callback `FUN_1801684B0` installs eight detours in one callback: bare-`ret` suppression of `PlayerObject::spawnPortalCircle` (RVA `0x397760`) and `spawnDualCircle` (`0x397B70`), scoped-flag wrappers (`byte [0x18080C2F0]`) around `playBumpEffect` (`0x39FA50`), `ringJump` (`0x398C00`), `toggleDartMode` (`0x39AF90`), `togglePlayerScale` (`0x3A0700`) and `playDestroyObjectAnim` (`0x1AA4A0`), and a `CCCircleWave::create` (`0x42870`) detour that hides the node it returns while that flag is set - the flag's only reader. See [render-hooks.md](render-hooks.md#evidence---no-circle-effect-2026-10-26). |
 | Ball Rotation Bug | tag 423 (`0x1A7`, no static label); registered at `0x1800B07E5`, callback `FUN_180165890` installs detours on `PlayerObject::switchedToMode` (RVA `0x39BE30`, detour `0x180165A20`), `ringJump` (`0x398C00`, `0x180165B60`), `runBallRotation2` (`0x38D480`, `0x180165B80`) and `hitGround` (`0x39BF30`, `0x180165BC0`). `ringJump` raises `0x18080C228` only for the duration of the call, so `runBallRotation2` records a timestamp and raises `0x18080C238`, which `hitGround` clears; a `switchedToMode` into mode 5/19/41 within one second of that rotation then sets `[player+0x558]` rotation to +/-90 (sign from `[player+0x720]`) and runs a 0.5 s ease-out `CCRotateBy` of +/-270 degrees under tag `0x1E6813A`. See [gameplay-hooks.md](gameplay-hooks.md#evidence---ball-rotation-bug-2026-10-26). |
+| No Fade Out Audio | tag 477 (`0x1DD`, unlabelled); registration `0x1800B3104`, callback `FUN_180189890` installs the one-byte detour `0x180189900` (`c3`) on `FMODAudioEngine::fadeOutMusic` (RVA `0x5C530`, installer `0x180189910`, name `0x1805798F4`), so every fade request becomes a no-op. Only fade suppression in the image. See [audio-sync-feature.md](audio-sync-feature.md#evidence---no-fade-out-audio-and-load-audio-to-memory-2026-10-26). |
+| Load Audio to Memory | tag 476 (`0x1DC`, unlabelled); the `{326,476}` condition action `0x180188790` hooks `FMODAudioEngine::preloadMusic` (RVA `0x5C7C0`) and `FMOD::System::createStream` (mangled-symbol). The preload detour sets `byte [0x18080C8F8]`; the createStream detour calls `System::createSound` while it is set, loading the track into memory. See [audio-sync-feature.md](audio-sync-feature.md#evidence---no-fade-out-audio-and-load-audio-to-memory-2026-10-26). |
 | No End Shake | tag 439 (`0x1B7`, unlabelled); registered at `0x1800B0EDE`, callback `FUN_180169A40` installs detour `0x180169AB0` on `PlayLayer::showCompleteEffect` (RVA `0x3A8F30`, installer `0x1800AB850`). The detour forwards to the original via the delayed-bind trampoline `0x1801A5AC0` (`lea rcx,[base+0x3a8f30]` at `0x1801A5B24`) and then writes `dword [layer+0x520]=0` - the only non-frame reference to that field in `.text`. Key `COSMETIC/HACK_NO_END_SHAKE`. UNVERIFIED: that the field is the end-of-level shake rather than the completion flash. See [render-hooks.md](render-hooks.md#evidence---no-end-shake-2026-10-26). |
 | Frozen Animations | tag 433 (`0x1B1`, runtime-assigned, no static label); registered at `0x1800B0A38`, callback `FUN_180167490` hooks `CCAnimatedSprite::runAnimation` (RVA 0x40CF0) and `CCAnimatedSprite::tweenToAnimation` (0x40D60); the detours `0x180167560`/`0x1801675C0` destroy the by-value animation-name argument and return. See [render-hooks.md](render-hooks.md#evidence---frozen-animations-and-no-dash-fire-2026-10-26). |
 | No Dash Fire | tag 436 (`0x1B4`, runtime-assigned, no static label); registered at `0x1800B0D79`, callback `FUN_180169260` hooks `PlayerObject::updateDashAnimation` (RVA 0x396D20); detour `0x1801692D0` hides `[player+0x660]` via vtable `+0x140(0)` and returns without calling the original. See [render-hooks.md](render-hooks.md#evidence---frozen-animations-and-no-dash-fire-2026-10-26). |
@@ -268,8 +270,8 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | Added Show Hitbox Trail Opacity | tag 228 (`0xE4`, runtime-assigned); its only read is `0x180180A2D` inside the trail rebuild `0x1801809A0`, where the double is divided by `100.0` (`0x180534330`) and passed as `xmm2` into `0x180202BD0` for each buffered trail point. See [show-hitboxes-feature.md](show-hitboxes-feature.md#evidence--show-hitbox-trail-opacity-2026-10-26). |
 | Added CBS Tick Highlighting in Show Hitbox Trail | tags 361 (`0x169`) and 362 (`0x16A`), both runtime-assigned; `0x180182AA0` floors 361 at 1 and simulates that many sub-tick steps, appending 8-byte trail points, while `0x180182550` converts 362 from double to float and feeds it to the colour helper `0x1805330B0`. Neither tag has a located settings key. See [show-trajectory-feature.md](show-trajectory-feature.md#evidence--cbs-tick-highlighting-2026-10-26). |
 | v9.0.0 | Added Jump Hack | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
-| v9.0.0 | Added Load Audio to Memory | cluster | [audio-sync-feature.md](audio-sync-feature.md) |
-| v9.0.0 | Added No Fade Out Audio | cluster | [audio-sync-feature.md](audio-sync-feature.md) |
+| v9.0.0 | Added Load Audio to Memory | mapped | [audio-sync-feature.md](audio-sync-feature.md#evidence---no-fade-out-audio-and-load-audio-to-memory-2026-10-26) | tag 476 (`0x1DC`, no static label, exactly one binding site at `0x180188526`); the `{326,476}` condition registration `0x18018850E`/`0x180188526` binds action `0x180188790`, which hooks `FMODAudioEngine::preloadMusic` (RVA `0x5C7C0`, detour `0x180188B40`) and `FMOD::System::createStream` (mangled-symbol resolved). The preload detour raises `byte [0x18080C8F8]` around its loader call; the createStream detour substitutes `System::createSound` while that byte is set, so a preloaded track is decoded into memory instead of streamed. |
+| v9.0.0 | Added No Fade Out Audio | mapped | [audio-sync-feature.md](audio-sync-feature.md#evidence---no-fade-out-audio-and-load-audio-to-memory-2026-10-26) | tag 477 (`0x1DD`, no static label); registration `0x1800B3104` (`ba dd 01 00 00`), callback `FUN_180189890` installs the one-byte detour `0x180189900` (`c3`) on `FMODAudioEngine::fadeOutMusic` (RVA `0x5C530`, installer `0x180189910`). `mov edx,0x5C530` and the name string `0x1805798F4` each occur once in `.text`, so this is the only fade-out suppression in the image. |
 | v9.0.0 | Added No Glow | cluster | [render-hooks.md](render-hooks.md) |
 | v9.0.0 | Added No Mirror | cluster | [render-hooks.md](render-hooks.md) |
 | v9.0.0 | Added No Orb Ring | mapped | [render-hooks.md](render-hooks.md#evidence---three-runtime-assigned-cosmetic-tags-2026-10-25) | tag 420 (`0x1A4`, runtime-assigned, no static label); registered at `0x1800b1131`, callback `FUN_18016a370` hooks `RingObject::spawnCircle` (RVA 0x4A1DB0), detour `0x18016a3e0` is a bare `ret`. |
@@ -482,7 +484,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v7.0 (Full) | Added Enter for Level Search | cluster | [ui-addons.md](ui-addons.md) |
 | v7.0 (Full) | Added Freeze Attempts | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v7.0 (Full) | Added Force Don't Enter | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
-| v7.0 (Full) | Added Force Don't Fade | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
+| v7.0 (Full) | Added Force Don't Fade | cluster | [audio-sync-feature.md](audio-sync-feature.md#evidence---no-fade-out-audio-and-load-audio-to-memory-2026-10-26) | Not promoted: the image contains exactly one audio fade-out suppression (tag 477, `FMODAudioEngine::fadeOutMusic` reduced to a bare `ret`), so this row is either a rename of the v9.0.0 "No Fade Out Audio" wording or describes something the image does not separate. |
 | v7.0 (Full) | Added Hide Attempts in Practice | cluster | [render-hooks.md](render-hooks.md) |
 | v7.0 (Full) | Added Granular Scaling to UI | cluster | [render-hooks.md](render-hooks.md) |
 | v7.0 (Full) | Added Icon Custom Gradients | cluster | [iconic-feature.md](iconic-feature.md) |
@@ -623,5 +625,5 @@ Correction (2026-10-25): the earlier version of this paragraph named `Force Plat
 (`0x0F2`, `HACK_FORCE_PLATFORMER`) and 49 (`0x031`, `HACK_DEFAULT_SONG_BYPASS`) — but **neither
 has a row in the 389**: no `Added Force Platformer` and no `Added Default Song Bypass` bullet
 exists. Mapping them would add entries to "Toggles outside the 389" at best, so they are not
-progress against the milestone. The next rows must be chosen from the 286 remaining changelog
+progress against the milestone. The next rows must be chosen from the 284 remaining changelog
 bullets.
