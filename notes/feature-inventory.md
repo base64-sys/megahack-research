@@ -98,7 +98,7 @@ reported as progress.
 | Added No Particles | tag 402 (`HACK_NO_PARTICLES`, 0x192); registered in `FUN_1800afae0` at `0x1800b11a8`, callback `FUN_1801703b0` (toggles cocos2d hook based on `*param_2`). See no-particles-feature.md. |
 | Added No Shake | tag 409 (`HACK_NO_SHAKE`, 0x199); registered in `FUN_1800afae0` at `0x1800b1560`, callback `FUN_1801718C0` (hooks `PlayLayer::init`, RVA 0x3A5B00, detour 0x180171930). See no-shake-feature.md. |
 | Added No Portal Lightning | tag 416 (`HACK_NO_PORTAL_LIGHTNING`, 0x1A0); registered in `FUN_1800afae0` at `0x1800b1296`, callback `FUN_180171170` (hooks `GJBaseGameLayer::lightningFlash`, RVA 0x246D00). See no-portal-lightning-feature.md. |
-| Added No Pulse | tag 413 (`HACK_NO_PULSE`, 0x19D); registered in `FUN_1800afae0` at `0x1800b1384`, callback `FUN_1801713e0` (hooks `PlayLayer::updateVisibility`, RVA 0x3AF3A0). See no-pulse-feature.md. |
+| Added No Pulse | tag 413 (`HACK_NO_PULSE`, 0x19D); registered in `FUN_1800afae0` at `0x1800b1384`, callback `FUN_1801713e0` (hooks `PlayLayer::updateVisibility`, RVA 0x3AF3A0); detour `0x180171450` writes 0.5f to `[[layer+0x3270]+0x23C]`, `[[layer+0x3270]+0x244]` and `[0x180128CF0()+0x210]`, then tail-jumps the cached original. See [no-pulse-feature.md](no-pulse-feature.md#evidence--no-pulse-detour-body-2026-10-26). |
 | Added No Trail | tag 395 (`HACK_NO_TRAIL`, 0x18B); registered in `FUN_1800afae0` at `0x1800b16c5`, callback `FUN_180171db0` (hooks `cocos2d::CCMotionStreak::draw`). See no-trail-feature.md. |
 | Added No Wave Trail | tag 397 (`HACK_NO_WAVE_TRAIL`, 0x18D); registered in `FUN_1800afae0` at `0x1800b17b3`, callback `FUN_1801721f0` (hooks `HardStreak::updateStroke`, RVA 0x2B8EF0). See no-wave-trail-feature.md. |
 | Added No Wave Trail Behind | tag 414 (`HACK_NO_WAVE_TRAIL_BEHIND`, 0x19E); registered in `FUN_1800afae0` at `0x1800b182a`, callback `FUN_180172280` (hooks `PlayerObject::activateStreak`, RVA 0x3A0090). See no-wave-trail-behind-feature.md. |
@@ -234,7 +234,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v9.0.0 | Added Allow Pause Buffering | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v9.0.0 | Added Auto Kill | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v9.0.0 | Added Ball Rotation Bug | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
-| v9.0.0 | Added Classic Pulse (pulsing above 60hz) | cluster | [render-hooks.md](render-hooks.md) |
+| v9.0.0 | Added Classic Pulse (pulsing above 60hz) | cluster | [no-pulse-feature.md](no-pulse-feature.md#ruled-out-for-classic-pulse) | Not located: the tag is runtime-assigned (no `HACK_CLASSIC_PULSE` label), no 1/60 or 60.0 pulse constant exists in the image, and the second `updateVisibility` hook is the hitbox pass. The reason it stays cluster is recorded in the note. |
 | v9.0.0 | Added Classic Wave Trail (reimplementation of the 2.1 wave) | cluster | [render-hooks.md](render-hooks.md) |
 | v9.0.0 | Added Click Between Frames toggle | cluster | [input-hooks.md](input-hooks.md) |
 | v9.0.0 | Added Compact Lists | cluster | [cosmetic-feature.md](cosmetic-feature.md) |
@@ -311,7 +311,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v8.0.0-alpha13b | Added Main Menu Gameplay | mapped | [gameplay-hooks.md](gameplay-hooks.md#evidence--main-menu-gameplay-2026-10-25) | tag 457 (`0x1C9`, `HACK_MAIN_MENU_PLAY`, static map `0x180063529`); registered at `0x1800b308d`, callback `FUN_180189260` hooks `MenuGameLayer::tryJump` (0x331F70), `update` (0x332240) and `ccTouchBegan` (0x333600), driven by flag `0x18080C920`. |
 | v8.0.0-alpha13b | Added TPS Bypass | mapped | [gameplay-hooks.md](gameplay-hooks.md) | tag 490 (`HACK` TPS Bypass); hooks `GJBaseGameLayer::getModifiedDelta` (RVA 0x2377B0) via `FUN_180196CA0` (registered by `FUN_180196C30`). Tags 0x1E6 (486, TPS value) and 0x1E7 (487, sub-toggle) are runtime-assigned. See gameplay-hooks.md. |
 | v8.0.0-alpha13b | Added Hitbox Trail | mapped | [show-hitboxes-feature.md](show-hitboxes-feature.md) | tag 360 (0x168, runtime-assigned Map B) controls trail overlay draw node 0x1E6813C visibility via `FUN_1801589F0`. Main trail draw is `FUN_1801809A0` (tag 224). See show-hitboxes-feature.md. |
-| v8.0.0-alpha13b | Added No Pulse | mapped | [render-hooks.md](render-hooks.md) | tag 413 (`HACK_NO_PULSE`, 0x19D); registered in `FUN_1800afae0` at `0x1800b1384`, callback `FUN_1801713e0` (hooks `PlayLayer::updateVisibility`). See no-pulse-feature.md. |
+| v8.0.0-alpha13b | Added No Pulse | mapped | [no-pulse-feature.md](no-pulse-feature.md#evidence--no-pulse-detour-body-2026-10-26) | tag 413 (`HACK_NO_PULSE`, 0x19D); registered in `FUN_1800afae0` at `0x1800b1384`, callback `FUN_1801713e0`; detour `0x180171450` pins three pulse floats to 0.5f before the cached original runs. |
 | v8.0.0-alpha13b | Added Real Time to Lock Delta | cluster | [render-hooks.md](render-hooks.md) |
 | v8.0.0-alpha12 | Added Replay | cluster | [replay-feature.md](replay-feature.md) |
 | v8.0.0-alpha12 | Added Replay for Platformer mode | cluster | [replay-feature.md](replay-feature.md) |
