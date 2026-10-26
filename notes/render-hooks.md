@@ -1020,3 +1020,125 @@ exists, so the image cannot separate a rename from a duplicate); that `toggleDar
 `togglePlayerScale` and `playDestroyObjectAnim` call `CCCircleWave::create` internally
 (inferred from the scoped-flag shape plus the single read site, not observed); and the runtime
 appearance, since no session was run.
+
+## Evidence - Player on Top candidates: tags 422 and 442 (2026-10-26)
+
+Two runtime tags hook `PlayLayer::resetLevel` (RVA `0x3B8EB0`, name string
+`0x180545515`) and both change where the player nodes sit in the draw order. They are the
+candidates for the v9.0.0 "Player on Top" and v9.0.9 "Player 1 on Top" rows; neither is
+promoted, and this section records the mechanism and the gap.
+
+Both detours call the original through the same delayed-bind trampoline `0x1801A4300`
+(`std::call_once` guard `0x18080FE50`, cache `0x18080FE48`, `lea rcx,[base+0x3B8EB0]` at
+`0x1801A4364`, resolver `0x1801A33C0`), so the host routine always runs.
+
+Method: `scripts/tag_callback_map.py` for registration→callback,
+`scripts/callback_hooks.py` for target RVA / detour / installer / friendly name, and capstone
+listings over `_original.dll` (SHA-256 `1635c339…`) for the bodies quoted below. Re-checked
+2026-10-26.
+
+### Tag 422 - `0x1A6`
+
+| Field | Value |
+| --- | --- |
+| Registration | `0x1800B18A1`, bytes `ba a6 01 00 00` |
+| Callback | `FUN_180172330`, body `0x180172330..0x180172427` |
+| Target | `PlayLayer::resetLevel`, RVA `0x3B8EB0` |
+| Detour | `0x180172430` (original call, then four slot-`+0x50` writes, epilogue at `0x180172494`) |
+| Installer | `0x1800AB850`, `[rsp+0x20]=0xFFFFFFE0`, `[rsp+0x28]=1` |
+
+```
+0x180172430  push rsi
+0x180172431  sub  rsp, 0x20
+0x180172435  mov  rsi, rcx
+0x180172438  call 0x1801A4300             ; original resetLevel
+0x18017243D  mov  rax, [rsi+0xDA0]        ; player 1
+0x180172444  mov  rcx, [rax+0x7B0]        ; player 1 node
+0x18017244B  mov  rax, [rcx]
+0x18017244E  mov  edx, 0x1869E
+0x180172453  call [rax+0x50]
+0x180172456  mov  rax, [rsi+0xDA8]        ; player 2, same
+0x180172467  mov  edx, 0x1869E
+0x18017246C  call [rax+0x50]
+0x18017246F  mov  rcx, [rsi+0xDA0]        ; player 1 again
+0x180172479  mov  edx, 0x1869F
+0x18017247E  call [rax+0x50]
+0x180172481  mov  rcx, [rsi+0xDA8]        ; player 2 again
+0x18017248F  mov  edx, 0x1869F
+```
+
+The callback applies the same state right after installing, and the disable branch
+(`0x180172403`) uninstalls with `0x180108A80` and then runs the same block, so turning the tag
+off writes the low values back instead of leaving the last state in place:
+
+```
+0x180172397  cmp  byte [rsi], 0          ; rsi = the tag's enable byte
+0x18017239A  mov  ecx, 0x1869F
+0x18017239F  mov  esi, 0x3B
+0x1801723A4  cmovne esi, ecx             ; on -> 99999, off -> 59
+0x1801723A7  mov  rcx, [rax+0xDA0]       ; rax = current PlayLayer from 0x1801ACDB0
+0x1801723B5  lea  edi, [rsi-1]           ; 99998 / 58
+0x1801723C0  call [r8+0x50]              ; player 1 node  <- edi
+0x1801723D7  call [rax+0x50]             ; player 2 node  <- edi
+0x1801723E6  call [rax+0x50]             ; player 1 node  <- esi
+0x1801723F9  jmp  rax                    ; player 2 node  <- esi, tail call
+```
+
+### Tag 442 - `0x1BA`
+
+| Field | Value |
+| --- | --- |
+| Registration | `0x1800B1918`, bytes `ba ba 01 00 00` |
+| Callback | `FUN_1801724B0`, body `0x1801724B0..0x180172538` |
+| Target | `PlayLayer::resetLevel`, RVA `0x3B8EB0` |
+| Detour | `0x180172540` (original, then tail-jump to `0x180172560`) |
+| Installer | `0x1800AB850`, `[rsp+0x20]=0xFFFFFBF8`, `[rsp+0x28]=1` |
+
+```
+0x180172540  push rsi
+0x180172541  sub  rsp, 0x20
+0x180172545  mov  rsi, rcx
+0x180172548  call 0x1801A4300          ; original resetLevel
+0x18017254D  mov  rcx, rsi
+0x180172550  add  rsp, 0x20
+0x180172554  pop  rsi
+0x180172555  jmp  0x180172560
+```
+
+`0x180172560` is shared with the callback (its install branch at `0x180172514` and its
+disable branch at `0x180172530` both tail-jump into it), so the same pass runs on enable, on
+disable and on every reset:
+
+```
+0x18017256B  mov  rbx, [rcx+0xDA0]     ; player 1
+0x180172572  mov  r14, [rcx+0xDA8]     ; player 2
+0x180172579  mov  rdi, [r14+0x7B0]     ; player 2 node
+0x180172580  mov  rsi, [rbx+0x7B0]     ; player 1 node
+0x18017258D  call [rax+0x1E8]          ; parent of player 2      (null-checked)
+0x1801725AD  call [rax+0x60]           ; that node's own integer
+0x1801725BC  call [r9+0x238]           ; parent->reorder(node, integer)
+```
+
+The four calls run in the order player 2, player 1, player 2 node, player 1 node, each on its
+own parent with its own value, so the last node touched is player 1's.
+
+### What is proven, and what is not
+
+Proven: these are the only mod sites that write this state. Tag 422 sets an integer virtual
+on `[player+0x7B0]` for both players - `0x1869E`/`0x1869F` (99998/99999) while enabled,
+`0x3A`/`0x3B` (58/59) while disabled - and tag 442 re-inserts the player node and its `+0x7B0`
+node in their parents at their current integer.
+
+Inference: `+0x50` is a draw-priority (z-order) setter. Supporting: the four host sites
+`0x1801BA0E7`, `0x1801FC416`, `0x180201637` and `0x180247377` call it with `0x64`, and two mod
+sites call it on freshly created `CCMenu`s - `0x1801538AC` with 10 inside the tag-500-gated
+vault-menu builder and `0x1800ACD52` with 100 immediately before the menu is added to its
+parent through `+0x1C0`. Alternatives that the image does not exclude: `setOrderOfArrival`
+(also an integer and also part of cocos2d draw sorting) or a menu-specific priority setter.
+
+UNVERIFIED: what `[player+0x7B0]` is (it answers `+0x140` with an embedded interface used to
+read a colour at `0x180136ABA`, and carries a float at `+0x1B4` written at `0x1801739F7`, which
+fits a sprite node but does not name it); the identity of slot `+0x50`; and which of the two
+rows each tag belongs to, since 422 and 442 touch the same four nodes and would have to be
+separated by runtime observation or by the changelog wording alone. No settings key names
+either mechanism.

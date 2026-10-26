@@ -46,3 +46,37 @@ definition manager.
 - UNVERIFIED: whether status labels are updated every frame or only on
   lifecycle events.
 - UNVERIFIED: the exact format-string grammar used by `STATUS/FIELDS/8/FORMAT`.
+
+## Evidence - tag 424 and the attempt label (2026-10-26)
+
+Tag 424 (`0x1A8`) is the third `PlayLayer::resetLevel` hook in the v9.0.0 block. Registration
+`0x1800B198F` (`ba a8 01 00 00`), callback `FUN_1801726B0` (`0x1801726B0..0x180172708`, no
+post-install work), detour `0x180172720`, installer `0x1800AB850` with
+`[rsp+0x20]=0xFFFFFFE0`, `[rsp+0x28]=1`. Registration and detour re-checked 2026-10-26 with
+`scripts/tag_callback_map.py` and `scripts/callback_hooks.py`; body listed with capstone over
+`_original.dll`.
+
+After the original runs, the detour recomputes an attempt number and rewrites a label:
+
+```
+0x18017273D  call 0x1801A4300             ; original resetLevel
+0x180172742  mov  esi, 0x168
+0x180172747  add  rsi, [rdi+0x38D8]       ; label node inside the object at +0x38D8
+0x18017274E  mov  rax, [rdi+0x878]        ; attempt counters
+0x180172755  mov  ecx, [rax+0x2F0]
+0x18017275B  sub  ecx, [rax+0x2F4]
+0x180172761  mov  [rax+0x2F8], ecx        ; cache the difference
+0x1801727B5  lea  rax, [0x180575E74]      ; "Attempt {}"
+0x1801727E4  call 0x18000AE30             ; format helper
+0x1801727FD  call [rax]                   ; label->setString(formatted)
+```
+
+So every reset stores `[layer+0x878]+0x2F0 - [layer+0x878]+0x2F4` at `+0x2F8` and prints it as
+`"Attempt {}"`.
+
+Candidates are the v9.0.0 row "Show Total Attempts" and, less likely because of the version,
+the v8.0.1-alpha.5 row "Attempt Status". The subtraction argues against a stored total being
+displayed unchanged, so "total" is not established.
+
+UNVERIFIED: what the three dwords at `+0x2F0`/`+0x2F4`/`+0x2F8` hold; whether
+`[layer+0x38D8]+0x168` is a host label or one the mod created; which row the tag belongs to.

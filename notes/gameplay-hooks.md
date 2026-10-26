@@ -1458,3 +1458,49 @@ correction animation, which reads as a fix for the bug the row is named after, b
 observation or changelog wording settles whether the toggle restores vanilla behaviour or
 applies the fix. UNVERIFIED: the JSON path that writes tag 423 (settings keys live in the
 profile, not in the image).
+
+## Evidence - tag 438 and the coin post-pass on collisionCheckObjects (2026-10-26)
+
+Tag 438 (`0x1B6`) is a second detour on `GJBaseGameLayer::collisionCheckObjects` (RVA
+`0x214960`, name `0x1805757D9`), the routine already hooked by Collect Coins in Practice (tag
+297) and All Modes Platformer (tag 241). Registration `0x1800B09C1` (`ba b6 01 00 00`),
+callback `FUN_180167210` (`0x180167210..0x180167268`, no post-install work), detour
+`0x180167280`, installer `0x180167330` with `[rsp+0x20]=0xFFFFFFE0`, `[rsp+0x28]=1`.
+Registration and detour re-checked 2026-10-26 with `scripts/tag_callback_map.py` and
+`scripts/callback_hooks.py`; body listed with capstone over `_original.dll`.
+
+```
+0x180167287  mov   edi, r9d              ; object count
+0x18016728A  mov   rsi, r8               ; object vector
+0x18016728D  movss xmm0, [rsp+0x70]
+0x180167293  movss [rsp+0x20], xmm0      ; forward the stacked argument
+0x180167299  call  0x180115840           ; original (delayed-bind thunk)
+0x18016729E  test  edi, edi
+0x1801672A0  jle   0x1801672F3           ; nothing to post-process
+0x1801672B8  mov   rax, [rsi]            ; begin
+0x1801672BB  mov   rcx, [rsi+8]          ; end
+0x1801672C2  sar   rcx, 3
+0x1801672C6  cmp   rcx, rbx
+0x1801672C9  jbe   0x1801672FB           ; bounds check
+0x1801672CB  mov   rcx, [rax+rbx*8]
+0x1801672CF  mov   eax, [rcx+0x3A0]      ; object id
+0x1801672D5  cmp   eax, 0x1F
+0x1801672D8  je    0x1801672DF
+0x1801672DA  cmp   eax, 0x16
+0x1801672DD  jne   0x1801672B0           ; next object
+0x1801672DF  cmp   byte [rcx+0x3D2], 1
+0x1801672E6  jne   0x1801672B0           ; next unless the flag is set
+0x1801672EB  call  [rax+0x460]           ; one per-object call
+```
+
+Object ids `0x1F`/`0x16` with a flag at `+0x3D2` are the same two fields the Collect Coins in
+Practice note identifies as the coin pair (there the detour keeps entries whose `+0x3D2` is
+clear), so this pass runs over the coins the collision check just marked and calls slot
+`+0x460` on each once.
+
+The only v9.0.8 row about coins is "Coin Shower", and tag 438 sits one below tag 439 (No End
+Shake, mapped to v9.0.8), which fits that release group.
+
+UNVERIFIED: what slot `+0x460` does (a pickup or particle effect is the plausible reading and
+was not observed); whether `+0x3D2 == 1` means collected; and the row binding, since no
+settings key or label in the image names this mechanism.

@@ -29,21 +29,19 @@
 
 - Runtime comparison of reconstructed hook callbacks against the release's
   observable behaviour.
-- Cluster assignment exists but is only a lead for most rows: 364 of the 389 changelog
-  rows in [feature-inventory.md](feature-inventory.md) are status `cluster`; 25 are
-  `mapped` (Safe Mode, Auto Safe Mode, Disable Progress to Noclip, Show Hitboxes,
-  Show Hitboxes on Death, Show Hitbox Trail Requires Show Hitboxes, Frame Stepper,
-  StartPos Switcher, Solid Wave Trail, Thread Priority, Transition Customiser,
-  Pitch Shifter, TPS Bypass, Borderless Fullscreen, multi-lingual support,
-  Interface tab to disable Mega Hack UI changes, Menu Snow in December,
-  Noclip Accuracy, Corrective Music Sync, NoClip Accuracy screen tint,
-  Custom Background, Hitbox Trail, Accurate Percentage, Noclip Limits,
-  0% Practice Complete). The keyword check
-  found **185 of 389** rows whose linked note never mentioned the feature at the
-  baseline (method below); that count predates the three promotions.
-- Per-feature settings-key and default mapping for the remaining 386 rows remains open.
-  The 3 mapped rows have tags and code VAs, but their JSON keys and shipped defaults are
-  not all confirmed.
+- Cluster assignment exists but is only a lead for most rows. Counted from the status
+  column on 2026-10-26: **105 of the 389** changelog rows in
+  [feature-inventory.md](feature-inventory.md) are `mapped` and **284** are `cluster`;
+  the authoritative per-row list with tag, registration and hook address is the
+  Mapped-rows table there. Four of the `cluster` rows (tags 422, 442, 438, 424) carry
+  mechanism evidence but stay `cluster` because their tag→row binding is unresolved.
+- The keyword check found **185 of 389** rows whose linked note never mentioned the
+  feature at the 2026-10-23 baseline (method below). That number is a dated snapshot: it
+  predates every promotion since, the original tokeniser was not kept, and it has not
+  been re-run, so it should not be quoted as the current gap.
+- Per-feature settings-key and default mapping for the remaining 284 `cluster` rows
+  remains open. The mapped rows have tags and code VAs, but their JSON keys and shipped
+  defaults are not all confirmed.
 - Alias/dead classification for features absent from the current build remains open.
 
 ### Cluster-assignment check (2026-10-23)

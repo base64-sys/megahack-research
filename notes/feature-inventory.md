@@ -62,6 +62,15 @@ instead of a clamped value, and **Main Level Bypass** raises a private flag arou
 `LevelPage::onPlay`/`updateDynamicPage` so `GameStatsManager::getStat(0x38, 0)` answers 999.
 The other 284 rows remain `cluster`.
 
+Four of those rows now carry mechanism evidence without being promoted (2026-10-26):
+"Player on Top" and "Player 1 on Top" (tags 422 and 442, both on `PlayLayer::resetLevel`),
+"Coin Shower" (tag 438, a coin post-pass on `collisionCheckObjects`) and "Show Total
+Attempts" (tag 424, an `"Attempt {}"` label rewrite). Each cites its registration,
+callback and detour, but the tag→row binding is unresolved (422 and 442 write the same four
+nodes; the coin slot `+0x460` and the attempt arithmetic are unobserved), so promoting them
+would be a guess. Their registration and callback citations are machine-checked by
+`scripts/check_inventory_evidence.py` like any mapped row.
+
 A keyword check at the baseline found that **185 of 389** rows point at a note that
 never mentions the feature at all, so for those even the cluster assignment is only a
 lead. That count predates every promotion since the baseline; the method is recorded in
@@ -221,10 +230,10 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v9.0.10 | Added positions top-centre and bottom-centre Status label positions | cluster | [status-labels-feature.md](status-labels-feature.md) |
 | v9.0.10 | Added Vanilla Progress Bar to Iconic | cluster | [iconic-feature.md](iconic-feature.md) |
 | v9.0.9 | Added Geode DevTools shortcut | cluster | [ui-addons.md](ui-addons.md) |
-| v9.0.9 | Added Player 1 on Top | cluster | [render-hooks.md](render-hooks.md) |
+| v9.0.9 | Added Player 1 on Top | cluster | [render-hooks.md](render-hooks.md#evidence---player-on-top-candidates-tags-422-and-442-2026-10-26) | tag 442 (`0x1BA`, registered at `0x1800B1918`, callback `FUN_1801724B0`) hooks `PlayLayer::resetLevel` and, at reset, re-inserts player 2, player 1, player 2's `[+0x7B0]` node and player 1's `[+0x7B0]` node in their parents at their current integer (four `+0x238(node, z)` calls, `0x180172560`). The tag number fits the v9.0.9 group, but tag 422 also rewrites the same nodes, so which row owns which tag is not settled. |
 | v9.0.8 | Added Auto Clicker | cluster | [input-hooks.md](input-hooks.md) |
 | v9.0.8 | Added Auto-Select toggle for Search | cluster | [ui-addons.md](ui-addons.md) |
-| v9.0.8 | Added Coin Shower | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
+| v9.0.8 | Added Coin Shower | cluster | [gameplay-hooks.md](gameplay-hooks.md#evidence---tag-438-and-the-coin-post-pass-on-collisioncheckobjects-2026-10-26) | tag 438 (`0x1B6`, registered at `0x1800B09C1`, callback `FUN_180167210`) is a second detour on `GJBaseGameLayer::collisionCheckObjects` that walks the passed object vector after the original and calls vtable slot `+0x460` once on every coin (id `0x1F`/`0x16`, flag `+0x3D2` set). The only v9.0.8 coin row is this one, but what the slot does is not observed. |
 | v9.0.8 | Added No End Shake | mapped | [render-hooks.md](render-hooks.md#evidence---no-end-shake-2026-10-26) | tag 439 (`0x1B7`, unlabelled); registered at `0x1800B0EDE`, callback `FUN_180169A40` installs `0x180169AB0` on `PlayLayer::showCompleteEffect` (RVA `0x3A8F30`, installer `0x1800AB850`). The detour calls the original through the delayed-bind trampoline `0x1801A5AC0` and then zeroes `dword [layer+0x520]`, the only non-frame write to that field in the image. |
 | v9.0.8 | Added No Robot/Swing Fire | mapped | [render-hooks.md](render-hooks.md) | tags 440/441 (0x1B8/0x1B9, runtime-assigned); registered in `FUN_1800afae0` at `0x1800b1472`/`0x1800b164e`, callbacks `FUN_180171550`/`FUN_180171ca0` (hooks `PlayerObject::toggleRobotMode`/`toggleSwingMode`). See no-robot-swing-fire-feature.md. |
 | v9.0.8 | Added Replay option to block inputs | cluster | [replay-feature.md](replay-feature.md) |
@@ -278,10 +287,10 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v9.0.0 | Added No Particles Classic (for pre-v9 behaviour) | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v9.0.0 | Added No Portal Circle | mapped | [render-hooks.md](render-hooks.md#evidence---no-portal-circle-and-no-ghost-trail-2026-10-26) | tag 421 (`0x1A5`, runtime-assigned, no static label); registered at `0x1800B130D`, callback `FUN_180171350` hooks `PlayerObject::spawnPortalCircle` (RVA 0x397760), detour `0x1801713C0` is a bare `ret`. Bound over the v9.0.7 "No Circle Effect" row by tag-allocation order (inference recorded in the note, not proven). |
 | v9.0.0 | Added Menu Snow in December | mapped | [cosmetic-feature.md](cosmetic-feature.md) | tag 498 (0x1F2, runtime-assigned Map B); `FUN_180154AD0` checks December via `_time64`, registers snow particle creator `FUN_180154C10` on `MenuLayer::init` and listener `FUN_1801550F0`. See cosmetic-feature.md. |
-| v9.0.0 | Added Player on Top | cluster | [render-hooks.md](render-hooks.md) |
+| v9.0.0 | Added Player on Top | cluster | [render-hooks.md](render-hooks.md#evidence---player-on-top-candidates-tags-422-and-442-2026-10-26) | tag 422 (`0x1A6`, registered at `0x1800B18A1`, callback `FUN_180172330`) hooks `PlayLayer::resetLevel` and sets an integer virtual (`+0x50`) on `[player+0x7B0]` for both players to 99998/99999 while enabled and 58/59 while disabled, on install and on every reset. `+0x50` reads as a draw-priority setter (host sites pass `0x64`, mod sites pass 10/100 on fresh `CCMenu`s) but is not proven, and tag 442 competes for the same row family. |
 | v9.0.0 | Added Pause During Complete | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v9.0.0 | Added Shipcopter | cluster | [render-hooks.md](render-hooks.md) |
-| v9.0.0 | Added Show Total Attempts | cluster | [status-labels-feature.md](status-labels-feature.md) |
+| v9.0.0 | Added Show Total Attempts | cluster | [status-labels-feature.md](status-labels-feature.md#evidence---tag-424-and-the-attempt-label-2026-10-26) | tag 424 (`0x1A8`, registered at `0x1800B198F`, callback `FUN_1801726B0`) hooks `PlayLayer::resetLevel` and rewrites a label with `"Attempt {}"` from `[layer+0x878]+0x2F0 - +0x2F4`, caching the result at `+0x2F8`. The subtraction argues against displaying a stored total, so the row stays cluster. |
 | v9.0.0 | Added Show Trajectory | cluster | [show-trajectory-feature.md](show-trajectory-feature.md) |
 | v9.0.0 | Added Transition Customiser (with duration) | mapped | [ui-addons.md](ui-addons.md) | tag 449 (`HACK_NO_TRANSITION`); hooks `CCTransitionFade::create` via `FUN_18018B7F0` (registered by `FUN_18018AEB0`). Tags 0x1D6 (470, duration) and 0x1D8 (472, opacity) are runtime-assigned. See ui-addons.md. |
 | v9.0.0 | Added Transparent Lists | cluster | [cosmetic-feature.md](cosmetic-feature.md) |
