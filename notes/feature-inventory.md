@@ -13,7 +13,7 @@
 | `mapped` | The feature has its own evidence: a note that names it, its settings key(s) and default, and/or its implementing function(s) with VAs. |
 | `alias` / `dead` | A restatement of an earlier feature / absent from this build, with the evidence for that call. |
 
-All 389 rows below were `cluster` at the 2026-10-23 baseline. **Ninety-four are now
+All 389 rows below were `cluster` at the 2026-10-23 baseline. **Ninety-five are now
 `mapped`**; the [Mapped rows](#mapped-rows) table below is the authoritative list, with
 tag, registration site and hook address for each one.
 
@@ -60,7 +60,7 @@ routine (RVA `0x23FDE0`) whenever a start position was loaded. **Slider Bypass**
 `SliderTouchLogic::ccTouchMoved` outright, feeding the raw touch coordinate to the slider
 instead of a clamped value, and **Main Level Bypass** raises a private flag around
 `LevelPage::onPlay`/`updateDynamicPage` so `GameStatsManager::getStat(0x38, 0)` answers 999.
-The other 295 rows remain `cluster`.
+The other 294 rows remain `cluster`.
 
 A keyword check at the baseline found that **185 of 389** rows point at a note that
 never mentions the feature at all, so for those even the cluster assignment is only a
@@ -100,6 +100,7 @@ reported as progress.
 | Added Custom Background (successor to Transparent BG) | tag 463 (0x1CF, runtime-assigned Map B); `FUN_180186D10` registers listener for tag 0x1D0 (464) and hooks `CCTransitionScene::initWithDuration`. `FUN_180186FC0` calls `FUN_180187030` to hide background when enabled. See cosmetic-feature.md. |
 | Added Hitbox Trail | tag 360 (0x168, runtime-assigned Map B); `FUN_1801589F0` creates draw node 0x1E6813C with visibility controlled by tag. Main trail draw is `FUN_1801809A0` (tag 224). See show-hitboxes-feature.md. |
 | Added Accurate Percentage | tag 429 (0x1AD, runtime-assigned Map B); `FUN_180165110` hooks `PlayLayer::updateProgressbar` (RVA 0x3B23C0) and formats percentage with configurable decimals (tag 0x1AE = 430). See best-run-feature.md. |
+| Added Noclip for P1/P2 | tags 77/78 (`0x4D`/`0x4E`, `CHECKBOX_NOCLIP_PLAYER_1`/`_2`) read at `0x18017A37D`/`0x18017A38C` in the tag-72 (`HACK_NOCLIP`) `PlayLayer::destroyPlayer` detour `0x18017A290` installed by `FUN_18017A220`; with differing flags and `[layer+0x422]==1` the tint block only runs when the destroyed object is `[layer+0xDA0]` (P1) or `[layer+0xDA8]` (P2). See [noclip-feature.md](noclip-feature.md#evidence--noclip-for-p1p2-and-the-limit-gate-in-the-destroyplayer-detour-2026-10-26). |
 | Added Noclip Limits | tag 83 (`HACK_NOCLIP_LIMITS`); `FUN_18017A290` implements accuracy limit (tag 0x55/0x54) and death limit (tag 0x57/0x56) gating tint overlay. See noclip-feature.md. |
 | Added 0% Practice Complete | tag 296 (`HACK_0_PRACTICE_COMPLETE`, static map entry #0); read via `hackpro::Config` vtable (`FUN_1800917B0` at 0x180544FF0). No gameplay code reads it directly. See gameplay-hooks.md. |
 | Added No Particles | tag 402 (`HACK_NO_PARTICLES`, 0x192); registered in `FUN_1800afae0` at `0x1800b11a8`, callback `FUN_1801703b0` (toggles cocos2d hook based on `*param_2`). See no-particles-feature.md. |
@@ -446,7 +447,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v7.1 (Full) | Added No Effect Circle | cluster | [render-hooks.md](render-hooks.md) |
 | v7.1 (Full) | Added No Menu Music | cluster | [audio-sync-feature.md](audio-sync-feature.md) |
 | v7.1 (Full) | Added No Robot Fire | mapped | [render-hooks.md](render-hooks.md) | tag 440 (0x1B8, runtime-assigned); registered in `FUN_1800afae0` at `0x1800b1472`, callback `FUN_180171550` (hooks `PlayerObject::toggleRobotMode`). See no-robot-swing-fire-feature.md. |
-| v7.1 (Full) | Added Noclip for P1/P2 | cluster | [noclip-feature.md](noclip-feature.md) |
+| v7.1 (Full) | Added Noclip for P1/P2 | mapped | [noclip-feature.md](noclip-feature.md#evidence--noclip-for-p1p2-and-the-limit-gate-in-the-destroyplayer-detour-2026-10-26) | tags 77/78 (`0x4D`/`0x4E`, `CHECKBOX_NOCLIP_PLAYER_1`/`_2`) are read at `0x18017A37D`/`0x18017A38C` inside the tag-72 `PlayLayer::destroyPlayer` detour `0x18017A290`; when the two flags differ and `[layer+0x422]==1`, the destroyed player (`[layer+0xDA0]`/`[layer+0xDA8]`) must be the enabled one or the tint block is skipped. |
 | v7.1 (Full) | Added Pause Countdown | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v7.1 (Full) | Added Play Song to Level page | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v7.1 (Full) | Added Reverse Input | cluster | [input-hooks.md](input-hooks.md) |
@@ -493,7 +494,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v7.0 (Full) | Added No Editor Trail | cluster | [creator-feature.md](creator-feature.md) |
 | v7.0 (Full) | Added No Hide Player Trigger | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v7.0 (Full) | Added No Main Trail Behind Wave | cluster | [render-hooks.md](render-hooks.md) |
-| v7.0 (Full) | Added Noclip Death Counter & Death Limit | cluster | [noclip-feature.md](noclip-feature.md) |
+| v7.0 (Full) | Added Noclip Death Counter & Death Limit | cluster | [noclip-feature.md](noclip-feature.md#evidence--noclip-for-p1p2-and-the-limit-gate-in-the-destroyplayer-detour-2026-10-26) | The death limit half is proven (tags 87/86 at `0x18017A330`/`0x18017A341` compare `0x1801994E0()` inside the tag-72 detour), and a `"Deaths: {}"` label fed by the same getter exists at `0x180152A4B`; the counter's own toggle is not yet located, so the row stays cluster. |
 | v7.0 (Full) | Added Pause Void Click Bugfix | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v7.0 (Full) | Added Pause During Completion | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v7.0 (Full) | Added Pasting to the UI & Extensions | cluster | [ui-addons.md](ui-addons.md) |
@@ -614,5 +615,5 @@ Correction (2026-10-25): the earlier version of this paragraph named `Force Plat
 (`0x0F2`, `HACK_FORCE_PLATFORMER`) and 49 (`0x031`, `HACK_DEFAULT_SONG_BYPASS`) — but **neither
 has a row in the 389**: no `Added Force Platformer` and no `Added Default Song Bypass` bullet
 exists. Mapping them would add entries to "Toggles outside the 389" at best, so they are not
-progress against the milestone. The next rows must be chosen from the 295 remaining changelog
+progress against the milestone. The next rows must be chosen from the 294 remaining changelog
 bullets.
