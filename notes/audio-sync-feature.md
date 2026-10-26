@@ -88,3 +88,89 @@ enabled, calls `FUN_18020DA00(value)` which applies the pitch to audio channels
 
 UNVERIFIED: which JSON key binds to tag 0x1CC; the exact pitch range; whether
 the listener registration uses `hackpro::Config`'s change-listener mechanism.
+
+## Evidence — Auto Music Sync (2026-10-26)
+
+This answers the first open question above for Auto Music Sync: the tags are read by one
+`PlayLayer::postUpdate` hook and one worker, both read in full here. Auto Deafen is **not**
+covered by this section.
+
+| Field | Value |
+| --- | --- |
+| Tag | 326 (`0x146`, `HACK_AUTO_MUSIC_SYNC`), static label store `0x180062AFF` |
+| Registration | `0x1800B1EB6` (`notes/hook-registrations.md`) |
+| Callback | `0x1801751E0` (order `0xFFFFFFE0`) |
+| Target | `PlayLayer::postUpdate`, RVA `0x3B4BA0` |
+| Detour | `0x180175250`, body ends `ret` at `0x1801752FC` (0xAC bytes) |
+| Installer | `0x1800AB9F0` |
+
+Callback shape: enable byte `[rdx]` -> `0x180108960` context -> `cmp bl,1` -> module base
+`0x18010A250` -> resolver `0x18010A370(edx=0x3B4BA0)` -> `[rsp+0x20]=0xFFFFFFE0`,
+`[rsp+0x28]=1`, `r8`=detour, `r9`=`0x18054552B` "PlayLayer::postUpdate" ->
+`0x1800AB9F0`. The disable branch tail-jumps `0x180108A80` with the detour.
+
+### Detour `0x180175250`: six gates, then the worker
+
+```
+0x180175250  push rsi; sub rsp,0x60; /GS cookie 0x1807F7040
+0x180175267  call 0x1801A37C0            ; cached original postUpdate (cache 0x18080FC98)
+0x18017526C  call 0x18015A2F0            ; level-state check
+0x180175271  test al,al; jne 0x1801752E3 ; true -> skip
+0x180175275  cmp byte [rsi+0x309E],0; jne 0x1801752E3   ; platformer -> skip
+0x18017527E  call 0x180129AB0            ; second state check
+0x180175286  test al,al; jne 0x1801752E3 ; true -> skip
+0x18017528A  lea rcx,[rsp+0x48]; r8d=8; call 0x18015AFD0 ; dictionary group 8
+0x18017529D  cmp qword [rsp+0x50],0; jne 0x1801752E3    ; non-empty -> skip
+0x1801752A5  ... group 7 ... [rsp+0x40]
+0x1801752C0  ... group 6 ... [rsp+0x30]
+0x1801752DB  mov rcx,rsi; call 0x180175310                ; sync worker
+```
+
+`0x15AFD0` is the shared `absolllute.megahack` user-dictionary reader already documented for
+Smart StartPos and the StartPos Switcher (it returns `{first, count}`). So sync is suppressed
+while dictionary groups 6, 7 or 8 hold anything — what those groups represent is not
+established (UNVERIFIED).
+
+### Worker `0x180175310`
+
+1. `0x180128CF0` returns the audio engine (cached singleton: base from `0x18010DDC0`, slot
+   `base+0x6C2E88`). `rcx = [engine+0x228]`, then
+   `FMOD::ChannelGroup::getChannel(group, 0, &channel)` (`0x180533200`) and
+   `FMOD::Channel::getPosition(&pos_ms, 1)` — i.e. the music channel's current position in
+   milliseconds. Both results are error-checked; a non-OK result returns.
+2. Reads boolean tag **328** (`0x148`, `0x18002DE50`). When true:
+   `ebx = [[layer+0xDB0]+0x14C]` (speed index), `0x18015AFD0(layer,&pair,3)`,
+   `[layer+0xDA0]` (player 1) vtable `+0xD8`, then `0x1802046D0(...)`; the returned float is
+   the target position. Otherwise: player-1 vtable `+0xC8` -> `[rax]` double, followed by
+   `[layer vtable+0x4B8](layer, &double, 0, 0, 0, 0)`.
+3. Adds the per-speed offset `[[layer+0xDB0]+0x158]`, adds the engine's `float
+   [engine+0x264]` (**music offset**, milliseconds), multiplies by `1000.0`
+   (`0x180572AD0`), truncates to int and adds `0x28` (40 ms).
+4. Reads double tag **327** (`0x147`, `0x18002E4C0`). Drift is `pos_ms - target_ms`; if
+   `|drift| >= tag327` it calls `FMOD::Channel::setPosition(target_ms, 1)` to re-seat the
+   music channel. Otherwise it leaves the channel alone.
+
+Tag map for this feature:
+
+| Tag (hex) | Tag (dec) | Accessor | Binding |
+| --- | --- | --- | --- |
+| 0x146 | 326 | `isHackEnabled` (registration) | master toggle `HACK_AUTO_MUSIC_SYNC` |
+| 0x147 | 327 | `getConfigVar<double>` `0x18002E4C0` | `LEVEL/AUTO_MUSIC_SYNC/DROPDOWN/THRESHOLD` (default 40) |
+| 0x148 | 328 | `getConfigVar<bool>` `0x18002DE50` | `LEVEL/AUTO_MUSIC_SYNC/DROPDOWN/NO_LEGACY_SYNC` (default True) |
+
+The two key bindings are inferred from count and type: the settings file has exactly two
+Auto Music Sync sub-keys, one int threshold and one bool, and the worker reads exactly one
+double (compared against a millisecond drift) and one bool (selecting between two position
+sources). `NO_LEGACY_SYNC` is true by default and tag 328 selects the branch that uses the
+speed index and the player-1 `+0xD8` virtual, but which branch the changelog calls "legacy"
+is not proven.
+
+The hardcoded `+ 0x28` also matches the threshold's default of 40, so it may be a leftover
+constant rather than a lead-in term — UNVERIFIED.
+
+UNVERIFIED: what `0x18015A2F0` and `0x180129AB0` return; what dictionary groups 3, 6, 7 and 8
+hold; the identity of the player-1 vtable slots `+0xC8` and `+0xD8` and of the layer slot
+`+0x4B8`; what `[engine+0x264]` is called in the host (read here as the music offset because
+the changelog fix "not accounting for Music Offset" matches it); and whether `[engine+0x228]`
+is the music channel group rather than another group (FMOD API usage and the name string
+`getChannel@ChannelGroup` are the evidence).

@@ -13,7 +13,7 @@
 | `mapped` | The feature has its own evidence: a note that names it, its settings key(s) and default, and/or its implementing function(s) with VAs. |
 | `alias` / `dead` | A restatement of an earlier feature / absent from this build, with the evidence for that call. |
 
-All 389 rows below were `cluster` at the 2026-10-23 baseline. **Eighty-four are now
+All 389 rows below were `cluster` at the 2026-10-23 baseline. **Eighty-five are now
 `mapped`**; the [Mapped rows](#mapped-rows) table below is the authoritative list, with
 tag, registration site and hook address for each one.
 
@@ -54,7 +54,7 @@ host RVA `0x2161B0`, one from a post-`resetLevel` pass and one from the object s
 they count without a host bound. **Jumpscare** builds its own overlay and sound from
 `jumpscare.png`/`jumpscare.mp3` after a probability gate passes on death. **Practice Bug Fix**
 re-applies the newest checkpoint's two player-state blocks after `resetLevel`, one tag serving
-both its changelog wordings. The other 305 rows
+both its changelog wordings. The other 304 rows
 remain `cluster`.
 
 A keyword check at the baseline found that **185 of 389** rows point at a note that
@@ -143,6 +143,7 @@ reported as progress.
 | Added Jumpscare | tag 291 (`0x123`, `HACK_JUMPSCARE`, static map `0x180063420`); registered at `0x1800b26a7`, callback `0x180178d10` hooks `PlayLayer::destroyPlayer` (RVA 0x3B39D0) with code-cave detour `0x180178d80`, which runs the original through the trampoline `0x1801a3d20`, tests tags 0x127/0x126/0x125/0x124 (only-from-0, time threshold, percentage, probability) in gate `0x180179ae0`, then adds a black `CCLayerColor` carrying `jumpscare.png` to `[layer+0x3540]` at z-order 100 and tail-calls `0x180179260` to play `jumpscare.mp3` and run the fade/scale chain. See [gameplay-hooks.md](gameplay-hooks.md#evidence--jumpscare-2026-10-25). |
 | Added Smart StartPos (both rows) | tag 235 (`0x0EB`, `HACK_SMART_STARTPOS`, static map `0x1800641B8`); registered at `0x1800b2db4`, callback `FUN_180183e30` installs detour `0x180183ea0` on `PlayLayer::resetLevel` (RVA 0x3B8EB0), which runs the original and then continues into `0x180183ec0`. That body returns unless `[layer+0x3188] != 0` and the `CCArray` at `[layer+0x3888]` is empty, reads four lists from the layer's `absolllute.megahack` user dictionary through `0x18015afd0`, picks in each the nearest object at or before player 1 by `0x1802044b0`, and applies it under tags 237 (gamemode, `0x1801842e0`), 238 (speed, host RVA `0x3A0D50`), 239 (mini, host RVA `0x3A0700`) and 240 (mirror, host RVA `0x2467D0`). The v8.0.0-alpha5 and v9.0.1 rows share this one hook. See [gameplay-hooks.md](gameplay-hooks.md#evidence--smart-startpos-2026-10-25). |
 | StartPos Switcher interface family (six rows) | the interface is installed unconditionally by `0x180184490` from the shared initialiser at `0x1800B2DEE`; its three hooks (`PlayLayer::init` RVA 0x3A5B00 -> `0x1801846C0`, `setupHasCompleted` 0x3A66D0 -> `0x1801846D0`, `UILayer::init` 0x4CCB00 -> `0x180184710`) and the tag-169/170 listeners `0x1801848A0`/`0x1801848E0` are read, and the remaining behaviour lives in tag 130's detours: `0x180185070` reads keybinds 131/132 and quick-switch tag 149 with the 17-entry table `0x1805793A8`, `0x180185CE0` defers through tag 168, and the reset hook `0x180184A80` applies the pending startpos. See [startpos-switcher-feature.md](startpos-switcher-feature.md#evidence--startpos-switcher-family-2026-10-26). |
+| Added Auto Music Sync | tag 326 (`0x146`, `HACK_AUTO_MUSIC_SYNC`, store `0x180062AFF`); registered at `0x1800b1eb6`, callback `0x1801751e0` installs `0x180175250` on `PlayLayer::postUpdate` (RVA 0x3B4BA0). The detour skips platformer levels, the `0x18015A2F0`/`0x180129AB0` state checks and non-empty dictionary groups 6/7/8, then calls `0x180175310`, which reads the music channel through `[engine+0x228]`, `getChannel` and `getPosition`, computes the target from the player position (tag 328 selects the source) plus `[engine+0x264]` and `[layer+0xDB0]+0x158`, and re-seats the channel with `setPosition` when the drift exceeds tag 327. See [audio-sync-feature.md](audio-sync-feature.md#evidence--auto-music-sync-2026-10-26). |
 | Added Auto Song Downloader | tag 323 (`0x143`, `HACK_AUTO_SONG_DOWNLOAD`, static map `0x180062C24`); registered at `0x1800b1fa4`, callback `FUN_180175640` hooks `LevelInfoLayer::init` (RVA 0x2F7340) with code-cave detour `0x1801756b0`; the detour calls the original first, then runs `CCCallFuncO::create(subObject, <host 0xCABC0>, subObject)` on `[[layer+0x2D0]+0x180]` when that object's vtable slot `+0x148` returns true. See [ui-addons.md](ui-addons.md#evidence--auto-song-downloader-2026-10-25). |
 
 ## Toggles outside the 389
@@ -282,7 +283,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v8.0.3-alpha.1 | Added Wave Trail on Death | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v8.0.3-alpha.1 | Added Best Run Accurate Percentage toggle | cluster | [best-run-feature.md](best-run-feature.md) |
 | v8.0.3-alpha.1 | Added Glow to Icon Effects | cluster | [iconic-feature.md](iconic-feature.md) |
-| v8.0.2-alpha.1 | Added Auto Music Sync | cluster | [audio-sync-feature.md](audio-sync-feature.md) |
+| v8.0.2-alpha.1 | Added Auto Music Sync | mapped | [audio-sync-feature.md](audio-sync-feature.md#evidence--auto-music-sync-2026-10-26) | tag 326 (`0x146`, `HACK_AUTO_MUSIC_SYNC`, store `0x180062AFF`); registered at `0x1800b1eb6`, callback `0x1801751e0` hooks `PlayLayer::postUpdate` (RVA 0x3B4BA0) with `0x180175250`, which after six gates calls `0x180175310`: read the music channel position via `FMOD::Channel::getPosition`, compare against the player position plus music offset and the 40 ms constant, and `setPosition` when the drift exceeds tag 327. |
 | v8.0.2-alpha.1 | Added Fast Chests | mapped | [gameplay-hooks.md](gameplay-hooks.md#evidence--four-labelled-tags-found-by-the-full-section-scan-2026-10-25) | tag 461 (`0x1CD`, `HACK_FAST_CHESTS`); registered in `FUN_1800afae0` at `0x1800b300c`, callback `FUN_180187820` hooks `RewardUnlockLayer::init` (RVA 0x3CDDF0) and `playRewardEffect`/`showCloseButton`; detours set flag `0x18080C8E0` around the original call. |
 | v8.0.2-alpha.1 | Added No Portal Lightning | mapped | [render-hooks.md](render-hooks.md) | tag 416 (`HACK_NO_PORTAL_LIGHTNING`, 0x1A0); registered in `FUN_1800afae0` at `0x1800b1296`, callback `FUN_180171170` (hooks `GJBaseGameLayer::lightningFlash`). See no-portal-lightning-feature.md. |
 | v8.0.2-alpha.1 | Added Main Level Bypass | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
@@ -598,5 +599,5 @@ Correction (2026-10-25): the earlier version of this paragraph named `Force Plat
 (`0x0F2`, `HACK_FORCE_PLATFORMER`) and 49 (`0x031`, `HACK_DEFAULT_SONG_BYPASS`) — but **neither
 has a row in the 389**: no `Added Force Platformer` and no `Added Default Song Bypass` bullet
 exists. Mapping them would add entries to "Toggles outside the 389" at best, so they are not
-progress against the milestone. The next rows must be chosen from the 305 remaining changelog
+progress against the milestone. The next rows must be chosen from the 304 remaining changelog
 bullets.
