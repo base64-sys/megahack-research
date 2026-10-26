@@ -13,7 +13,7 @@
 | `mapped` | The feature has its own evidence: a note that names it, its settings key(s) and default, and/or its implementing function(s) with VAs. |
 | `alias` / `dead` | A restatement of an earlier feature / absent from this build, with the evidence for that call. |
 
-All 389 rows below were `cluster` at the 2026-10-23 baseline. **Ninety are now
+All 389 rows below were `cluster` at the 2026-10-23 baseline. **Ninety-one are now
 `mapped`**; the [Mapped rows](#mapped-rows) table below is the authoritative list, with
 tag, registration site and hook address for each one.
 
@@ -55,8 +55,9 @@ they count without a host bound. **Jumpscare** builds its own overlay and sound 
 `jumpscare.png`/`jumpscare.mp3` after a probability gate passes on death. **Practice Bug Fix**
 re-applies the newest checkpoint's two player-state blocks after `resetLevel`, one tag serving
 both its changelog wordings. **Show Layout colour options** turned out to be four
-(bool, colour) config pairs read by the existing Show Layout `resetLevel` detour. The other
-299 rows remain `cluster`.
+(bool, colour) config pairs read by the existing Show Layout `resetLevel` detour. **Force StartPos Reset Camera** post-hooks `loadStartPosObject` and forces an unnamed host
+routine (RVA `0x23FDE0`) whenever a start position was loaded. The other
+298 rows remain `cluster`.
 
 A keyword check at the baseline found that **185 of 389** rows point at a note that
 never mentions the feature at all, so for those even the cluster assignment is only a
@@ -128,6 +129,7 @@ reported as progress.
 | Added Hide UI | tag 53 (`0x35`, `HACK_HIDE_UI`, static map `0x180063372`); registered at `0x1800b0330`, callback `FUN_18015fa70` hooks `EditorUI::init` (RVA 0xDF390); detour `0x18015fb20` calls vtable `+0x140` with `edx=0`. See [render-hooks.md](render-hooks.md#evidence--hide-ui-2026-10-25). |
 | Added Smooth Editor Trail | tag 55 (`0x37`, `HACK_SMOOTH_EDITOR_TRAIL`, static map `0x180064222`); registered at `0x1800b058d`, callback `FUN_180163ec0` hooks `LevelEditorLayer::postUpdate` (RVA 0x2E0F40); detour `0x180163f30` stores `0x3D088889` (1/30 s) at `[layer+0x3898]`. See [creator-feature.md](creator-feature.md#evidence--smooth-editor-trail-2026-10-25). |
 | Added Show Layout | tag 260 (`0x104`, `HACK_SHOW_LAYOUT`, static map `0x180064095`); registered at `0x1800b2b5c`, callback `FUN_18017f0f0` installs six hooks (`resetLevel`, `applyEnterEffect`, `applyCustomEnterEffect`, `triggerObject`, `addGlow`, `saveActiveColors`); the resetLevel detour reads Map A tags 262/263. See [gameplay-hooks.md](gameplay-hooks.md#evidence--show-layout-2026-10-25). |
+| Force StartPos Reset Camera | tag 426 (`0x1AA`, `HACK_STARTPOS_RESET_CAMERA`, static map `0x1800642F3`, settings key `COSMETIC/HACK_STARTPOS_RESET_CAMERA`); registered at `0x1800b1a7d`, callback `FUN_180172b90` hooks `GJBaseGameLayer::loadStartPosObject` (RVA 0x235760); detour `0x180172c00` calls the cached original via `0x180116150`, then, only when `[layer+0x3188]` is non-null, tail-calls the delayed-bind thunk `0x180116630` with `(layer, 1, 1)`, which resolves to host RVA `0x23fde0` (name unverified). See [gameplay-hooks.md](gameplay-hooks.md#evidence--force-startpos-reset-camera-2026-10-26). |
 | Show Layout colour options | four (bool, colour) pairs -- 262/263, 265/266, 271/272, 268/269 -- read inside the existing Show Layout `resetLevel` detour `0x18017f330` after the original call; `0x1801F15E0` splits each colour int into three bytes (`>>16`, `>>8`, low) and the bytes go to `[obj+0x3A..0x3C]` on objects fetched with `0x180144ED0` (thunk for host RVA `0x25BC00`) for ids `0x3E8`..`0x3F6`. Static fallbacks `0x287DFF`/`0x0066FF`/`0x287DFF`/`0xFFFFFF` match the GROUND and OBJ settings defaults exactly. See [gameplay-hooks.md](gameplay-hooks.md#evidence--show-layout-colour-options-2026-10-26). |
 | Added Main Menu Gameplay | tag 457 (`0x1C9`, `HACK_MAIN_MENU_PLAY`, static map `0x180063529`); registered at `0x1800b308d`, callback `FUN_180189260` hooks `MenuGameLayer::tryJump`/`update`/`ccTouchBegan` (RVAs 0x331F70, 0x332240, 0x333600) around flag `0x18080C920`. See [gameplay-hooks.md](gameplay-hooks.md#evidence--main-menu-gameplay-2026-10-25). |
 | Added No (C) Mark | tag 44 (`HACK_NO_C_MARK`, 0x02C); registered in `FUN_1800afae0` at `0x1800b049a`, callback `FUN_180162d20` (hooks `ShareLevelLayer::onShare`, RVA 0x490270). See no-c-mark-feature.md. |
@@ -184,7 +186,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v9.1.0-beta.6 | Added Replay Open Folder | cluster | [replay-feature.md](replay-feature.md) |
 | v9.1.0-beta.6 | Added Crash Game to Utilities | cluster | [ui-addons.md](ui-addons.md) |
 | v9.1.0-beta.5 | Added Accurate Percentage Better Calculation (fixes StartPos!) | cluster | [best-run-feature.md](best-run-feature.md) |
-| v9.1.0-beta.3 | Added CBS Tick Highlighting in Show Hitbox Trail | mapped | [show-trajectory-feature.md](show-trajectory-feature.md#evidence--cbs-tick-highlighting-2026-10-26) | tags 361 (`0x169`, integer sub-tick count) in the half-tick sampler `0x180182AA0` and 362 (`0x16A`, double -> float highlight colour) in `0x180182550`. | The half-tick sampler is `0x180182AA0`: tag 361 read once at `0x180182B71`, used as a count floored at one, driving a simulated player that appends trail points. Which of `HIGHLIGHT_HALFTICKS` / `UNCAPPED_EDITOR_LENGTH` tag 361 is remains open, so the row stays cluster. |
+| v9.1.0-beta.3 | Added CBS Tick Highlighting in Show Hitbox Trail | mapped | [show-trajectory-feature.md](show-trajectory-feature.md#evidence--cbs-tick-highlighting-2026-10-26) | tags 361 (`0x169`, integer sub-tick count) in the half-tick sampler `0x180182AA0` and 362 (`0x16A`, double -> float highlight colour) in `0x180182550`. | The half-tick sampler is `0x180182AA0`: tag 361 read once at `0x180182B71`, used as a count floored at one, driving a simulated player that appends trail points. Which of `HIGHLIGHT_HALFTICKS` / `UNCAPPED_EDITOR_LENGTH` tag 361 is remains open; the row is mapped on the mechanism, not on the key binding. |
 | v9.1.0-beta.3 | Added Show Hitbox Trail Opacity | mapped | [show-hitboxes-feature.md](show-hitboxes-feature.md#evidence--show-hitbox-trail-opacity-2026-10-26) | tag 228 (`0xE4`, runtime-assigned, single read site `0x180180A2D`); `getConfigVar<double>` through `0x180003D80`, divided by 100.0 and passed as the third argument to the trail geometry helper `0x180202BD0` from the rebuild in `0x1801809A0`. |
 | v9.1.0-beta.3 | Added Trail Always On | cluster | [render-hooks.md](render-hooks.md) |
 | v9.1.0-beta.1 | Added Auto-Update | cluster | [ui-addons.md](ui-addons.md) |
@@ -379,7 +381,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v8.0.0-alpha5 | Added No Wave Trail | mapped | [render-hooks.md](render-hooks.md) | tag 397 (`HACK_NO_WAVE_TRAIL`, 0x18D); registered in `FUN_1800afae0` at `0x1800b17b3`, callback `FUN_1801721f0` (hooks `HardStreak::updateStroke`). See no-wave-trail-feature.md. |
 | v8.0.0-alpha5 | Added Solid Wave Trail | mapped | [cosmetic-feature.md](cosmetic-feature.md) | tag 396 (`HACK_SOLID_WAVE_TRAIL`); blend-func toggle in `FUN_1801EECA0` (solid 0x30300000001 vs blended 0x100000302); registered in `FUN_1800afae0` at `0x1800b1a06`, callback `FUN_1801728c0` hooks `PlayerObject::setupStreak` (RVA 0x3887C0) and `PlayerObject::updateStreakBlend` (0x388CA0). See cosmetic-feature.md and [hook-registrations.md](hook-registrations.md#worked-example-promoting-a-candidate-row-to-verified). |
 | v8.0.0-alpha5 | Added No Respawn Flash | mapped | [render-hooks.md](render-hooks.md) | tag 398 (`HACK_NO_RESPAWN_FLASH`, 0x18E); registered in `FUN_1800afae0` at `0x1800b13fb`, callback `FUN_1801714c0` (hooks `PlayerObject::playSpawnEffect`). See no-respawn-flash-feature.md. |
-| v8.0.0-alpha5 | Added Force StartPos Reset Camera | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
+| v8.0.0-alpha5 | Added Force StartPos Reset Camera | mapped | [gameplay-hooks.md](gameplay-hooks.md#evidence--force-startpos-reset-camera-2026-10-26) | tag 426 (`0x1AA`, `HACK_STARTPOS_RESET_CAMERA`, static map `0x1800642f3`); registered at `0x1800b1a7d`, callback `FUN_180172b90` hooks `GJBaseGameLayer::loadStartPosObject` (RVA 0x235760) with detour `0x180172c00`, which calls the original and then, when `[layer+0x3188] != 0`, tail-jumps host RVA `0x23fde0` with `(layer, true, true)`. |
 | v8.0.0-alpha5 | Added StartPos Switcher keybind options | mapped | [startpos-switcher-feature.md](startpos-switcher-feature.md#evidence--startpos-switcher-family-2026-10-26) | tags 131 (`0x83`) and 132 (`0x84`) are read with `0x18002EE40` in `0x180185070` and compared against the pressed key before next/previous dispatch. |
 | v8.0.0-alpha5 | Added StartPos Switcher interface | mapped | [startpos-switcher-feature.md](startpos-switcher-feature.md#evidence--startpos-switcher-family-2026-10-26) | installed unconditionally by `0x180184490` (called at `0x1800B2DEE`): hooks `PlayLayer::init`, `PlayLayer::setupHasCompleted` and `UILayer::init`; constructor `0x180184710` builds the `0x1E8`-byte node with class pointer `0x180578CF8`. |
 | v8.0.0-alpha5 | Added Hide Interface to StartPos Switcher | mapped | [startpos-switcher-feature.md](startpos-switcher-feature.md#evidence--startpos-switcher-family-2026-10-26) | tag 169 (`0xA9`, static map entry 4, store `0x180064B32`); listener `0x1801848A0` installed from `0x1801845B0` refreshes `0x180184BA0`, which hides `+0x1C0`/`+0x1C8` and shows `+0x1D0` when the tag is set. |
@@ -606,5 +608,5 @@ Correction (2026-10-25): the earlier version of this paragraph named `Force Plat
 (`0x0F2`, `HACK_FORCE_PLATFORMER`) and 49 (`0x031`, `HACK_DEFAULT_SONG_BYPASS`) — but **neither
 has a row in the 389**: no `Added Force Platformer` and no `Added Default Song Bypass` bullet
 exists. Mapping them would add entries to "Toggles outside the 389" at best, so they are not
-progress against the milestone. The next rows must be chosen from the 299 remaining changelog
+progress against the milestone. The next rows must be chosen from the 298 remaining changelog
 bullets.

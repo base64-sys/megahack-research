@@ -1141,3 +1141,67 @@ the binding between tag numbers 237..240 and the four `LEVEL/SMART_STARTPOS/DROP
 names — the order matches the code and the changelog, but no site reads a key string next to a
 tag number, and the fifth key (`LEGACY_CALCULATION`) has no located tag read. The v7.1 editor
 row is unmapped because the only hook in this path is on `PlayLayer::resetLevel`.
+
+## Evidence — Force StartPos Reset Camera (2026-10-26)
+
+| Field | Value |
+| --- | --- |
+| Tag | 426 (`0x1AA`, `HACK_STARTPOS_RESET_CAMERA`) |
+| Static label | map entry 69, store `0x1800642F3` |
+| Settings key | `COSMETIC/HACK_STARTPOS_RESET_CAMERA` (`notes/settings-contents.md` line 272) |
+| Registration | `0x1800B1A7D` |
+| Callback | `FUN_180172B90` |
+| Installer | `0x180172C30` |
+| Target | `GJBaseGameLayer::loadStartPosObject`, RVA `0x235760` |
+| Detour | `0x180172C00`, body `0x180172C00..0x180172C2F` (0x30 bytes, `ret` at `0x180172C2F`, code cave) |
+| Name string | `0x180575E9F` "GJBaseGameLayer::loadStartPosObj" |
+
+Callback `0x180172B90..0x180172BE8`: `movzx ebx,byte [rdx]` (enable flag) -> `call 0x180108960`
+(context) -> `cmp bl,1`; on 1 it takes the module base from `0x18010A250`, resolves RVA
+`0x235760` through `0x18010A370`, sets `[rsp+0x28]=1`, `[rsp+0x20]=0xFFFFFFE0`, `r8` = the
+detour, `r9` = the name string, and calls the installer. The disable branch at `0x180172BE9`
+passes the same detour to `0x180108A80` and returns. The tag is therefore install/uninstall,
+not a per-call read.
+
+The detour is a **post-hook** on the start-position loader:
+
+```
+0x180172C00  push rsi; sub rsp,0x20
+0x180172C05  mov rsi,rcx                       ; this = GJBaseGameLayer
+0x180172C08  call 0x180116150                  ; cached original loadStartPosObject
+0x180172C0D  cmp qword [rsi+0x3188],0          ; is a start position active?
+0x180172C15  je  0x180172C29                   ; no -> plain return
+0x180172C17  mov rcx,rsi
+0x180172C1A  mov dl,1
+0x180172C1C  mov r8b,1
+0x180172C1F  add rsp,0x20; pop rsi
+0x180172C24  jmp 0x180116630                   ; host routine, (layer, true, true)
+0x180172C29  nop; add rsp,0x20; pop rsi; ret
+```
+
+Both branches are 0x30 bytes apart with no fall-through, and the `je` target is the plain
+return, so the forced call happens only when the loader left a start position behind.
+`[this+0x3188]` is the same start-position pointer the StartPos Switcher family clears
+(`[layer+0x3188]=0`) and tests (`[layer+0x3230]=(startpos!=0)`) on reset, which corroborates the
+reading that this is the "start position exists" test rather than an unrelated field.
+
+Wrapper identities, from `recovered/functions/_wrappers.tsv`:
+
+| Thunk | Resolver | Host RVA | Note |
+| --- | --- | --- | --- |
+| `0x180116150` | `FUN_180114460` | `0x235760` | matches `GJBaseGameLayer::loadStartPosObject` in `_hook_sites.tsv` |
+| `0x180116630` | `FUN_180116700` | `0x23FDE0` | no name in any tracked table |
+
+The second row is the whole uncertainty. `0x23FDE0` has no name string in the image, is absent
+from `_hook_sites.tsv` and `_host_methods.tsv`, and no other hook or thunk refers to it, so the
+only support for calling it "reset camera" is the changelog wording plus the fact that the call
+is forced immediately after a start position is loaded. Its two boolean arguments are both 1.
+
+Method caution worth keeping: the `contains` column of `_wrappers.tsv` resolves the host RVA
+against the **mod** image, so `0x23FDE0` shows as `18023fdc0_FUN_18023fdc0+0x20` even though
+that mod address is an unrelated destructor stub. The column must not be read as a host-symbol
+attribution.
+
+UNVERIFIED: the identity of host RVA `0x23FDE0` (camera reset, camera snap, or something else
+the loader triggers); what its two `1` arguments select; whether the call is a one-shot or
+persists; and whether the vanilla loader already performs the same call under other conditions.
