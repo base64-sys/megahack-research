@@ -346,7 +346,7 @@ because two of those rows compete for the same target:
 | ---: | --- | --- |
 | `0x1B2` | **`Added No Spider Dash`** — mapped | Friendly name `PlayerObject::playSpiderDashEffect`, and the settings key `COSMETIC/HACK_NO_SPIDER_DASH` is present in [settings-contents.md](settings-contents.md). Two independent angles. |
 | `0x1A4` | **`Added No Orb Ring`** — mapped | The hook's friendly name is `RingObject::spawnCircle`, i.e. the ring spawned by a ring/orb object, and the competing circle-family row is portal-specific (its fix note names mini and wave portals, not orbs). The binding assumes the friendly name reflects behaviour, which the code does not independently prove. |
-| `0x1A5` | UNVERIFIED between `No Portal Circle` and `No Circle Effect` | Both changelog rows describe a portal circle and only one tag hooks `spawnPortalCircle`. The rows may be a rename, or one of them may be implemented elsewhere (for example inside the ring path). Not promoted. |
+| `0x1A5` | **`Added No Portal Circle`** - mapped (corrected 2026-10-26) | Both changelog rows describe a portal circle and only one tag hooks `spawnPortalCircle`, so this was left unpromoted at first. The tag-allocation order then separated them: 421 sits inside the v9.0.0 group (420 No Orb Ring, 429/430 Accurate Percentage) while a v9.0.7 feature would have to sit near 437, whose batch detour covers `spawnPortalCircle`, `spawnDualCircle` and `CCCircleWave::create` together. The inference and its limits are written out in [No Portal Circle and No Ghost Trail](#evidence---no-portal-circle-and-no-ghost-trail-2026-10-26). |
 | `0x1A1` | UNVERIFIED: `Added No Flip Portal hack` | The mechanism matches (flip suppressed), but no settings key or label corroborates the binding, and the row could equally be handled by the editor-side flip path. Not promoted. |
 | `0x1B4` | UNVERIFIED: `Added No Dash Fire` | Hiding the node at `this+0x660` is consistent with hiding dash fire, but `+0x660` was not identified as the dash-fire sprite. Not promoted. |
 
@@ -712,3 +712,86 @@ UNVERIFIED: which thread the listener runs on (the call is on the thread that fi
 settings change); whether `COMBO` stores 0-4 or an offset form; what the game does for a
 stored value >= 5 (the code falls back to normal priority 0); and whether the v6.2.0 build
 exposed the selector with the same key path.
+
+## Evidence - No Portal Circle and No Ghost Trail (2026-10-26)
+
+Two v9.0.x cosmetic rows are single-target suppressions in the runtime-assigned tag block.
+Both hook a host method whose friendly name states the feature, and both detours are one
+byte long, so the mechanism is the same suppression idiom already established for No Orb
+Ring (`0x1A4`) and No Spider Dash (`0x1B2`).
+
+| Field | No Portal Circle | No Ghost Trail |
+| --- | --- | --- |
+| Changelog row | v9.0.0 "Added No Portal Circle" | v9.0.2 "Added No Ghost Trail" |
+| Tag | 421 (`0x1A5`, no static label) | 432 (`0x1B0`, no static label) |
+| Registration | `0x1800B130D` (`ba a5 01 00 00`) | `0x1800B0F55` (`ba b0 01 00 00`) |
+| Register call | `0x1800B1318` `call 0x18008F910` | `0x1800B0F60` `call 0x18008F910` |
+| Callback | `FUN_180171350` | `FUN_180169AE0` |
+| Callback body | `0x180171350..0x1801713A8` (`ret` at `0x1801713A8`) | `0x180169AE0..0x180169B39` |
+| Disable path | `0x1801713A9` `jmp 0x180108A80` with the detour pointer | same shape |
+| Target | `PlayerObject::spawnPortalCircle`, RVA `0x397760` | `PlayerObject::toggleGhostEffect`, RVA `0x39EE30` |
+| Name string | `0x1805758DE` "PlayerObject::spawnPortalCircle" | `0x1805454A6` "PlayerObject::toggleGhostEffect" |
+| Detour | `0x1801713C0` | `0x180169B50` |
+| Detour bytes | `c3` then `cc` padding | `c3` then `cc` padding |
+| Installer | `0x180168B00`, args `[rsp+0x20]=0xFFFFF428`, `[rsp+0x28]=1` | `0x1800AB3D0`, same args |
+
+Both callbacks share the standard enable/disable shape: `movzx ebx,[rdx]` reads the new
+enabled state, `0x180108960` fetches the hook context, `cmp bl,1` selects install versus
+`0x180108A80` (uninstall), and the install branch resolves the host RVA through
+`0x18010A250` -> `0x18010A370` before passing the detour pointer in `r8`.
+
+### Why a one-byte detour is the whole feature
+
+The detour is the function the hook replaces the host prologue with. `0x1801713C0` and
+`0x180169B50` are each a single `ret` (`c3`) followed by `cc` int3 padding, so the hooked
+routine returns immediately and none of `spawnPortalCircle` / `toggleGhostEffect` executes.
+A detour that wants the original to run instead resumes it explicitly, and this image does
+that through `0x1801A3D20` - the NoClip `destroyPlayer` detour tail-jumps there at
+`0x18017A403`, and the tag-437 `destroyPlayer` detour calls it at `0x180169F33`. Neither
+of these two detours contains a call or a jump at all.
+
+Corroboration that this is the suppression convention and not an artifact: tag 437
+(`0x1B5`, registration `0x1800B0D02`, callback `FUN_1801684B0`) hooks eight effect routines,
+and its `spawnPortalCircle` detour `0x1801687F0` is also a bare `ret`, as is its partner on
+`RingObject::spawnCircle`. Independent features reusing the identical one-byte body is a
+second angle on the reading.
+
+### Binding 421 to "No Portal Circle" over the v9.0.7 row
+
+`0x1A5` was previously left unpromoted because "Added No Circle Effect" (v9.0.7) also
+describes a portal circle and only one tag hooks `spawnPortalCircle`. Two observations
+now separate them:
+
+1. The runtime-assigned tags are allocated in release order. Using only bindings that are
+   already mapped: 420 No Orb Ring (v9.0.0), 429/430 Accurate Percentage (v9.0.0),
+   434 No Spider Dash (v9.0.4), 440/441 No Robot/Swing Fire (v9.0.8). Tag 421 falls inside
+   the v9.0.0 group, next to 420 (`RingObject::spawnCircle`) and the flip-portal suppression
+   at `0x1A1`; tag 432 falls between the v9.0.0 group and 434, which is where a v9.0.2
+   addition belongs. A v9.0.7 feature therefore has to sit at the 437 end of the range,
+   not at 421.
+2. Tag 437 hooks three circle spawners in one batch (`spawnPortalCircle`,
+   `spawnDualCircle` RVA `0x397B70`, `CCCircleWave::create` RVA `0x42870`) plus five other
+   player effects. That is the shape of a multi-target "no circle effect" toggle, whereas
+   421 is a single-target portal-circle suppression.
+
+**Inference, not proof:** rule 1 depends on the allocator being monotone, which the image
+does not state, and tag 437's wording is not yet corroborated by a label, so "No Circle
+Effect" is still `cluster`. The v9.0.0 row is promoted on the target name plus the
+allocation argument, with that reasoning recorded rather than hidden; if 437 later resolves
+to a different wording, this binding should be re-checked first.
+
+### Cancelled lead: No New Best Popup
+
+`0x180169EB0` looked like a candidate third row because it hooks `PlayLayer::showNewBest`
+(RVA `0x3A9550`, name string `0x1805759E9`) and returns immediately under a tag check. The
+tag it reads is `0xF5` = 245 = `HACK_RESPAWN_TIME`, and the same callback `FUN_180169DE0`
+also hooks `PlayLayer::destroyPlayer`, sets `[0x18080C378]=1` on `showNewBest` and clears it
+in the destroy detour. So the pair tracks level completion for the respawn timer; it is not
+a popup suppression. "Added No New Best Popup" stays `cluster`, and the reason is now
+recorded instead of re-investigated.
+
+UNVERIFIED: the settings keys that write tags 421 and 432 (neither has a static label, so
+neither appears in [settings-contents.md](settings-contents.md)); the runtime effect, since
+no Geometry Dash session was run; whether the hook manager keeps two detours on one target,
+which matters if tag 437 and tag 421 are enabled together; and the meaning of the installer
+argument `0xFFFFF428`, used by many hooks in this image.
