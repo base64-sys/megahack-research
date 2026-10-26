@@ -116,7 +116,7 @@ If `getConfigVar<bool>(CHECKBOX_HITBOXES_PLAYER = 206, 0xCE)` is true:
 | --- | --- | --- | --- | --- |
 | 0xC0 | 192 | `isHackEnabled` (Map B) | `HACK_SHOW_HITBOXES` | Master toggle |
 | 0xD8 | 216 | `isHackEnabled` (Map B) | `HACK_SHOW_HITBOXES_ON_DEATH` | On-death variant |
-| 0xC1 | 193 | `getConfigVar<bool>` (Map A) | (not in 21-entry static list — runtime-assigned) | Fill/axis-aligned box toggle |
+| 0xC1 | 193 | `getConfigVar<bool>` (Map A) | (not in 21-entry static list — runtime-assigned) | **Corrected 2026-10-26:** gates the selected-object iteration; the old "fill/axis-aligned box" label is withdrawn |
 | 0xCE | 206 | `getConfigVar<bool>` (Map A) | `CHECKBOX_HITBOXES_PLAYER` | Player hitbox toggle |
 | 0xD9 | 217 | `getConfigVar<bool>` (Map A) | (not in static list — runtime-assigned) | "Only Death Object" / cheat-frame gate |
 | 0xDA | 218 | `getConfigVar<bool>` (Map A) | (not in static list — runtime-assigned) | "Death Object Only" |
@@ -210,3 +210,64 @@ same three render paths as the main hitbox draw (node ID `0x1E6813A`).
 UNVERIFIED: which JSON keys bind to tags 0xE3 and 0xE4; the exact type of
 `FUN_180003D80` (likely `getConfigVar<double>` or a spinner accessor); the
 structure of the global trail buffer and its producer.
+
+## Evidence — Selected Objects Only (2026-10-26)
+
+The `Added Selected Objects Only to Show Hitboxes` row (v9.1.0) is the runtime-assigned
+tag 193. It is read inside the main hitbox pass, not registered by its own callback: the
+whole hitbox renderer is installed unconditionally from the shared initialiser.
+
+| Field | Value |
+| --- | --- |
+| Install site | `0x1800AFB2B` in `FUN_1800AFAE0`, `call 0x1801582C0` (no `lea` xref anywhere) |
+| Hook | `PlayLayer::updateVisibility` RVA `0x3AF3A0`, detour `0x180158740`, installer `0x1800AB9F0`, name `0x180574D90` |
+| Read site | `FUN_180204000` (main hitbox pass): `0x180204093 mov edx,0xC1` + `call 0x18002DE50` |
+| Settings key | `SHOW_HITBOXES/SELECTED_OBJECTS` in the settings tree |
+
+The path in `FUN_180204000`:
+
+```
+0x180204079  mov edx,0xD9      ; tag 217 (death-object-only gate)
+0x180204081  call 0x18002DE50
+0x180204086  test al,al
+0x180204088  je 0x180204093
+0x18020408A  call 0x1801994D0  ; predicate; on true skip to 0x180204042
+0x180204093  mov edx,0xC1      ; tag 193 = selected objects only
+0x180204098  mov rcx,rbx
+0x18020409B  call 0x18002DE50
+0x1802040A0  test al,al
+0x1802040A2  je 0x180204109    ; false -> normal all-object iteration
+0x1802040A4  mov rbx,[rdi+0x31A0]   ; selected-object array begin
+0x1802040AB  mov r14,[rdi+0x31A8]   ; selected-object array end
+0x1802040B2  cmp rbx,r14
+0x1802040B5  je 0x1802040D7
+0x1802040C0  mov r8,[rbx]           ; one entry
+0x1802040C3  mov rcx,rdi
+               ...                 ; -> 0x180203070 (per-object hitbox draw)
+```
+
+So with tag 193 set the pass iterates the selection array at `[PlayLayer+0x31A0 ..
++0x31A8)` and feeds each entry to `0x180203070`; with it clear the code falls through to
+`0x180204109`, the ordinary all-object path. That is exactly "selected objects only", and it
+is the only read of tag 193 in the image.
+
+### Correction (2026-10-26)
+
+The tag-map row above previously called `0xC1` a "fill/axis-aligned box toggle". That is
+**withdrawn**: the only site that reads tag 193 is `0x18020409B`, and it selects the object
+list to iterate, not a fill mode. The fill/axis-aligned behaviour is among the option tags
+cached by the config refresh (`0x1802024E0` region), but which tag is which there is not
+proven, so no replacement name is asserted.
+
+### Corroborating reads in the same renderer
+
+The config-cache refresh (`0x1802024E0` region) caches eleven booleans and one float used by
+the draw functions: tags 195/198/201/204 (four category checkboxes), 207, 208, 209, 210,
+211, 229, and double 212 converted to a float at `0x1808195AC`. Four colour doubles
+196/199/202/205 sit beside them. That accounts for all eleven boolean option keys in the
+settings tree, but the tag-to-name binding for the six non-category booleans remains
+UNVERIFIED.
+
+UNVERIFIED: the element type of the `[PlayLayer+0x31A0]` array and whether `+0x31A8` is an
+end pointer or a capacity bound; the JSON key that binds tag 193 (only the settings-tree name
+is known); and the names of tags 207/208/209/210/211/229.
