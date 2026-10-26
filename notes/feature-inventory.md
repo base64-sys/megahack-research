@@ -13,7 +13,7 @@
 | `mapped` | The feature has its own evidence: a note that names it, its settings key(s) and default, and/or its implementing function(s) with VAs. |
 | `alias` / `dead` | A restatement of an earlier feature / absent from this build, with the evidence for that call. |
 
-All 389 rows below were `cluster` at the 2026-10-23 baseline. **Ninety-seven are now
+All 389 rows below were `cluster` at the 2026-10-23 baseline. **Ninety-nine are now
 `mapped`**; the [Mapped rows](#mapped-rows) table below is the authoritative list, with
 tag, registration site and hook address for each one.
 
@@ -60,7 +60,7 @@ routine (RVA `0x23FDE0`) whenever a start position was loaded. **Slider Bypass**
 `SliderTouchLogic::ccTouchMoved` outright, feeding the raw touch coordinate to the slider
 instead of a clamped value, and **Main Level Bypass** raises a private flag around
 `LevelPage::onPlay`/`updateDynamicPage` so `GameStatsManager::getStat(0x38, 0)` answers 999.
-The other 292 rows remain `cluster`.
+The other 290 rows remain `cluster`.
 
 A keyword check at the baseline found that **185 of 389** rows point at a note that
 never mentions the feature at all, so for those even the cluster assignment is only a
@@ -160,6 +160,8 @@ reported as progress.
 | Main Level Bypass | tag 39 (`0x027`, `HACK_MAIN_LEVELS`, static map `0x1800634C6`); registered at `0x1800afcb1`, callback `FUN_18015c9e0` installs three detours: `0x18015cb10` on `LevelPage::onPlay` (RVA 0x31D880) and `0x18015cb30` on `LevelPage::updateDynamicPage` (0x31A8B0) set byte `0x18080C078` around the cached original, and `0x18015cb50` on `GameStatsManager::getStat` (0x1D51B0) returns `0x3E7` for key byte `0x38`/sub-key `0` while it is set and tail-jumps the cached original otherwise. See [gameplay-hooks.md](gameplay-hooks.md#evidence--main-level-bypass-2026-10-26). |
 | No Portal Circle | tag 421 (`0x1A5`, runtime-assigned, no static label); registered at `0x1800B130D`, callback `FUN_180171350` hooks `PlayerObject::spawnPortalCircle` (RVA 0x397760), detour `0x1801713C0` is a bare `ret`. See [render-hooks.md](render-hooks.md#evidence---no-portal-circle-and-no-ghost-trail-2026-10-26). |
 | No Ghost Trail | tag 432 (`0x1B0`, runtime-assigned, no static label); registered at `0x1800B0F55`, callback `FUN_180169AE0` hooks `PlayerObject::toggleGhostEffect` (RVA 0x39EE30), detour `0x180169B50` is a bare `ret`. See [render-hooks.md](render-hooks.md#evidence---no-portal-circle-and-no-ghost-trail-2026-10-26). |
+| Frozen Animations | tag 433 (`0x1B1`, runtime-assigned, no static label); registered at `0x1800B0A38`, callback `FUN_180167490` hooks `CCAnimatedSprite::runAnimation` (RVA 0x40CF0) and `CCAnimatedSprite::tweenToAnimation` (0x40D60); the detours `0x180167560`/`0x1801675C0` destroy the by-value animation-name argument and return. See [render-hooks.md](render-hooks.md#evidence---frozen-animations-and-no-dash-fire-2026-10-26). |
+| No Dash Fire | tag 436 (`0x1B4`, runtime-assigned, no static label); registered at `0x1800B0D79`, callback `FUN_180169260` hooks `PlayerObject::updateDashAnimation` (RVA 0x396D20); detour `0x1801692D0` hides `[player+0x660]` via vtable `+0x140(0)` and returns without calling the original. See [render-hooks.md](render-hooks.md#evidence---frozen-animations-and-no-dash-fire-2026-10-26). |
 
 ## Toggles outside the 389
 
@@ -227,7 +229,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v9.0.7 | Added No Circle Effect | cluster | [render-hooks.md](render-hooks.md#evidence---no-portal-circle-and-no-ghost-trail-2026-10-26) | Most likely tag 437 (`0x1B5`), whose callback `FUN_1801684B0` installs bare-`ret` detours on eight effect routines including `spawnPortalCircle`, `spawnDualCircle` and `CCCircleWave::create`, but the batch has no label or settings key, so the wording is unproven. |
 | v9.0.4 | Added Best Run options "Only from Current %" and "Show Prefix" | cluster | [best-run-feature.md](best-run-feature.md) |
 | v9.0.4 | Added Multiple Editor Trails | cluster | [creator-feature.md](creator-feature.md) |
-| v9.0.4 | Added No Dash Fire | cluster | [render-hooks.md](render-hooks.md) |
+| v9.0.4 | Added No Dash Fire | mapped | [render-hooks.md](render-hooks.md#evidence---frozen-animations-and-no-dash-fire-2026-10-26) | tag 436 (`0x1B4`, runtime-assigned, no static label); registered at `0x1800B0D79`, callback `FUN_180169260` hooks `PlayerObject::updateDashAnimation` (RVA 0x396D20) with detour `0x1801692D0`, which hides `[player+0x660]` through vtable `+0x140(0)` and never calls the original. |
 | v9.0.4 | Added No New Best Popup | cluster | [ui-addons.md](ui-addons.md) |
 | v9.0.4 | Added No Spider Dash | mapped | [render-hooks.md](render-hooks.md#evidence---three-runtime-assigned-cosmetic-tags-2026-10-25) | tag 434 (`0x1B2`, runtime-assigned, no static label); registered at `0x1800b15d7`, callback `FUN_1801719c0` hooks `PlayerObject::playSpiderDashEffect` (RVA 0x395170), detour `0x180171a30` is a bare `ret`. Key `COSMETIC/HACK_NO_SPIDER_DASH` in [settings-contents.md](settings-contents.md). |
 | v9.0.4 | Added Same Dual Colour to Iconic | cluster | [iconic-feature.md](iconic-feature.md) |
@@ -236,7 +238,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v9.0.4 | Added info button to mobile interface dropdowns | cluster | [ui-addons.md](ui-addons.md) |
 | v9.0.2 | Added Cheat Safety tab (Safe Mode moved here) | cluster | [safe-mode-feature.md](safe-mode-feature.md) |
 | v9.0.2 | Added Disable All Cheats button | cluster | [ui-addons.md](ui-addons.md) |
-| v9.0.2 | Added Frozen Animations | cluster | [render-hooks.md](render-hooks.md) |
+| v9.0.2 | Added Frozen Animations | mapped | [render-hooks.md](render-hooks.md#evidence---frozen-animations-and-no-dash-fire-2026-10-26) | tag 433 (`0x1B1`, runtime-assigned, no static label); registered at `0x1800B0A38`, callback `FUN_180167490` hooks `CCAnimatedSprite::runAnimation` (RVA 0x40CF0) and `tweenToAnimation` (0x40D60); both detours (`0x180167560`, `0x1801675C0`) only free and clear the by-value name argument, so no animation can start. |
 | v9.0.2 | Added No Ghost Trail | mapped | [render-hooks.md](render-hooks.md#evidence---no-portal-circle-and-no-ghost-trail-2026-10-26) | tag 432 (`0x1B0`, runtime-assigned, no static label); registered at `0x1800B0F55`, callback `FUN_180169AE0` hooks `PlayerObject::toggleGhostEffect` (RVA 0x39EE30), detour `0x180169B50` is a bare `ret`, so the ghost trail is never toggled on. |
 | v9.0.1 | Added Accurate Percentage toggle in Best Run | cluster | [best-run-feature.md](best-run-feature.md) |
 | v9.0.1 | Added Cheat Indicator Hide when Legit option | cluster | [ui-addons.md](ui-addons.md) |
@@ -617,5 +619,5 @@ Correction (2026-10-25): the earlier version of this paragraph named `Force Plat
 (`0x0F2`, `HACK_FORCE_PLATFORMER`) and 49 (`0x031`, `HACK_DEFAULT_SONG_BYPASS`) — but **neither
 has a row in the 389**: no `Added Force Platformer` and no `Added Default Song Bypass` bullet
 exists. Mapping them would add entries to "Toggles outside the 389" at best, so they are not
-progress against the milestone. The next rows must be chosen from the 292 remaining changelog
+progress against the milestone. The next rows must be chosen from the 290 remaining changelog
 bullets.

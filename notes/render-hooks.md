@@ -316,15 +316,16 @@ detour does to the layer — only the call at the end of the detour does.
 
 ## Evidence - three runtime-assigned cosmetic tags (2026-10-25)
 
-Tags `0x1A1`, `0x1A4`, `0x1A5`, `0x1B2` and `0x1B4` are **not** in the 85-entry static
+Tags `0x1A1`, `0x1A4`, `0x1A5`, `0x1B1`, `0x1B2` and `0x1B4` are **not** in the 85-entry static
 map, so they have no `HACK_*` label to lean on. Their detours were read instead, and in
-three cases the detour is the whole mechanism:
+most cases the detour is the whole mechanism:
 
 | Tag | Target | Detour | Detour bytes | Effect |
 | ---: | --- | --- | --- | --- |
 | `0x1A1` | `GJBaseGameLayer::toggleFlipped` (RVA `0x2467D0`) | `0x180169C70` | `c3` | the flip is never applied |
 | `0x1A4` | `RingObject::spawnCircle` (RVA `0x4A1DB0`) | `0x18016A3E0` | `c3` | the ring/orb circle is never spawned |
 | `0x1A5` | `PlayerObject::spawnPortalCircle` (RVA `0x397760`) | `0x1801713C0` | `c3` | the portal circle is never spawned |
+| `0x1B1` | **`Added Frozen Animations`** - mapped (2026-10-26) | Both `CCAnimatedSprite` animation entry points are replaced by a body that only destroys the by-value name argument, so no sprite animation can start. See [Frozen Animations and No Dash Fire](#evidence---frozen-animations-and-no-dash-fire-2026-10-26). |
 | `0x1B2` | `PlayerObject::playSpiderDashEffect` (RVA `0x395170`) | `0x180171A30` | `c3` | the spider-dash effect is never played |
 
 A one-byte `ret` is the same suppression idiom as No Death Effect
@@ -348,7 +349,7 @@ because two of those rows compete for the same target:
 | `0x1A4` | **`Added No Orb Ring`** — mapped | The hook's friendly name is `RingObject::spawnCircle`, i.e. the ring spawned by a ring/orb object, and the competing circle-family row is portal-specific (its fix note names mini and wave portals, not orbs). The binding assumes the friendly name reflects behaviour, which the code does not independently prove. |
 | `0x1A5` | **`Added No Portal Circle`** - mapped (corrected 2026-10-26) | Both changelog rows describe a portal circle and only one tag hooks `spawnPortalCircle`, so this was left unpromoted at first. The tag-allocation order then separated them: 421 sits inside the v9.0.0 group (420 No Orb Ring, 429/430 Accurate Percentage) while a v9.0.7 feature would have to sit near 437, whose batch detour covers `spawnPortalCircle`, `spawnDualCircle` and `CCCircleWave::create` together. The inference and its limits are written out in [No Portal Circle and No Ghost Trail](#evidence---no-portal-circle-and-no-ghost-trail-2026-10-26). |
 | `0x1A1` | UNVERIFIED: `Added No Flip Portal hack` | The mechanism matches (flip suppressed), but no settings key or label corroborates the binding, and the row could equally be handled by the editor-side flip path. Not promoted. |
-| `0x1B4` | UNVERIFIED: `Added No Dash Fire` | Hiding the node at `this+0x660` is consistent with hiding dash fire, but `+0x660` was not identified as the dash-fire sprite. Not promoted. |
+| `0x1B4` | **`Added No Dash Fire`** - mapped (corrected 2026-10-26) | The hook target name settles what the node hide belongs to: the detour is installed on `PlayerObject::updateDashAnimation` (name string `0x1805454C6`), so the hidden child is the dash animation's effect node. `+0x660` being the fire sprite specifically is still inferred from the wording, and that gap is written out in [Frozen Animations and No Dash Fire](#evidence---frozen-animations-and-no-dash-fire-2026-10-26). |
 
 `0x1AD` is a separate, larger case and is not a cosmetic no-op: it hooks both
 `PlayLayer::updateProgressbar` (`0x3B23C0`, detour `0x180165110`, a real function with a
@@ -795,3 +796,73 @@ neither appears in [settings-contents.md](settings-contents.md)); the runtime ef
 no Geometry Dash session was run; whether the hook manager keeps two detours on one target,
 which matters if tag 437 and tag 421 are enabled together; and the meaning of the installer
 argument `0xFFFFF428`, used by many hooks in this image.
+
+## Evidence - Frozen Animations and No Dash Fire (2026-10-26)
+
+Two more single-purpose entries in the runtime-assigned cosmetic block. Both replace a host
+routine outright, and in both cases the replacement body is small enough that the mechanism
+can be read off the instructions alone.
+
+| Field | Frozen Animations | No Dash Fire |
+| --- | --- | --- |
+| Changelog row | v9.0.2 "Added Frozen Animations" | v9.0.4 "Added No Dash Fire" |
+| Tag | 433 (`0x1B1`, no static label) | 436 (`0x1B4`, no static label) |
+| Registration | `0x1800B0A38` (`ba b1 01 00 00`) | `0x1800B0D79` (`ba b4 01 00 00`) |
+| Callback | `FUN_180167490` | `FUN_180169260` |
+| Target 1 | `CCAnimatedSprite::runAnimation`, RVA `0x40CF0` | `PlayerObject::updateDashAnimation`, RVA `0x396D20` |
+| Target 2 | `CCAnimatedSprite::tweenToAnimation`, RVA `0x40D60` | - |
+| Name strings | `0x180575800`, `0x18057581F` | `0x1805454C6` |
+| Detours | `0x180167560`, `0x1801675C0` | `0x1801692D0` |
+| Installers | `0x180167620`, `0x180167800` | `0x1800AB230` |
+| Installer flags | `[rsp+0x20]=0xFFFFF428`, `[rsp+0x28]=1` | same |
+
+### Frozen Animations is an argument-only body
+
+`0x180167560` and `0x1801675C0` are byte-identical in shape and 0x26 bytes long:
+
+| Site | Instruction | Reading |
+| --- | --- | --- |
+| `0x180167565` | `mov rsi, rdx` | second argument = the by-value `std::string` name (MSVC passes a 0x20-byte struct by hidden pointer) |
+| `0x180167568` | `mov rax, [rdx+0x18]` | string capacity |
+| `0x18016756C` | `cmp rax, 0x10` / `jb` | the SSO threshold: capacity >= 0x10 means a heap buffer |
+| `0x18016759D` | `call 0x1803A50F0` | free the heap buffer |
+| `0x1801675A2` | `[rsi+0x10]=0`, `[rsi+0x18]=0xF`, `byte [rsi]=0` | reset to the empty small-string form |
+| `0x1801675BA` | `ret` | no call, no jump to the original |
+
+So the hooked routine does nothing except destroy its own by-value argument, which is exactly
+the cleanup a callee owes the caller and nothing else. Clearing the name is not a filter that
+one animation could still pass: the call never reaches gameplay code, so no animation starts
+and an animated sprite keeps whatever frame it already had. Both entry points are replaced,
+so neither `runAnimation` nor `tweenToAnimation` can revive it.
+
+### No Dash Fire hides the node and skips the update
+
+`0x1801692D0` takes `rcx` = the `PlayerObject`, loads `[this+0x660]`, and returns if it is
+null. Otherwise it calls vtable slot `+0x140` of that node with `edx=0` - the same shared
+show/hide slot used by Hide UI, the pause-button detours and the NoClip tint - then loads the
+sub-object at `node+0x140`, takes its vtable slot `+0x28` and tail-jumps it with `edx=0`.
+The original `updateDashAnimation` is never called. The player itself is untouched, so what
+disappears is the child effect the dash animation would otherwise drive; the row's wording
+calls that the dash fire.
+
+### Binding
+
+| Angle | Frozen Animations | No Dash Fire |
+| --- | --- | --- |
+| Host name | `CCAnimatedSprite::runAnimation` / `tweenToAnimation` - every animated sprite in the game | `PlayerObject::updateDashAnimation` - the routine that drives the dash effect |
+| Tag order | 433 sits between 432 No Ghost Trail (v9.0.2) and 434 No Spider Dash (v9.0.4) | 436 sits in the same v9.0.4 group as 434 |
+| Settings key | none observed: no frozen-animation key appears in [settings-contents.md](settings-contents.md) | none observed: only `COSMETIC/HACK_NO_SPIDER_DASH` exists for the dash family |
+
+The tag-order column is the same inference used for No Portal Circle: the runtime-assigned
+tags follow release order for every row that is mapped so far. It is corroboration, not
+proof.
+
+UNVERIFIED: the settings keys that write tags 433 and 436; that `[this+0x660]` is the fire
+sprite specifically rather than the whole dash-effect node (the instructions only prove that
+a child of the player is hidden inside the dash-animation update); whether clearing the
+animation name also stops an already-running animation, since the code only prevents new
+calls; the runtime effect in a live session; and what tag 435 (`0x1B3`, callback
+`FUN_180169DE0`, hooks `PlayLayer::showNewBest` and `PlayLayer::destroyPlayer`) actually is.
+That callback installs `0x180169EB0`, which sets byte `0x18080C378` and then checks tag 245
+(`HACK_RESPAWN_TIME`); it is still the best remaining candidate for "Added No New Best
+Popup", but the body past `0x180169EDB` has not been read yet, so the row stays `cluster`.
