@@ -212,6 +212,20 @@ is therefore registered through the same binder but its callback extends the edi
 than detouring a function. UNVERIFIED: what those two callees do and which strings are
 passed (they are built on the stack, so the values were not read this pass).
 
+## Installs that bypass the registrar
+
+Not every tag reaches its hooks through `mov edx,<tag>; call 0x18008F910`. Tag 419
+(`HACK_WAVE_TRAIL_ON_DEATH`) has no row in the table above because it is bound through a
+condition API instead: `0x180173A30` builds a two-tag condition at `0x180173A7E`
+(`mov edx,0x18F` -> 399) and `0x180173A96` (`mov edx,0x1A3` -> 419), composes them with
+`0x180107CE0`, and hands the action `0x180173D00` to `0x1800915B0`. That action installs
+`PlayerObject::playerDestroyed` (detour `0x180173E30`) and `PlayerObject::fadeOutStreak2`
+(detour `0x180173E50`), which suppress the trail fade-out only while the player is being
+destroyed. See
+[gameplay-hooks.md](gameplay-hooks.md#evidence--wave-trail-on-death-and-the-trail-preservation-hooks-2026-10-26).
+A label-to-registration join will always miss tags bound this way; search the condition
+builder `0x1801083F0` as well as the registrar.
+
 ## Leads this creates
 
 - **No Death Effect also hooks `destroyPlayer`.** `FUN_180169330` installs *two* hooks, not

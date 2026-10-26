@@ -1272,3 +1272,97 @@ with a completion/unlock counter but no name string or enum table in this image 
 it); why both `onPlay` and `updateDynamicPage` need the override; and whether the vanilla
 `getStat` also feeds the page's "locked" decoration through another field, which would
 explain why the page still needs the real values elsewhere.
+
+## Evidence — Wave Trail on Death and the trail-preservation hooks (2026-10-26)
+
+`HACK_WAVE_TRAIL_ON_DEATH` (tag 419, `0x1A3`, static map entry 84, store `0x1800648BF`,
+settings key `COSMETIC/HACK_WAVE_TRAIL_ON_DEATH`) has **no row** in the `mov edx,<tag>`
+registration table. It is bound through a second API that composes tags into a condition and
+passes a type-erased action, which is why a label-to-registration join misses it.
+
+| Field | Value |
+| --- | --- |
+| Condition registration | `0x180173A30..0x180173B94`, reached from the static-initialiser stub `0x180173A20` (`lea rcx,[0x18080C518]; jmp 0x180106DC0`) |
+| Condition leaves | `mov edx,0x18F` at `0x180173A7E` -> tag 399 `HACK_NO_DEATH_EFFECT`; `mov edx,0x1A3` at `0x180173A96` -> tag 419 |
+| Leaf builder | `0x1801083F0(out, tag)` — kind byte at `+0x18` becomes 1, payload at `+0` becomes the tag |
+| Composed node | `0x180107CE0(out, node419, 1, node399)` at `0x180173ABF`; the node keeps both children at `+8` and `+0x10`, and the fourth argument is the operator value 1 |
+| Wrappers | `0x1801084E0` at `0x180173AD6`, `0x180108610` at `0x180173AE7` |
+| Registration call | `0x1800915B0(ctx, &out, &action)` at `0x180173AFA`, `ctx` = `[0x18080C518]` |
+| Action | `{vtable 0x180575478, body 0x180173D00}` built at `0x180173A55`/`0x180173A60` |
+
+`0x180575478` holds `0x180163B90` / `0x180163BB0` (both `.text`); `0x180163B90` writes
+`&0x180575478` through its first argument, so the pair is an interface object and
+`0x180173D00` is its implementation. UNVERIFIED: the exact vtable interface and which method
+invokes the body.
+
+### The action body
+
+`0x180173D00` takes the enable flag in `ecx` (`mov ebx,ecx; test bl,bl; je 0x180173D9E`).
+When enabled it installs two hooks; the byte at `0x180173D12` is the branch taken when the
+condition is off.
+
+| Target | RVA | Detour | Installer | Name string |
+| --- | --- | --- | --- | --- |
+| `PlayerObject::playerDestroyed` | `0x397D40` | `0x180173E30` | `0x180167B20` | `0x180575FF8` |
+| `PlayerObject::fadeOutStreak2` | `0x3A0190` | `0x180173E50` | `0x1800AAC20` | `0x180576016` |
+
+Both installs pass `[rsp+0x20]=0xFFFFFFE0`, `[rsp+0x28]=1` and resolve the host RVA through
+`0x18010A250` -> `0x18010A370`, the same delayed-bind idiom the tagged callbacks use. The
+disable branch `0x180173D9E..0x180173DC2` calls `0x180108A80(ctx, detour)` once per detour —
+the same unhook helper the tagged callbacks call from their own disable branches.
+
+### The detour bodies
+
+```
+0x180173E30  48 83 EC 28               sub  rsp,0x28
+0x180173E34  C6 05 FD 86 69 00 01      mov  byte [0x18080C538],1
+0x180173E3B  E8 D0 E1 02 00            call 0x1801A8010        ; playerDestroyed
+0x180173E40  C6 05 F1 86 69 00 00      mov  byte [0x18080C538],0
+0x180173E47  48 83 C4 28               add  rsp,0x28
+0x180173E4B  C3                        ret
+```
+
+`0x1801A8010` is the delayed-bind trampoline for RVA `0x397D40`: it calls `0x18010DDC0` for
+the module base, adds `0x397D40`, resolves and caches in `0x180810608`, and preserves the
+second argument in `ebx`, so the original `playerDestroyed` runs with unmodified arguments.
+The detour only brackets that call with the flag at `0x18080C538` (a zero-fill `.bss` byte,
+not part of the writable block at `0x18081BFC0`).
+
+```
+0x180173E50  80 3D E1 86 69 00 00      cmp  byte [0x18080C538],0
+0x180173E57  0F 84 43 38 03 00         je   0x1801A76A0          ; fadeOutStreak2
+0x180173E5D  C3                        ret
+```
+
+`0x1801A76A0` is the delayed-bind trampoline for RVA `0x3A0190` (`lea rcx,[base+0x3a0190]`,
+cache `0x1808104F8`), so with the flag clear the original `fadeOutStreak2` runs unchanged.
+
+Net effect: while `playerDestroyed` executes, the trail's fade-out is skipped, so the streak
+survives the death frame. That is the wave-trail-on-death behaviour, and it is the only
+death-path trail mechanism in the image:
+
+- `PlayerObject::fadeOutStreak2` has exactly one hook site (`registrar_va 0x180173D00`).
+- `CCMotionStreak::stopStroke`, `initWithFade` and `draw` belong to No Trail (tag 395,
+  `FUN_180171DB0`), not to this path.
+
+### What this binds, and what stays open
+
+- The v8.0.3-alpha.1 row "Added Wave Trail on Death" is bound on three independent angles:
+  the static label `HACK_WAVE_TRAIL_ON_DEATH`, the settings key
+  `COSMETIC/HACK_WAVE_TRAIL_ON_DEATH`, and a registration whose condition names tag 419 and
+  whose action installs the death-path trail hooks. The row is `mapped`.
+- The v7.1 (Full) row "Added Keep Wave Trail on Death mod" describes the same behaviour, and
+  only one such mechanism exists in the image. Either the v7.1 toggle was carried into v8
+  under the new name or the two rows are duplicates; the image cannot separate them, so that
+  row stays `cluster` with this anchor as its reason.
+- UNVERIFIED: the polarity of the composed condition. The builder copies both children
+  without negating either, but the evaluator that interprets the node was not read, so
+  whether the action runs on `A and B` or `A or B` is open. Tag 399 is an input either way,
+  which is itself new: the trail hooks are not switched by tag 419 alone.
+- UNVERIFIED: no runtime observation. Nothing here was confirmed in a live game; the claim is
+  static, from the detour bodies.
+- Related but distinct: tag 448 (`0x1C0`, registration `0x1800B1B6B`, callback `0x1801730B0`)
+  resolves `cocos2d::CCMotionStreak::stopStroke` by mangled symbol name
+  (`?stopStroke@CCMotionStreak@cocos2d@@QEAAXXZ`, assembled on the stack from the immediates
+  at `0x1801730F9`-`0x180173158`) and installs the label detour `0x1801732A0`, which is
+  `jmp 0x1805331E0`. That is a separate trail control; no changelog row is bound to it.
