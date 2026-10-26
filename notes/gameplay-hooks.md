@@ -1366,3 +1366,95 @@ death-path trail mechanism in the image:
   (`?stopStroke@CCMotionStreak@cocos2d@@QEAAXXZ`, assembled on the stack from the immediates
   at `0x1801730F9`-`0x180173158`) and installs the label detour `0x1801732A0`, which is
   `jmp 0x1805331E0`. That is a separate trail control; no changelog row is bound to it.
+
+## Evidence - Ball Rotation Bug (2026-10-26)
+
+The v9.0.0 bullet "Added Ball Rotation Bug" is the only changelog row about ball rotation,
+`COSMETIC/HACK_BALL_ROTATION_BUG` is the only ball-rotation settings key in
+[settings-contents.md](settings-contents.md), and the image contains exactly one mechanism that
+animates a player rotation. That mechanism is tag 423.
+
+| Field | Value |
+| --- | --- |
+| Tag | 423 (`0x1A7`), no static label (runtime-assigned; Map B) |
+| Registration | `0x1800B07E5`, bytes `ba a7 01 00 00` |
+| Callback | `FUN_180165890`, body `0x180165890..0x180165A01`, `ret` at `0x180165A01` |
+| Disable branch | `0x180165A02` -> `0x180108A80`, one per installed detour |
+| Arg slots | `[rsp+0x20]=0xFFFFFFE0`, `[rsp+0x28]=1` for all four |
+
+Four detours, each named by the `r9` string the callback passes and each resolved through the
+same delayed-bind idiom (`0x18010A250` base -> `0x18010A370` by RVA):
+
+| RVA | Host method | Name string | Detour | Installer | Detour does |
+| --- | --- | --- | --- | --- | --- |
+| `0x39BE30` | `PlayerObject::switchedToMode` | `0x1805756D8` | `0x180165A20` | `0x180165BE0` | runs the original through trampoline `0x1801A8F90` (`lea rcx,[rax+0x39BE30]` at `0x1801A8FFF`), then may add a rotation animation |
+| `0x398C00` | `PlayerObject::ringJump` | `0x1805756F5` | `0x180165B60` | `0x180165DC0` | sets `byte [0x18080C228]=1`, calls the original, clears it |
+| `0x38D480` | `PlayerObject::runBallRotation2` | `0x18057570C` | `0x180165B80` | `0x1800AB230` | calls the original, then records a timestamp while the flag is set |
+| `0x39BF30` | `PlayerObject::hitGround` | `0x18057572B` | `0x180165BC0` | `0x180166010` | calls the original, then clears the guard |
+
+### The state machine
+
+Three `.bss` bytes/quadword carry the state, and a whole-`.text` scan shows they are used
+nowhere else:
+
+| Global | References | Meaning as read here |
+| --- | --- | --- |
+| `0x18080C228` | 3 - writes at `0x180165B64`, `0x180165B70`, compare at `0x180165B89` | "a ring jump is running" |
+| `0x18080C230` | 2 - write `0x180165BA7`, read `0x180165A73` | `_Xtime_get_ticks()` of the last ball rotation |
+| `0x18080C238` | 4 - test `0x180165A65`, compare `0x180165B97`, write `0x180165BA0`, write `0x180165BC9` | "a ball rotation has happened since the last ground contact" |
+
+`0x1805318E0` is `_Xtime_get_ticks`, so the comparison at `0x180165A7A` against `0x98BD8F`
+(10,009,999 ticks of 100 ns) is a one-second window.
+
+Sequence: a `ringJump` raises `0x18080C228` for the duration of the call, so only the
+`runBallRotation2` calls made *from inside* a ring jump record `0x18080C230` and raise
+`0x18080C238`. `hitGround` clears `0x18080C238`. A later `switchedToMode` therefore sees
+"rotated during a ring jump, has not touched the ground since".
+
+### The rotation animation
+
+`switchedToMode` detour entry checks, in order (`0x180165A34..0x180165A80`):
+
+1. `edx` (the new mode) must be `<= 0x29` and must have its bit set in `0x20000080020`, i.e.
+   only modes 5, 19 and 41 are handled.
+2. `byte [player+0x9BB]` is sampled into `ebx` before the original runs.
+3. After the original returns: `edi != 0x10`, `bl != 0` and `byte [0x18080C238] & 1` must all
+   hold, and `_Xtime_get_ticks() - [0x18080C230]` must be `<= 0x98BD8F` (a rotation within the
+   last second). The "not handled" path tail-jumps the trampoline, so the original always runs.
+
+When all of that holds the detour builds the animation at `0x180165AAD`:
+
+| Site | Value |
+| --- | --- |
+| `0x180165AB2` | `ucomiss 0, [player+0x720]`, `seta al` - al = 1 when `[player+0x720] < 0` |
+| `0x180165AC3` | `xmm6 = {1.0f, -1.0f}[al]` from the table at `0x180549BD0` (`00 00 80 3f`, `00 00 80 bf`) |
+| `0x180165AD0` | `xmm7 = 270.0f * xmm6` (constant `0x180572B08` = `00 00 87 43`) |
+| `0x180165AE0` | `[player+0x558]->stopActionByTag(0x1E6813A)` |
+| `0x180165AEC` | `xmm6 = xmm6 * 90.0f` (constant `0x180572A8C` = `00 00 b4 42`) |
+| `0x180165AFA` | `[player+0x558]->vtable[0x150](xmm6)` - snap the node rotation to +/-90 degrees |
+| `0x180165B0B` | `CCRotateBy::create(0.5f, xmm7)` (duration `0x180534410` = `00 00 00 3f`) |
+| `0x180165B1B` | `CCEaseOut::create(action, 1.2f)` (rate `0x1805756D4` = `9a 99 99 3f`) |
+| `0x180165B2E` | `action->vtable[0x40](0x1E6813A)` - set the same tag so a repeat can cancel it |
+| `0x180165B4C` | tail `jmp 0x180532CE0` = `[player+0x558]->runAction(action)` |
+
+So the detour does not reimplement ball rotation: it normalises it. When the player switches
+into a ball-family mode within a second of a ball rotation that happened during a ring jump, the
+node at `[player+0x558]` is snapped to +/-90 degrees in the direction of the angular velocity in
+`[player+0x720]`, and a 0.5 s, 1.2-rate ease-out rotation of +/-270 degrees carries it to a clean
+multiple of 360. A ground contact re-arms the whole test.
+
+`[player+0x720]` has five memory references in the image, four of them host code
+(`0x18020666B`, `0x180207717`, `0x180208A54`, `0x180208A5C`) that move it as a float between
+objects - consistent with a rotation/angular-velocity field, which is what the sign test needs.
+
+### What stays open
+
+UNVERIFIED: that `[player+0x558]` is the ball sprite node rather than another child node - the
+detour proves only that it is a `cocos2d::CCNode` with a float setter in vtable slot `+0x150`
+and a `setTag` in slot `+0x40`. UNVERIFIED: which modes 5, 19 and 41 are in the enumeration
+`PlayerObject::switchedToMode` receives, and what `byte [player+0x9BB]` holds; the mask is
+recorded as measured, not named. UNVERIFIED: the direction of the feature - the detour adds a
+correction animation, which reads as a fix for the bug the row is named after, but no runtime
+observation or changelog wording settles whether the toggle restores vanilla behaviour or
+applies the fix. UNVERIFIED: the JSON path that writes tag 423 (settings keys live in the
+profile, not in the image).

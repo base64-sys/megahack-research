@@ -13,7 +13,7 @@
 | `mapped` | The feature has its own evidence: a note that names it, its settings key(s) and default, and/or its implementing function(s) with VAs. |
 | `alias` / `dead` | A restatement of an earlier feature / absent from this build, with the evidence for that call. |
 
-All 389 rows below were `cluster` at the 2026-10-23 baseline. **One hundred and two are now
+All 389 rows below were `cluster` at the 2026-10-23 baseline. **One hundred and three are now
 `mapped`**; the [Mapped rows](#mapped-rows) table below is the authoritative list, with
 tag, registration site and hook address for each one.
 
@@ -60,7 +60,7 @@ routine (RVA `0x23FDE0`) whenever a start position was loaded. **Slider Bypass**
 `SliderTouchLogic::ccTouchMoved` outright, feeding the raw touch coordinate to the slider
 instead of a clamped value, and **Main Level Bypass** raises a private flag around
 `LevelPage::onPlay`/`updateDynamicPage` so `GameStatsManager::getStat(0x38, 0)` answers 999.
-The other 287 rows remain `cluster`.
+The other 286 rows remain `cluster`.
 
 A keyword check at the baseline found that **185 of 389** rows point at a note that
 never mentions the feature at all, so for those even the cluster assignment is only a
@@ -162,6 +162,7 @@ reported as progress.
 | No Ghost Trail | tag 432 (`0x1B0`, runtime-assigned, no static label); registered at `0x1800B0F55`, callback `FUN_180169AE0` hooks `PlayerObject::toggleGhostEffect` (RVA 0x39EE30), detour `0x180169B50` is a bare `ret`. See [render-hooks.md](render-hooks.md#evidence---no-portal-circle-and-no-ghost-trail-2026-10-26). |
 | Wave Trail on Death | tag 419 (`0x1A3`, `HACK_WAVE_TRAIL_ON_DEATH`); no `mov edx,<tag>` registration. The condition registration `0x180173A30` (leaves at `0x180173A7E`/`0x180173A96` = tags 399 and 419, composed by `0x180107CE0`, bound through `0x1800915B0`) installs the action `0x180173D00`, which hooks `PlayerObject::playerDestroyed` (RVA `0x397D40`, detour `0x180173E30`, installer `0x180167B20`) and `PlayerObject::fadeOutStreak2` (`0x3A0190`, detour `0x180173E50`, installer `0x1800AAC20`). `0x180173E30` sets `byte [0x18080C538]` around the `playerDestroyed` trampoline `0x1801A8010`; `0x180173E50` returns without calling the `fadeOutStreak2` trampoline `0x1801A76A0` while that byte is set. See [gameplay-hooks.md](gameplay-hooks.md#evidence--wave-trail-on-death-and-the-trail-preservation-hooks-2026-10-26). |
 | No Circle Effect | tag 437 (`0x1B5`, no static label); registered at `0x1800B0D02`, callback `FUN_1801684B0` installs eight detours in one callback: bare-`ret` suppression of `PlayerObject::spawnPortalCircle` (RVA `0x397760`) and `spawnDualCircle` (`0x397B70`), scoped-flag wrappers (`byte [0x18080C2F0]`) around `playBumpEffect` (`0x39FA50`), `ringJump` (`0x398C00`), `toggleDartMode` (`0x39AF90`), `togglePlayerScale` (`0x3A0700`) and `playDestroyObjectAnim` (`0x1AA4A0`), and a `CCCircleWave::create` (`0x42870`) detour that hides the node it returns while that flag is set - the flag's only reader. See [render-hooks.md](render-hooks.md#evidence---no-circle-effect-2026-10-26). |
+| Ball Rotation Bug | tag 423 (`0x1A7`, no static label); registered at `0x1800B07E5`, callback `FUN_180165890` installs detours on `PlayerObject::switchedToMode` (RVA `0x39BE30`, detour `0x180165A20`), `ringJump` (`0x398C00`, `0x180165B60`), `runBallRotation2` (`0x38D480`, `0x180165B80`) and `hitGround` (`0x39BF30`, `0x180165BC0`). `ringJump` raises `0x18080C228` only for the duration of the call, so `runBallRotation2` records a timestamp and raises `0x18080C238`, which `hitGround` clears; a `switchedToMode` into mode 5/19/41 within one second of that rotation then sets `[player+0x558]` rotation to +/-90 (sign from `[player+0x720]`) and runs a 0.5 s ease-out `CCRotateBy` of +/-270 degrees under tag `0x1E6813A`. See [gameplay-hooks.md](gameplay-hooks.md#evidence---ball-rotation-bug-2026-10-26). |
 | No End Shake | tag 439 (`0x1B7`, unlabelled); registered at `0x1800B0EDE`, callback `FUN_180169A40` installs detour `0x180169AB0` on `PlayLayer::showCompleteEffect` (RVA `0x3A8F30`, installer `0x1800AB850`). The detour forwards to the original via the delayed-bind trampoline `0x1801A5AC0` (`lea rcx,[base+0x3a8f30]` at `0x1801A5B24`) and then writes `dword [layer+0x520]=0` - the only non-frame reference to that field in `.text`. Key `COSMETIC/HACK_NO_END_SHAKE`. UNVERIFIED: that the field is the end-of-level shake rather than the completion flash. See [render-hooks.md](render-hooks.md#evidence---no-end-shake-2026-10-26). |
 | Frozen Animations | tag 433 (`0x1B1`, runtime-assigned, no static label); registered at `0x1800B0A38`, callback `FUN_180167490` hooks `CCAnimatedSprite::runAnimation` (RVA 0x40CF0) and `CCAnimatedSprite::tweenToAnimation` (0x40D60); the detours `0x180167560`/`0x1801675C0` destroy the by-value animation-name argument and return. See [render-hooks.md](render-hooks.md#evidence---frozen-animations-and-no-dash-fire-2026-10-26). |
 | No Dash Fire | tag 436 (`0x1B4`, runtime-assigned, no static label); registered at `0x1800B0D79`, callback `FUN_180169260` hooks `PlayerObject::updateDashAnimation` (RVA 0x396D20); detour `0x1801692D0` hides `[player+0x660]` via vtable `+0x140(0)` and returns without calling the original. See [render-hooks.md](render-hooks.md#evidence---frozen-animations-and-no-dash-fire-2026-10-26). |
@@ -253,7 +254,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v9.0.0 | Added Advanced Formatting to Statuses | cluster | [status-labels-feature.md](status-labels-feature.md) |
 | v9.0.0 | Added Allow Pause Buffering | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v9.0.0 | Added Auto Kill | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
-| v9.0.0 | Added Ball Rotation Bug | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
+| v9.0.0 | Added Ball Rotation Bug | mapped | [gameplay-hooks.md](gameplay-hooks.md#evidence---ball-rotation-bug-2026-10-26) | tag 423 (`0x1A7`); callback `FUN_180165890` installs four detours on `PlayerObject::switchedToMode` (`0x39BE30`), `ringJump` (`0x398C00`), `runBallRotation2` (`0x38D480`) and `hitGround` (`0x39BF30`). Ring-jump-scoped flags plus a one-second `_Xtime_get_ticks` window decide when a mode switch snaps `[player+0x558]` to +/-90 degrees and plays a 0.5 s ease-out +/-270 degree `CCRotateBy` (tag `0x1E6813A`) - a ball-rotation re-sync, and the only ball-rotation mechanism in the image. |
 | v9.0.0 | Added Classic Pulse (pulsing above 60hz) | cluster | [no-pulse-feature.md](no-pulse-feature.md#ruled-out-for-classic-pulse) | Not located: the tag is runtime-assigned (no `HACK_CLASSIC_PULSE` label), no 1/60 or 60.0 pulse constant exists in the image, and the second `updateVisibility` hook is the hitbox pass. The reason it stays cluster is recorded in the note. |
 | v9.0.0 | Added Classic Wave Trail (reimplementation of the 2.1 wave) | cluster | [render-hooks.md](render-hooks.md) |
 | v9.0.0 | Added Click Between Frames toggle | cluster | [input-hooks.md](input-hooks.md) |
@@ -622,5 +623,5 @@ Correction (2026-10-25): the earlier version of this paragraph named `Force Plat
 (`0x0F2`, `HACK_FORCE_PLATFORMER`) and 49 (`0x031`, `HACK_DEFAULT_SONG_BYPASS`) — but **neither
 has a row in the 389**: no `Added Force Platformer` and no `Added Default Song Bypass` bullet
 exists. Mapping them would add entries to "Toggles outside the 389" at best, so they are not
-progress against the milestone. The next rows must be chosen from the 287 remaining changelog
+progress against the milestone. The next rows must be chosen from the 286 remaining changelog
 bullets.
