@@ -120,6 +120,7 @@ If `getConfigVar<bool>(CHECKBOX_HITBOXES_PLAYER = 206, 0xCE)` is true:
 | 0xCE | 206 | `getConfigVar<bool>` (Map A) | `CHECKBOX_HITBOXES_PLAYER` | Player hitbox toggle |
 | 0xD9 | 217 | `getConfigVar<bool>` (Map A) | (not in static list — runtime-assigned) | "Only Death Object" / cheat-frame gate |
 | 0xDA | 218 | `getConfigVar<bool>` (Map A) | (not in static list — runtime-assigned) | "Death Object Only" |
+| 0xD4 | 212 | `getConfigVar<double>` (Map A) | (not in static list — runtime-assigned) | Hitbox Multiplier: cached as float `0x1808195AC`, read only inside the box-geometry function `0x180202BD0` |
 
 Tags 0xC1, 0xD9, 0xDA are read through the Map A accessor but are absent from the
 21-entry `CHECKBOX_*` static table in `FUN_180062940`; they are therefore runtime-assigned
@@ -271,3 +272,66 @@ UNVERIFIED.
 UNVERIFIED: the element type of the `[PlayLayer+0x31A0]` array and whether `+0x31A8` is an
 end pointer or a capacity bound; the JSON key that binds tag 193 (only the settings-tree name
 is known); and the names of tags 207/208/209/210/211/229.
+
+## Evidence — Hitbox Multiplier (2026-10-26)
+
+Read from `absolllute.hackmega_original.dll` (SHA-256
+`1635c3391e853d68eb718965a756fd411ec6a876c23c0b92db508366e1107a92`). The option is a
+**double** tag: 212 (`0xD4`). It is the only non-boolean tag in the hitbox option family and
+the only value the config refresh caches as a float.
+
+### Configuration path
+
+| Step | Address | What happens |
+| --- | --- | --- |
+| Read | `0x1802025B4` | `getConfigVar<double>(212)` through `0x180003D80` |
+| Convert | after the read | `cvtsd2ss` to a 32-bit float |
+| Cache | store | float written to `0x1808195AC` |
+
+The neighbouring stores in the same refresh function are the boolean options: tags
+195/198/201/204 to `0x1808195A0..0x8195A3`, 207 to `0x1808195A4`, 208 to `0x1808195A5`,
+210 to `0x1808195A6`, 209 to `0x1808195A7`, 211 to `0x1808195A8`, 229 to `0x1808195B0`.
+Tag 212 is the odd one out in both type and cache slot width, which is what identifies it.
+
+### Consumption: the box-geometry function
+
+`0x180202BD0..0x18020306E` (`.pdata`, 0x49E bytes) is the routine that turns one object's
+rect into hitbox points. A full-`.text` sweep for RIP-relative operands to the cache block
+produced 42 sites; **every read of `0x1808195AC` falls inside this function**, and nowhere
+else in the image.
+
+```
+0x180202D95  movss xmm2, [0x1808195AC]     ; branch A
+0x180202DA7  mulss xmm0, [0x180534410]     ; 0.5f half-extent
+0x180202DB5  movss xmm2, [0x1808195AC]     ; same branch, second use
+             ... call 0x1805331B0 with r8d=4   ; four-point helper
+0x180202E0B  movss xmm0, [0x1808195AC]     ; branch B
+0x180202E27  mulss xmm0, [0x180534410]     ; 0.5f
+0x180202E67  movss xmm0, [0x1808195AC]
+0x180202E6?  shufps xmm3, xmm0, 0          ; broadcast the multiplier
+0x180202EAA  addps  xmm4, xmm2             ; xmm2 = [rdi+0x10]
+             ... call 0x180202610 with the multiplier as stack float [rsp+0x20]
+```
+
+The rect fields used are `[rdi]`, `[rdi+8]`, `[rdi+0x10]` and `[rdi+0x18]`; the half-extent
+is scaled by the 0.5f constant `0x180534410`. Adjacent gates in the same function read the
+boolean caches: `0x180202D64 cmp byte [0x1808195A4],1` (tag 207) together with
+`cmp byte [rdi+0x40],1`, and `0x180202D89 cmp byte [0x1808195A8],0` (tag 211) plus
+`0x180202E04 movzx eax, byte [0x1808195A8]`.
+
+### Why this is "Hitbox Multiplier"
+
+The changelog row is the only hitbox bullet about sizing, and the settings tree carries a
+dedicated family `LEVEL/HITBOX_MULTIPLIER/DROPDOWN/{HAZARDS,SAWS,SOLIDS}/ENABLED` (all
+`True`) in [settings-contents.md](settings-contents.md) lines 37–39. Among the twelve hitbox
+option tags (eleven booleans plus 212), only 212 is a double, only 212 is cached as a float,
+and only 212 feeds the geometry function as a scale/broadcast factor. The three category
+toggles are therefore *not* among the booleans already identified as UI checkboxes, but their
+own tags are not located.
+
+UNVERIFIED: the exact arithmetic — the cached float is loaded, broadcast, and added to rect
+coordinates (`addps`), not multiplied against the rect, so tag 212 behaves like an outward
+expansion in the quoted instructions even though the changelog and key call it a multiplier;
+the three `HITBOX_MULTIPLIER/DROPDOWN/*/ENABLED` tag bindings; the meanings of `[rdi]`,
+`[rdi+8]`, `[rdi+0x10]`, `[rdi+0x18]` and `[rdi+0x40]`; and whether the two branches
+(`0x180202D95` and `0x180202E0B`) correspond to axis-aligned versus rotated boxes.

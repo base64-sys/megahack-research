@@ -13,7 +13,7 @@
 | `mapped` | The feature has its own evidence: a note that names it, its settings key(s) and default, and/or its implementing function(s) with VAs. |
 | `alias` / `dead` | A restatement of an earlier feature / absent from this build, with the evidence for that call. |
 
-All 389 rows below were `cluster` at the 2026-10-23 baseline. **Eighty-six are now
+All 389 rows below were `cluster` at the 2026-10-23 baseline. **Eighty-seven are now
 `mapped`**; the [Mapped rows](#mapped-rows) table below is the authoritative list, with
 tag, registration site and hook address for each one.
 
@@ -54,7 +54,7 @@ host RVA `0x2161B0`, one from a post-`resetLevel` pass and one from the object s
 they count without a host bound. **Jumpscare** builds its own overlay and sound from
 `jumpscare.png`/`jumpscare.mp3` after a probability gate passes on death. **Practice Bug Fix**
 re-applies the newest checkpoint's two player-state blocks after `resetLevel`, one tag serving
-both its changelog wordings. The other 303 rows
+both its changelog wordings. The other 302 rows
 remain `cluster`.
 
 A keyword check at the baseline found that **185 of 389** rows point at a note that
@@ -75,6 +75,7 @@ reported as progress.
 | Added Disable Progress to Noclip | tag 73 (`0x49`, `CHECKBOX_NOCLIP_DISABLE_PROGRESS`) enters the same gate when `FUN_180199520() < 1.0`; the progress accumulators are in `FUN_1801992B0`. See [noclip-feature.md](noclip-feature.md). |
 | Added Show Hitboxes | tag 192 (`0xC0`, `HACK_SHOW_HITBOXES`) master toggle; gate `FUN_180203EE0`, draw `FUN_180203F60`→`FUN_180204000`/`FUN_180204150`; per-object draw `FUN_180203070`. Tag 0xC1 (193), 0xD9 (217), 0xDA (218) are runtime-assigned Map A. See [show-hitboxes-feature.md](show-hitboxes-feature.md). |
 | Selected Objects Only to Show Hitboxes | runtime-assigned tag 193 (`0xC1`); the hitbox renderer is installed unconditionally from `0x1800AFB2B` (`call 0x1801582C0`, which hooks `PlayLayer::updateVisibility` RVA 0x3AF3A0 with detour `0x180158740`); inside `FUN_180204000` the flag at `0x18020409B` chooses between the selection array `[PlayLayer+0x31A0..+0x31A8]` and the all-object path at `0x180204109`. See [show-hitboxes-feature.md](show-hitboxes-feature.md#evidence--selected-objects-only-2026-10-26). |
+| Hitbox Multiplier | double tag 212 (`0xD4`, runtime-assigned); the config refresh reads it at `0x1802025B4` and caches a float at `0x1808195AC`, and every read of that slot lies inside the box-geometry function `0x180202BD0..0x18020306E`, where it is broadcast and added to the rect coordinates before the four-point box is submitted. The three `LEVEL/HITBOX_MULTIPLIER/DROPDOWN/*/ENABLED` toggles are not yet bound to tags. See [show-hitboxes-feature.md](show-hitboxes-feature.md#evidence--hitbox-multiplier-2026-10-26). |
 | Added Show Hitboxes on Death | tag 216 (`0xD8`, `HACK_SHOW_HITBOXES_ON_DEATH`); gate `FUN_180203EE0` branch 2, death-object draw via `FUN_180204000` using `DAT_18080CB80` from the `destroyPlayer` callback. See [show-hitboxes-feature.md](show-hitboxes-feature.md). |
 | Added Show Hitbox Trail (Requires Show Hitboxes) | tag 224 (`0xE0`, `HACK_SHOW_HITBOXES_TRAIL`) master toggle; gate `FUN_1801809A0`, trail draw via `FUN_180202BD0` over global point buffer; opacity tag 0xE4 (228). See [show-hitboxes-feature.md](show-hitboxes-feature.md). |
 | Added Frame Stepper | tag 302 (`0x12E`, `HACK_FRAME_STEPPER`); registrar `FUN_180173FD0` toggles two UILayer hooks (`onPause` RVA 0x4CDF50, `handleKeypress` RVA 0x4CD830). Tag 357 (0x165, runtime-assigned Map B) is an alternate enable. See [gameplay-hooks.md](gameplay-hooks.md). |
@@ -244,7 +245,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v9.0.0 | Added EndLayer extras (StartPos, Checkpoints, Noclip) | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v9.0.0 | Added Frame Extrapolation | cluster | [render-hooks.md](render-hooks.md) |
 | v9.0.0 | Added Force Ice | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
-| v9.0.0 | Added Hitbox Multiplier | cluster | [show-hitboxes-feature.md](show-hitboxes-feature.md) |
+| v9.0.0 | Added Hitbox Multiplier | mapped | [show-hitboxes-feature.md](show-hitboxes-feature.md#evidence--hitbox-multiplier-2026-10-26) | double tag 212 (`0xD4`, runtime-assigned); read at `0x1802025B4` and cached as float `0x1808195AC`, whose only readers are in the box-geometry function `0x180202BD0`. |
 | v9.0.0 | Added Jump Hack | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v9.0.0 | Added Load Audio to Memory | cluster | [audio-sync-feature.md](audio-sync-feature.md) |
 | v9.0.0 | Added No Fade Out Audio | cluster | [audio-sync-feature.md](audio-sync-feature.md) |
@@ -601,5 +602,5 @@ Correction (2026-10-25): the earlier version of this paragraph named `Force Plat
 (`0x0F2`, `HACK_FORCE_PLATFORMER`) and 49 (`0x031`, `HACK_DEFAULT_SONG_BYPASS`) — but **neither
 has a row in the 389**: no `Added Force Platformer` and no `Added Default Song Bypass` bullet
 exists. Mapping them would add entries to "Toggles outside the 389" at best, so they are not
-progress against the milestone. The next rows must be chosen from the 303 remaining changelog
+progress against the milestone. The next rows must be chosen from the 302 remaining changelog
 bullets.
