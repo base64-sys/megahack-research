@@ -76,6 +76,11 @@ venv/
 .mypy_cache/
 .ruff_cache/
 
+# --- Node ---------------------------------------------------------------------
+# Installed dependencies for the opencode plugin manifest. package.json and the
+# lockfile are tracked; the installed tree never is.
+node_modules/
+
 # --- Long-run wrapper scratch --------------------------------------------------
 .oc/
 .opencode/
