@@ -13,7 +13,7 @@
 | `mapped` | The feature has its own evidence: a note that names it, its settings key(s) and default, and/or its implementing function(s) with VAs. |
 | `alias` / `dead` | A restatement of an earlier feature / absent from this build, with the evidence for that call. |
 
-All 389 rows below were `cluster` at the 2026-10-23 baseline. **Eighty-seven are now
+All 389 rows below were `cluster` at the 2026-10-23 baseline. **Eighty-eight are now
 `mapped`**; the [Mapped rows](#mapped-rows) table below is the authoritative list, with
 tag, registration site and hook address for each one.
 
@@ -54,7 +54,7 @@ host RVA `0x2161B0`, one from a post-`resetLevel` pass and one from the object s
 they count without a host bound. **Jumpscare** builds its own overlay and sound from
 `jumpscare.png`/`jumpscare.mp3` after a probability gate passes on death. **Practice Bug Fix**
 re-applies the newest checkpoint's two player-state blocks after `resetLevel`, one tag serving
-both its changelog wordings. The other 302 rows
+both its changelog wordings. The other 301 rows
 remain `cluster`.
 
 A keyword check at the baseline found that **185 of 389** rows point at a note that
@@ -183,7 +183,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v9.1.0-beta.6 | Added Crash Game to Utilities | cluster | [ui-addons.md](ui-addons.md) |
 | v9.1.0-beta.5 | Added Accurate Percentage Better Calculation (fixes StartPos!) | cluster | [best-run-feature.md](best-run-feature.md) |
 | v9.1.0-beta.3 | Added CBS Tick Highlighting in Show Hitbox Trail | cluster | [render-hooks.md](render-hooks.md) |
-| v9.1.0-beta.3 | Added Show Hitbox Trail Opacity | cluster | [render-hooks.md](render-hooks.md) |
+| v9.1.0-beta.3 | Added Show Hitbox Trail Opacity | mapped | [show-hitboxes-feature.md](show-hitboxes-feature.md#evidence--show-hitbox-trail-opacity-2026-10-26) | tag 228 (`0xE4`, runtime-assigned, single read site `0x180180A2D`); `getConfigVar<double>` through `0x180003D80`, divided by 100.0 and passed as the third argument to the trail geometry helper `0x180202BD0` from the rebuild in `0x1801809A0`. |
 | v9.1.0-beta.3 | Added Trail Always On | cluster | [render-hooks.md](render-hooks.md) |
 | v9.1.0-beta.1 | Added Auto-Update | cluster | [ui-addons.md](ui-addons.md) |
 | v9.1.0-beta.1 | Added Challenge Bypass | cluster | [ui-addons.md](ui-addons.md) |
@@ -246,6 +246,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v9.0.0 | Added Frame Extrapolation | cluster | [render-hooks.md](render-hooks.md) |
 | v9.0.0 | Added Force Ice | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v9.0.0 | Added Hitbox Multiplier | mapped | [show-hitboxes-feature.md](show-hitboxes-feature.md#evidence--hitbox-multiplier-2026-10-26) | double tag 212 (`0xD4`, runtime-assigned); read at `0x1802025B4` and cached as float `0x1808195AC`, whose only readers are in the box-geometry function `0x180202BD0`. |
+| Added Show Hitbox Trail Opacity | tag 228 (`0xE4`, runtime-assigned); its only read is `0x180180A2D` inside the trail rebuild `0x1801809A0`, where the double is divided by `100.0` (`0x180534330`) and passed as `xmm2` into `0x180202BD0` for each buffered trail point. See [show-hitboxes-feature.md](show-hitboxes-feature.md#evidence--show-hitbox-trail-opacity-2026-10-26). |
 | v9.0.0 | Added Jump Hack | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v9.0.0 | Added Load Audio to Memory | cluster | [audio-sync-feature.md](audio-sync-feature.md) |
 | v9.0.0 | Added No Fade Out Audio | cluster | [audio-sync-feature.md](audio-sync-feature.md) |
@@ -602,5 +603,5 @@ Correction (2026-10-25): the earlier version of this paragraph named `Force Plat
 (`0x0F2`, `HACK_FORCE_PLATFORMER`) and 49 (`0x031`, `HACK_DEFAULT_SONG_BYPASS`) — but **neither
 has a row in the 389**: no `Added Force Platformer` and no `Added Default Song Bypass` bullet
 exists. Mapping them would add entries to "Toggles outside the 389" at best, so they are not
-progress against the milestone. The next rows must be chosen from the 302 remaining changelog
+progress against the milestone. The next rows must be chosen from the 301 remaining changelog
 bullets.

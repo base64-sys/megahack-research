@@ -335,3 +335,43 @@ expansion in the quoted instructions even though the changelog and key call it a
 the three `HITBOX_MULTIPLIER/DROPDOWN/*/ENABLED` tag bindings; the meanings of `[rdi]`,
 `[rdi+8]`, `[rdi+0x10]`, `[rdi+0x18]` and `[rdi+0x40]`; and whether the two branches
 (`0x180202D95` and `0x180202E0B`) correspond to axis-aligned versus rotated boxes.
+
+## Evidence — Show Hitbox Trail Opacity (2026-10-26)
+
+The changelog row is implemented by one `double` tag, read once, inside the hitbox-trail draw
+function. No static `HACK_*` label exists for it, so the binding rests on the accessor type,
+the divide-by-100 and the argument it becomes.
+
+| Field | Value |
+| --- | --- |
+| Tag | 228 (`0xE4`), runtime-assigned (absent from the 85-label static map) |
+| Read | `0x180180A2D` in `0x1801809A0`, `mov edx,0xE4` → `call 0x180003D80` (`getConfigVar<double>`) |
+| Consumed | `divsd xmm0, [0x180534330]` (100.0) at `0x180180A46`, then passed as `xmm2` into `0x180202BD0` per object |
+| Function | `0x1801809A0` — `CCDrawNode::clear` then the trail rebuild (no `.pdata` record) |
+| Only read | the full-`.text` tag scan finds exactly one site reading tag 228 |
+
+Path in order:
+
+```
+0x1801809e4  call 0x18008a510                 ; settings context
+0x1801809ec  mov edx, 0xe3                    ; 227 requires-show-hitboxes
+0x1801809f4  call 0x18002de50                 ; bool
+0x1801809fb  mov edx, 0xe0                    ; 224 master
+0x180180a03  call 0x18008f420                 ; isHackEnabled
+0x180180a0a  je 0x180180b5e                   ; trail off -> return
+0x180180a15  call 0x180203ee0                 ; when 227: hitbox gate must also be true
+0x180180a25  mov edx, 0xe4                    ; 228 opacity
+0x180180a2d  call 0x180003d80                 ; double
+0x180180a42  movapd xmm6, xmm0
+0x180180a46  divsd xmm6, [0x180534330]        ; / 100.0
+0x180180a7a  call 0x180202bd0                 ; (node, point, xmm2 = opacity/100)
+```
+
+The loop walks the trail buffer (`[0x18080C7F8]` count, `[0x18080C7D0]` ring, `[0x18080C7D8]`
+buffer) and draws one entry per iteration with the tag-derived value as the third argument, so
+the setting is a percentage scaled to 0..1 before it reaches the geometry helper.
+
+UNVERIFIED: that `0x180202BD0` multiplies the third argument into the vertex alpha rather than
+using it as a width or distance (the argument position and the `/100` are measured, the
+destination arithmetic is not); and the units documented for the settings slider, which would
+confirm the 0..100 range.
