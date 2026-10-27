@@ -19,6 +19,7 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "mh/comparison.hpp"
@@ -29,10 +30,33 @@
 
 namespace mh {
 
+// What a `pass` proves. §9's statuses say whether the two variants agreed; they do not say
+// how much that agreement is worth. The manifest decides: a scenario whose *required*
+// observations can only be produced by the target (a `save` snapshot taken at the target's
+// own veto site) supports a behavioural claim, while one that requires only GD lifecycle
+// hooks the harness installs itself proves the surface and nothing more. Never quote a
+// `surface` pass as "the reconstruction behaves like the release".
+enum class ClaimClass { surface, behavioural };
+std::string_view to_string(ClaimClass claim) noexcept;
+std::ostream& operator<<(std::ostream& out, ClaimClass claim);
+
+// The record kinds the manifest makes target-dependent by requiring their site. The registry
+// lives in `src/compare.cpp` and holds one entry today: `0x16c8b0` (the save-percentage veto),
+// whose `save` snapshots are read from the filesystem around the target's own hook.
+std::vector<std::string> required_target_dependent_kinds(const Scenario& scenario);
+
+// `behavioural` only when the manifest requires a target-dependent kind *and* both variants
+// actually contain a record of that kind. A manifest that asks for one and a run that never
+// produced it is surface, not a claim.
+ClaimClass derive_claim(const ScenarioDocument& manifest,
+                        const std::vector<TraceDocument>& release_runs,
+                        const std::vector<TraceDocument>& reconstruction_runs);
+
 struct ComparisonReport {
   ComparisonStatus status = ComparisonStatus::invalid;
   GateStatus gate = GateStatus::invalid;
   bool unstable = false;
+  ClaimClass claim = ClaimClass::surface;
   std::vector<Finding> findings;
   std::vector<KeyAlignment> alignments;
 };

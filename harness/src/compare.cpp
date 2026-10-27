@@ -140,12 +140,91 @@ void add_finding(ComparisonReport& report, ComparisonStatus severity, std::strin
   report.findings.push_back(Finding{severity, std::move(check), std::move(detail)});
 }
 
+// The sites whose records only the target can produce. One entry today, and it is a registry
+// rather than a guess: `0x16c8b0` is the save-percentage veto, and the observer's `save`
+// snapshots around it read the file the target decides whether to write. A hook key the
+// registry does not know is *not* target-dependent - the observer installs it, so both
+// variants produce it identically.
+struct TargetDependentSite {
+  std::string_view hook_key;
+  std::string_view record_kind;
+};
+
+constexpr TargetDependentSite kTargetDependentSites[] = {
+    {"GeometryDash.exe:rva:0x16c8b0", "save"},
+};
+
+bool has_record_kind(const std::vector<TraceDocument>& runs, std::string_view kind) {
+  for (const TraceDocument& run : runs) {
+    for (const json::Json& event : run.events) {
+      if (string_member(event, "kind") == kind) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 } // namespace
+
+std::string_view to_string(ClaimClass claim) noexcept {
+  switch (claim) {
+    case ClaimClass::surface:
+      return "surface";
+    case ClaimClass::behavioural:
+      return "behavioural";
+  }
+  return {};
+}
+
+std::ostream& operator<<(std::ostream& out, ClaimClass claim) {
+  return out << to_string(claim);
+}
+
+std::vector<std::string> required_target_dependent_kinds(const Scenario& scenario) {
+  std::vector<std::string> kinds;
+  for (const HookSpec& hook : scenario.required_hooks) {
+    for (const TargetDependentSite& site : kTargetDependentSites) {
+      if (hook.key != site.hook_key) {
+        continue;
+      }
+      const std::string kind{site.record_kind};
+      if (std::find(kinds.begin(), kinds.end(), kind) == kinds.end()) {
+        kinds.push_back(kind);
+      }
+    }
+  }
+  return kinds;
+}
+
+ClaimClass derive_claim(const ScenarioDocument& manifest,
+                        const std::vector<TraceDocument>& release_runs,
+                        const std::vector<TraceDocument>& reconstruction_runs) {
+  if (!manifest.scenario.has_value()) {
+    return ClaimClass::surface;
+  }
+  const std::vector<std::string> kinds =
+      required_target_dependent_kinds(*manifest.scenario);
+  if (kinds.empty()) {
+    return ClaimClass::surface;
+  }
+  // Required by the manifest is not the same as observed by the run: a site that never fired
+  // leaves the trace with nothing that depends on the target.
+  for (const std::string& kind : kinds) {
+    if (!has_record_kind(release_runs, kind) || !has_record_kind(reconstruction_runs, kind)) {
+      return ClaimClass::surface;
+    }
+  }
+  return ClaimClass::behavioural;
+}
 
 ComparisonReport compare_traces(const ScenarioDocument& manifest,
                                 const std::vector<TraceDocument>& release_runs,
                                 const std::vector<TraceDocument>& reconstruction_runs) {
   ComparisonReport report;
+  // Written before any early return: the claim is a property of the manifest and the
+  // evidence, so it exists even when the comparison stops at the gate.
+  report.claim = derive_claim(manifest, release_runs, reconstruction_runs);
 
   const VariantSummary release = summarize_variant("release", release_runs);
   const VariantSummary reconstruction =

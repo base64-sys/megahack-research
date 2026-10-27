@@ -84,6 +84,18 @@ int main(int argc, char** argv) {
     std::cout << "status: " << mh::to_string(report.status)
               << " | gate: " << mh::to_string(report.gate)
               << " | unstable: " << (report.unstable ? "yes" : "no") << "\n";
+
+    // The claim is reported only when there is a pass to qualify: printing "claim: surface"
+    // next to `blocked` would invite quoting a pass that does not exist.
+    const bool passed = report.status == mh::ComparisonStatus::pass ||
+                        report.status == mh::ComparisonStatus::pass_with_warnings;
+    if (passed) {
+        std::cout << "claim: " << mh::to_string(report.claim) << "\n";
+        if (report.claim == mh::ClaimClass::surface) {
+            std::cout << "  note: lifecycle surface only; not evidence that the reconstruction "
+                         "behaves like the release\n";
+        }
+    }
     for (const mh::Finding& finding : report.findings) {
         std::cout << "  " << mh::to_string(finding.severity) << " " << finding.check << ": "
                   << finding.detail << "\n";

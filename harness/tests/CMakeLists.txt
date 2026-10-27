@@ -16,6 +16,7 @@ add_executable(mh_trace_tests
   test_corpus.cpp
   test_context.cpp
   test_records.cpp
+  test_compare.cpp
 )
 
 target_link_libraries(mh_trace_tests PRIVATE mh_trace)
