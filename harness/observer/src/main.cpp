@@ -160,7 +160,7 @@ std::string read_text_file(const std::filesystem::path& path) {
 // (target, scenario, environment, mods, settings, level) plus repetition_index. The observer
 // splices it instead of inventing nulls, computes the fingerprint from those members, and
 // renames the file to `*.consumed` so a stale context cannot apply to a second run.
-bool load_run_context(const char* path, mh::json::Json& body, std::string& fingerprint,
+bool load_run_context(const std::string& path, mh::json::Json& body, std::string& fingerprint,
                       mh::Capture& capture) {
     const std::string text = read_text_file(path);
     if (text.empty()) {
@@ -180,7 +180,7 @@ bool load_run_context(const char* path, mh::json::Json& body, std::string& finge
     capture.reasons.clear();
 
     std::error_code ec;
-    std::filesystem::rename(path, std::string(path) + ".consumed", ec);
+    std::filesystem::rename(path, path + ".consumed", ec);
     if (ec) {
         log::warn("run context could not be marked consumed: {}", ec.message());
     }
@@ -482,8 +482,24 @@ $on_mod(Loaded) {
     mh::json::Json body = object();
     std::string fingerprint = kUnknownDigest;
 
-    const char* context_path = std::getenv("MH_TRACE_CONTEXT");
-    if (context_path && *context_path) {
+    // The runner normally names the context with MH_TRACE_CONTEXT, but the environment does not
+    // always survive however the game was started, so a file in the mod's own data directory is
+    // the reliable handshake: the runner drops it, the observer consumes it.
+    std::string context_path;
+    const char* from_environment = std::getenv("MH_TRACE_CONTEXT");
+    if (from_environment && *from_environment) {
+        context_path = from_environment;
+    }
+    else {
+        std::error_code error;
+        const std::filesystem::path pending =
+            Mod::get()->getSaveDir() / "pending-context.json";
+        if (std::filesystem::exists(pending, error)) {
+            context_path = pending.string();
+        }
+    }
+
+    if (!context_path.empty()) {
         if (!load_run_context(context_path, body, fingerprint, capture)) {
             capture.status = mh::CaptureStatus::partial;
             mark_unobserved(capture, "run_context",

@@ -417,6 +417,24 @@ over the same session produce the same keys and the same order, and differ in `h
 Still UNVERIFIED until a run is made: whether the release's `$modify` hooks are visible through
 `Mod::getHooks()` at all (Geode tracks modify-generated hooks, but only a run proves it).
 
+## The run-context handshake, and why the environment was the wrong place for it (2026-10-27)
+
+Two runs were wasted on plumbing rather than on the game: one launched with the previous
+observer still installed, one launched without `MH_TRACE_CONTEXT` reaching the child process
+(the context file was never renamed to `*.consumed`, which is the observable proof that the
+observer never read it).
+
+`MH_TRACE_CONTEXT` still works, but it is no longer the only way. If the variable is unset the
+observer looks for `pending-context.json` in its own data directory
+(`Mod::get()->getSaveDir()`, i.e. `%LOCALAPPDATA%\GeometryDash\geode\mods\megahack.trace\`) and
+consumes that instead - same validation, same rename to `.consumed`. A dropped file survives
+however the game is started; an environment variable does not, and the failure was silent until
+the trace was read back.
+
+The check that makes this visible without guesswork: **a context that was used is gone**
+(`pending-context.json` becomes `pending-context.json.consumed`, and `capture.status` is
+`complete` rather than `partial` with 14 missing fields).
+
 ## Runbook for the first capture (needs the user)
 
 Nothing below has been executed; installing a mod into a profile and launching a game are
