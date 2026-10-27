@@ -569,6 +569,11 @@ observed run ids. This prevents a real target difference from being excused as n
 Only `pass` supports an M3 runtime-validated claim. `pass_with_warnings` is useful
 progress but is not enough to close the cluster criterion.
 
+`unstable` is reported as a verdict but not yet as a finding: `mh_trace_compare` prints
+`unstable: yes` and stops, without naming which event keys differ between the two runs of the
+variant. The operator can find it by reading the pair, but the tool should say it. Recorded here
+as the next comparator-diagnostics task; it does not change any verdict.
+
 ## What can and cannot be captured at the hook boundary
 
 | Field | Feasibility | Evidence / constraint |
