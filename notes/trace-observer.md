@@ -216,21 +216,39 @@ python harness/tools/preflight.py ... --scenario <manifest> --settings <hackpro.
 - A key present in two value groups (e.g. `V_BOOL` and `V_INT`) is refused: two values for one
   key has no single interpretation.
 
-**Negative result, with its boundary.** The only settings file this repository holds is the
-user's sample at `.oc/hackpro.json` (gitignored, read-only here). It has 7 top-level members
-(`PROFILE`, `PROFILES`, `V_BOOL`, `V_INT`, `V_DECIMAL`, `V_STRING`, `V_BYTES`); searching every
-value group for the substring `SAFE_MODE` returns exactly one key,
-`LEVEL/NOCLIP/DROPDOWN/SAFE_MODE`, which belongs to noclip, not to tag `0x1E2`. So the stored
-key for `HACK_SAFE_MODE` is **not in this sample**, and the runner refuses the pilot context
-until it is known:
+**Where tag 482 actually lives.** `safe-mode-feature.md` reads the gate as
+`isHackEnabled(HACK_SAFE_MODE = 482)` - a **Map B** entry, not a `V_BOOL` key. Map B is stored
+as the active profile's enabled list: `PROFILES["DEFAULT"]` is an array of `SECTION/HACK_NAME`
+strings (`CHEAT_SAFETY/HACK_SAFE_MODE_POPUP`, `BYPASS/HACK_ANTI_KICK`, ...), and a name that is
+absent is off. `CHEAT_SAFETY` is a real section id in the release's own string table
+(`absolllute.hackmega_original.dll`, file offset `0x533a01`, in the list
+`...COSMETIC.LEVEL.STATUS.UNIVERSAL.CHEAT_SAFETY.DISPLAY.UTILITY...`).
+
+So `preflight.py` accepts `--tag-key <tag>=flag:<SECTION/NAME>` for Map B and reads membership:
 
 ```
-preflight refused: tag 0X1E2: key 'SAFETY/HACK_SAFE_MODE' is not present in the settings file
+--tag-key 0x1E2=flag:CHEAT_SAFETY/HACK_SAFE_MODE
 ```
 
-UNVERIFIED: the real key name. Closing it needs either a current `hackpro.json` from the
-`runtime511` profile or a runtime dump of the intern map. Neither is available to this loop,
-and guessing a key would be exactly the kind of laundering `AGENTS.md` forbids.
+**What the files say.** Two settings files exist on this machine: the repo sample
+(`.oc/hackpro.json`, 256 entries) and the live one written by the capture run
+(`%LOCALAPPDATA%\GeometryDash\geode\mods\absolllute.megahack\v9\hackpro.json`, 256 entries).
+They differ only in three enabled names; **neither contains
+`CHEAT_SAFETY/HACK_SAFE_MODE`**, so Safe Mode is off in both. Running the real command against
+the live file with the pilot manifest refuses at the gate the record needs:
+
+```
+preflight refused: tag 0X1E2: the file has False but the scenario declares True
+```
+
+That refusal is the feature working: the record would otherwise claim an observation the
+profile contradicts.
+
+UNVERIFIED, and one UI toggle closes it: that 482's stored name is
+`CHEAT_SAFETY/HACK_SAFE_MODE` (same section as 483's observed entry, same `HACK_` label form)
+rather than some other section prefix. Enabling Safe Mode in the mod and re-reading the file
+either produces that exact name - confirming it - or produces the real one, which the runner
+then takes instead. Guessing it is not an option; observing it costs one toggle.
 
 ## First captured run (2026-10-27, `runtime511`)
 

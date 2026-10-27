@@ -125,13 +125,19 @@ def read_settings(path: str | Path) -> dict:
     return document
 
 
-def parse_tag_keys(pairs: list[str]) -> dict[str, str]:
-    mapping: dict[str, str] = {}
+def parse_tag_keys(pairs: list[str]) -> dict[str, tuple[str, str]]:
+    """`<tag hex>=<key>` for a `V_*` value, `<tag hex>=flag:<profile name>` for the enabled list."""
+    mapping: dict[str, tuple[str, str]] = {}
     for pair in pairs:
         tag, separator, key = pair.partition("=")
         if not separator or not tag.strip() or not key.strip():
             raise PreflightError(f"--tag-key expects <tag hex>=<stored key>, got {pair!r}")
-        mapping[tag.strip().upper()] = key.strip()
+        tag = tag.strip().upper()
+        key = key.strip()
+        if key.startswith("flag:"):
+            mapping[tag] = ("flag", key[len("flag:"):])
+        else:
+            mapping[tag] = ("value", key)
     return mapping
 
 
@@ -152,28 +158,48 @@ def settings_value(settings: dict, key: str):
     return found
 
 
-def resolve_tags(settings: dict, declared_tags: list[dict], tag_keys: dict[str, str]) -> list[dict]:
+def settings_flag(settings: dict, name: str) -> bool:
+    """Membership in the active profile's enabled list.
+
+    Map B settings are not `V_*` values: `PROFILES[PROFILE]` is a list of enabled names in
+    `SECTION/HACK_NAME` form (`CHEAT_SAFETY/HACK_SAFE_MODE_POPUP`, `BYPASS/HACK_ANTI_KICK`), and
+    a name that is absent is off. `CHEAT_SAFETY` is a section in the release's own string table
+    (`samples/.../absolllute.hackmega_original.dll` at file offset `0x533a01`).
+    """
+    profile = settings.get("PROFILE")
+    profiles = settings.get("PROFILES")
+    if not isinstance(profiles, dict) or profile not in profiles:
+        raise PreflightError(f"the settings file has no enabled list for profile {profile!r}")
+    return name in (profiles.get(profile) or [])
+
+
+def resolve_tags(settings: dict, declared_tags: list[dict],
+                 tag_keys: dict[str, tuple[str, str]]) -> list[dict]:
     """The semantic `settings.tags` list, with the value **observed** in the file.
 
     The manifest declares what the tag must be; the file says what it is. A mismatch refuses
     the run instead of writing the declared value into a record that claims to be an
-    observation. `tag_keys` maps the tag hex to the stored key, because the file stores names
-    and the tag number is only joined to a name at runtime (notes/settings-contents.md).
+    observation. `tag_keys` maps the tag hex to either a value key (stored in a `V_*` group) or
+    `("flag", name)` for the profile's enabled list.
     """
     resolved = []
     for entry in declared_tags:
         tag = str(entry.get("tag", "")).upper()
         if not tag:
             raise PreflightError("a declared settings tag has no tag number")
-        key = tag_keys.get(tag)
-        if not key:
+        mapping = tag_keys.get(tag)
+        if not mapping:
             raise PreflightError(
-                f"tag {tag} has no stored key; pass --tag-key {tag}=<hackpro key> so the value "
-                f"can be read instead of assumed"
+                f"tag {tag} has no stored key; pass --tag-key {tag}=<hackpro key> (or "
+                f"{tag}=flag:<profile name>) so the value can be read instead of assumed"
             )
-        value = settings_value(settings, key)
-        if value is _MISSING:
-            raise PreflightError(f"tag {tag}: key {key!r} is not present in the settings file")
+        kind, key = mapping
+        if kind == "flag":
+            value = settings_flag(settings, key)
+        else:
+            value = settings_value(settings, key)
+            if value is _MISSING:
+                raise PreflightError(f"tag {tag}: key {key!r} is not present in the settings file")
         if "value" in entry and entry["value"] != value:
             raise PreflightError(
                 f"tag {tag}: the file has {value!r} but the scenario declares {entry['value']!r}"

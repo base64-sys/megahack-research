@@ -207,12 +207,52 @@ def test_context_reads_tag_values_from_the_settings_file() -> None:
     context = preflight.build_context(
         fragment=fragment, scenario_bytes=manifest, repetition=0,
         settings=settings, settings_bytes=settings_bytes,
-        tag_keys={"0X1E2": "SAFETY/HACK_SAFE_MODE"},
+        tag_keys={"0X1E2": ("value", "SAFETY/HACK_SAFE_MODE")},
     )
     assert context["settings"]["tags"] == [{
         "tag": "0X1E2", "label": "HACK_SAFE_MODE", "value": True, "source": "settings",
     }]
     assert context["settings"]["snapshot_sha256"] == hashlib.sha256(settings_bytes).hexdigest()
+
+
+def test_context_reads_a_map_b_flag_from_the_profile_list() -> None:
+    """Map B: value is membership in PROFILES[PROFILE], not a V_* entry."""
+    fragment = {"target": {}, "environment": {}}
+    manifest = json.dumps({
+        "id": "safe-mode-smoke",
+        "settings": {"tags": [{"tag": "0x1E2", "label": "HACK_SAFE_MODE", "value": True}]},
+        "level": {"sha256": "5" * 64},
+    }).encode("utf-8")
+    settings = {
+        "PROFILE": "DEFAULT",
+        "PROFILES": {"DEFAULT": ["CHEAT_SAFETY/HACK_SAFE_MODE", "BYPASS/HACK_ANTI_KICK"]},
+    }
+    keys = preflight.parse_tag_keys(["0x1E2=flag:CHEAT_SAFETY/HACK_SAFE_MODE"])
+    context = preflight.build_context(
+        fragment=fragment, scenario_bytes=manifest, repetition=0,
+        settings=settings, settings_bytes=b"{}", tag_keys=keys,
+    )
+    assert context["settings"]["tags"][0]["value"] is True
+
+    # Absent from the enabled list means off, and a scenario that declares true is refused.
+    settings["PROFILES"]["DEFAULT"] = ["BYPASS/HACK_ANTI_KICK"]
+    try:
+        preflight.build_context(
+            fragment=fragment, scenario_bytes=manifest, repetition=0,
+            settings=settings, settings_bytes=b"{}", tag_keys=keys,
+        )
+    except preflight.PreflightError as error:
+        assert "declares" in str(error), error
+    else:
+        raise AssertionError("an absent flag should be refused when the scenario wants it on")
+
+    # A file without the profile cannot answer at all.
+    try:
+        preflight.settings_flag({"PROFILE": "MISSING", "PROFILES": {}}, "X")
+    except preflight.PreflightError as error:
+        assert "no enabled list" in str(error)
+    else:
+        raise AssertionError("an unknown profile should be refused")
 
 
 def test_context_refuses_a_tag_that_disagrees_with_the_file() -> None:
@@ -225,8 +265,8 @@ def test_context_refuses_a_tag_that_disagrees_with_the_file() -> None:
     settings = {"V_BOOL": {"SAFETY/HACK_SAFE_MODE": False}}
 
     for tag_keys, message in [
-        ({"0X1E2": "SAFETY/HACK_SAFE_MODE"}, "declares"),
-        ({"0X1E2": "SAFETY/MISSING"}, "not present"),
+        ({"0X1E2": ("value", "SAFETY/HACK_SAFE_MODE")}, "declares"),
+        ({"0X1E2": ("value", "SAFETY/MISSING")}, "not present"),
         ({}, "no stored key"),
     ]:
         try:
@@ -291,4 +331,5 @@ if __name__ == "__main__":
     test_settings_key_in_two_groups_is_refused()
     test_cli_refuses_a_live_profile_and_writes_a_fragment()
     print("all preflight tests passed")
+
 
