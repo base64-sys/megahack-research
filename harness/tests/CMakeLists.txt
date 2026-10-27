@@ -2,6 +2,9 @@ add_executable(mh_trace_tests
   test_main.cpp
   test_contract.cpp
   test_value.cpp
+  test_json.cpp
+  test_sha256.cpp
+  test_fingerprint.cpp
 )
 
 target_link_libraries(mh_trace_tests PRIVATE mh_trace)

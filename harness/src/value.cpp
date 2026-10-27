@@ -12,73 +12,10 @@
 #include <string>
 #include <utility>
 
+#include "mh/text.hpp"
+
 namespace mh {
 namespace {
-
-constexpr char kUpperHex[] = "0123456789ABCDEF";
-
-// "0x" + minimal upper-case hex. Upper case matches the contract's own value-object
-// examples (0x3F000000, 0x1F4A2B00000); equality is numeric, so this is presentation.
-void append_hex(std::string& out, std::uint64_t value) {
-  char digits[16];
-  int count = 0;
-  do {
-    digits[count++] = kUpperHex[value & 0xF];
-    value >>= 4;
-  } while (value != 0);
-
-  out += "0x";
-  while (count > 0) {
-    out += digits[--count];
-  }
-}
-
-// JSON string body with the escapes the format requires. Valid UTF-8 passes through
-// untouched; the model never re-encodes or normalises, because a redacted string is the
-// only string the trace is allowed to carry for player data.
-void append_escaped(std::string& out, std::string_view text) {
-  for (const char raw : text) {
-    const auto byte = static_cast<unsigned char>(raw);
-    switch (byte) {
-      case '"':
-        out += "\\\"";
-        break;
-      case '\\':
-        out += "\\\\";
-        break;
-      case '\b':
-        out += "\\b";
-        break;
-      case '\f':
-        out += "\\f";
-        break;
-      case '\n':
-        out += "\\n";
-        break;
-      case '\r':
-        out += "\\r";
-        break;
-      case '\t':
-        out += "\\t";
-        break;
-      default:
-        if (byte < 0x20) {
-          out += "\\u00";
-          out += kUpperHex[(byte >> 4) & 0xF];
-          out += kUpperHex[byte & 0xF];
-        } else {
-          out += raw;
-        }
-        break;
-    }
-  }
-}
-
-void append_quoted(std::string& out, std::string_view text) {
-  out += '"';
-  append_escaped(out, text);
-  out += '"';
-}
 
 // Shortest decimal that round-trips to the same float. Non-finite values have no JSON
 // number literal; `bits` stays authoritative, so `value` is emitted as null for them so
@@ -156,12 +93,12 @@ std::string Value::to_json() const {
       return out;
     case ValueState::unavailable:
       out += R"("unavailable","reason":)";
-      append_quoted(out, text_);
+      text::append_json_string(out, text_);
       out += '}';
       return out;
     case ValueState::redacted:
       out += R"("redacted","reason":)";
-      append_quoted(out, text_);
+      text::append_json_string(out, text_);
       out += '}';
       return out;
   }
@@ -170,8 +107,8 @@ std::string Value::to_json() const {
     case ValueType::u64: {
       out += R"(,"type":"u64","value":)";
       std::string hex;
-      append_hex(hex, number_);
-      append_quoted(out, hex);
+      text::append_hex(hex, number_);
+      text::append_json_string(out, hex);
       break;
     }
     case ValueType::i32:
@@ -183,8 +120,8 @@ std::string Value::to_json() const {
       append_float_value(out, f32_bits());
       out += R"(,"bits":)";
       std::string hex;
-      append_hex(hex, f32_bits());
-      append_quoted(out, hex);
+      text::append_hex(hex, f32_bits());
+      text::append_json_string(out, hex);
       break;
     }
     case ValueType::boolean:
@@ -193,19 +130,19 @@ std::string Value::to_json() const {
       break;
     case ValueType::str:
       out += R"(,"type":"str","value":)";
-      append_quoted(out, text_);
+      text::append_json_string(out, text_);
       break;
     case ValueType::bytes:
       out += R"(,"type":"bytes","value":)";
-      append_quoted(out, text_);
+      text::append_json_string(out, text_);
       out += R"(,"encoding":"base64")";
       break;
     case ValueType::ptr:
       out += R"(,"type":"ptr","value":)";
       {
         std::string hex;
-        append_hex(hex, number_);
-        append_quoted(out, hex);
+        text::append_hex(hex, number_);
+        text::append_json_string(out, hex);
       }
       break;
     case ValueType::none:

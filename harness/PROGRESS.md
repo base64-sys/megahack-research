@@ -13,7 +13,7 @@ evidence (test name, gate output, commit subject).
 | --- | --- | --- |
 | 1 | harness skeleton: CMakeLists.txt, tests/ runner, PROGRESS.md | done |
 | 2 | Value model: observed(u64, i32, f32 with bits, bool, str, bytes, ptr), null, unavailable, redacted; equality rules; JSON serialisation | done |
-| 3 | Canonical JSON writer: sorted keys, no insignificant whitespace, UTF-8, plus run_fingerprint as SHA-256 over the canonical object (own SHA-256, no deps) | pending |
+| 3 | Canonical JSON writer: sorted keys, no insignificant whitespace, UTF-8, plus run_fingerprint as SHA-256 over the canonical object (own SHA-256, no deps) | done |
 | 4 | Trace writer: meta/event/end, seq from 0, attempted/dropped counters, capture status, JSONL, no BOM | pending |
 | 5 | Call pairing and call-stack validation: unique call_id, depth/parent chain, unclosed enters, exit without enter, reused id | pending |
 | 6 | Trace reader/validator: required keys present, seq gaps, end record required, capture gate | pending |
@@ -72,6 +72,46 @@ evidence (test name, gate output, commit subject).
   `value_pointer_equality_is_excluded_by_default`, `value_exposes_state_and_type`.
 - Build: `16 test(s), 0 failed`, `ctest` `100% tests passed out of 1`.
 
+### Item 3 — canonical JSON and run_fingerprint
+
+- Files: `include/mh/json.hpp` + `src/json.cpp` (tree with two renderings),
+  `include/mh/sha256.hpp` + `src/sha256.cpp` (FIPS 180-4, own implementation),
+  `include/mh/fingerprint.hpp` + `src/fingerprint.cpp`, `include/mh/text.hpp` (the single
+  escaping/hex implementation, now also used by the value model), tests
+  `test_json.cpp`, `test_sha256.cpp`, `test_fingerprint.cpp`.
+- Two renderings, deliberately: `to_json()` keeps insertion order, so a parsed document
+  can be written back unchanged (item 11 needs that round-trip); `to_canonical()` sorts
+  keys by UTF-8 byte order, which is what the contract hashes. Hashing the document-order
+  form would make the fingerprint depend on key insertion order.
+- `Json::real` throws on NaN/Infinity instead of substituting a number: a silently
+  different value inside a fingerprint input is the one error a fingerprint cannot detect.
+  Duplicate object keys are rejected for the same reason.
+- `fingerprint_payload()` is public so the object that gets hashed is visible. Members
+  are the six the contract names, spelled as it spells them
+  (`scenario.sha256`, `target.sha256`, `harness.sha256`, `settings.tags`,
+  `level.sha256`, `repetition_index`); `settings.tags` is the semantic list, not the
+  settings file hash, per §meta record "The semantic `settings.tags` list is the
+  cross-variant identity."
+- Verification, two angles: SHA-256 against four published vectors (empty, `abc`,
+  two-block 56-byte message, one million `a`); and the fingerprint digest is pinned to
+  `c8439d35…` computed independently by Python `hashlib` over
+  `json.dumps(..., sort_keys=True, separators=(",", ":"))` of the same object, not by this
+  code.
+- Tests (18 new): `json_canonical_sorts_object_keys`,
+  `json_canonical_has_no_insignificant_whitespace`,
+  `json_strings_escape_and_utf8_passes_through`,
+  `json_numbers_are_shortest_round_trip`, `json_empty_containers`,
+  `json_object_rejects_duplicate_keys`,
+  `json_real_rejects_values_json_cannot_represent`,
+  `json_deep_nesting_keeps_order_inside_arrays`, `sha256_empty_message`, `sha256_abc`,
+  `sha256_two_block_message`, `sha256_one_million_a`,
+  `sha256_digest_text_is_lower_case_64_hex`,
+  `fingerprint_payload_is_the_contract_shaped_object`,
+  `fingerprint_is_sha256_of_the_canonical_payload`,
+  `fingerprint_is_stable_for_identical_input`,
+  `fingerprint_changes_when_any_member_changes`, `fingerprint_tag_order_matters`.
+- Build: `34 test(s), 0 failed`, `ctest` `100% tests passed out of 1`.
+
 ## Open questions
 
 - **Non-finite floats.** The contract says floats always carry `bits` and that `value` is
@@ -79,6 +119,10 @@ evidence (test name, gate output, commit subject).
   for non-finite bits and keeps `bits` exact. UNVERIFIED: whether the writer should
   instead refuse the event, or the contract should name a spelling. Nothing in the
   contract decides it, so a reader must use `bits` for these values.
+- **Fingerprint member names.** The contract names the six members as dotted paths
+  (`scenario.sha256`), which is the only spelling it gives, so they are used literally as
+  object keys. UNVERIFIED: whether a captured trace's writer already uses a different
+  spelling; if it does, one of the two must change, and the fingerprint changes with it.
 - **Hex case in value objects.** The examples are upper case for `bits`/`ptr` and
   letter-free for `u64`, so the case of `u64` digits is not pinned. Chose upper case
   everywhere for consistency; it cannot affect equality.
