@@ -188,6 +188,41 @@ context rebuilt, because the manifest's own digest is part of the context.
   `mods.required` (which still names `absolllute.hackmega`, so it is wrong for a reconstruction
   run - the gate does not read it, and per-variant required mods would be a schema change).
 
+## Runbook for the first comparison (needs launches)
+
+State left behind on 2026-10-27, all verified:
+
+- `runtime511` `geode/mods/` holds the release target and the rebuilt observer
+  (`megahack.trace.geode`, `9b4065b2…`); `geode/unzipped/megahack.trace` was deleted so the
+  loader must extract the new package rather than keep the old DLL.
+- `%LOCALAPPDATA%\...\megahack.trace\pending-context.json` is a **release, repetition 0**
+  context built from the current manifest: scenario `9a871e06…`, harness `9b4065b2…`,
+  target `1635c339…`, tag `0x1E2 = true`.
+
+1. Launch `geode profile run runtime511`, load one local level, play for a few seconds, quit.
+   The context is consumed (renamed `.consumed`) and a trace appears under
+   `%LOCALAPPDATA%\GeometryDash\geode\mods\megahack.trace\traces\`.
+2. `python harness/tools/grade_trace.py --latest` - expect `capture: complete`, four required
+   hook keys, `level_started` before `attempt_started`.
+3. Build the same context with `--repetition 1` and repeat the launch. Two release runs are
+   needed: the gate refuses a single run per variant.
+4. Remove `absolllute.hackmega.geode` from `mods/` (remove, do not disable - two targets make
+   `hook.target` ambiguous and the run reports `multiple_targets_loaded`), and install
+   `reconstruction/geode/build/megahack.reconstruction.geode`. Delete
+   `geode/unzipped/megahack.reconstruction` if it exists and `geode/unzipped/absolllute.hackmega`.
+5. Two reconstruction runs, same scenario:
+   `preflight.py --role reconstruction --target <runtime511>/geode/unzipped/megahack.reconstruction/megahack.reconstruction.dll --expect-sha256 5f214c5f…`,
+   repetitions 0 and 1.
+6. Read the observer log for `hook_install_failed` and `multiple_targets_loaded`, and confirm
+   `meta.mods` names `megahack.reconstruction`.
+7. `harness\build\mh_trace_compare.exe harness\scenarios\safe-mode-smoke.json --release <a> --release <b> --reconstruction <c> --reconstruction <d>`.
+
+What to expect, so a surprise is visible: the gate will stop at the **level** row, `blocked`,
+because `level.sha256` is still a placeholder and there is no fixture. If two runs per variant
+are in place and everything else matches, the finder will name exactly that row; any other
+`blocked` or `invalid` row is a real problem. Because the gate stops, **no `claim:` line is
+printed** - which is the intended behaviour, not a missing feature.
+
 ## Open questions
 
 - **Is `mods.required` worth fixing?** It lists the release for both variants. Nothing enforces
