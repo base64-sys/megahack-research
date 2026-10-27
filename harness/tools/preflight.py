@@ -112,6 +112,36 @@ def build_fragment(
     }
 
 
+def build_context(*, fragment: dict, scenario_bytes: bytes, repetition: int) -> dict:
+    """The run context the observer splices into meta (harness/include/mh/context.hpp).
+
+    Not a new schema: the meta body's own members plus repetition_index, which is the sixth
+    fingerprint input and is never part of the meta record.
+    """
+    manifest = json.loads(scenario_bytes.decode("utf-8"))
+    settings = manifest.get("settings") or {}
+    level = manifest.get("level") or {}
+    return {
+        "target": fragment["target"],
+        "scenario": {
+            "id": manifest.get("id"),
+            "sha256": hashlib.sha256(scenario_bytes).hexdigest(),
+        },
+        "environment": fragment["environment"],
+        "settings": {
+            "reset": settings.get("reset"),
+            "tags": settings.get("tags") or [],
+            "snapshot_sha256": None,
+        },
+        "level": {
+            "fixture": level.get("fixture"),
+            "sha256": level.get("sha256"),
+            "source": level.get("source"),
+        },
+        "repetition_index": repetition,
+    }
+
+
 def write_sidecar(trace: str | Path) -> Path:
     """`<trace>.sha256` in sha256sum form, so the trace can be checked without this tool."""
     trace_path = Path(trace)
@@ -132,6 +162,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--geode-version", default=None, help="e.g. 5.11.2")
     parser.add_argument("--profile", default="", help="profile name; 'a' is refused")
     parser.add_argument("--out", help="write the fragment here instead of stdout")
+    parser.add_argument("--scenario", help="scenario manifest; with --context, supplies its fields")
+    parser.add_argument("--repetition", type=int, default=0, help="repetition_index for the context")
+    parser.add_argument("--context", help="write the run context for this run here")
     parser.add_argument("--sidecar", help="write <trace>.sha256 for this trace file")
     args = parser.parse_args(argv)
 
@@ -154,6 +187,21 @@ def main(argv: list[str] | None = None) -> int:
             gd_version=args.gd_version,
             geode_version=args.geode_version,
         )
+        if args.context:
+            if not args.scenario:
+                raise PreflightError("--context needs --scenario")
+            scenario_path = Path(args.scenario)
+            if not scenario_path.is_file():
+                raise PreflightError(f"scenario manifest not found: {scenario_path}")
+            context = build_context(
+                fragment=fragment,
+                scenario_bytes=scenario_path.read_bytes(),
+                repetition=args.repetition,
+            )
+            Path(args.context).write_text(
+                json.dumps(context, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+            )
+            print(f"context: {args.context}")
     except PreflightError as error:
         print(f"preflight refused: {error}", file=sys.stderr)
         return 1

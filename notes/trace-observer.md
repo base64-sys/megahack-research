@@ -139,6 +139,45 @@ Tests (`python harness/tools/test_preflight.py`, 7 cases) cover the digest again
 `hashlib`, the PE header read, the sidecar format, both profile refusals, the one-target rule
 (0, 1, 2 and missing), the fragment's field names, and the CLI's refusal exit code.
 
+## Run context (O4b)
+
+The runner must not patch a trace after the fact - that would turn a contemporaneous record
+into a reconstruction. Instead it hands its facts over **before** launch:
+
+- `MH_TRACE_CONTEXT=<path>` is set on the game process.
+- The file holds the meta body (`target`, `scenario`, `environment`, `settings`, `level`,
+  optionally `mods`/`clock`) plus `repetition_index`, which is the sixth fingerprint input and
+  is deliberately not part of the meta record.
+- At load the observer parses it (`mh::read_run_context`, `harness/src/context.cpp`), splices
+  the body into `meta`, computes `run_fingerprint` with the core's own implementation, and
+  renames the file to `<path>.consumed` so a stale context cannot silently apply to a second
+  run.
+- No context, or a rejected one: the observer falls back to the null body with
+  `capture.missing` explaining every field, and the trace stays ineligible - which is what a
+  build without a runner should produce.
+
+`harness/tools/preflight.py --scenario <manifest> --repetition N --context <path>` writes it,
+so the fragment and the context come from one place. `read_run_context` requires the same
+five members the trace reader requires of a meta record, a non-negative integer
+`repetition_index`, `settings.tags` as an array, and four 64-lowercase-hex digests
+(`target`, `scenario`, `environment.harness`, `level`) - a placeholder cannot enter a
+fingerprint by accident.
+
+## Runbook for the first capture (needs the user)
+
+Nothing below has been executed; installing a mod into a profile and launching a game are
+user actions.
+
+1. Copy `harness/observer/build/megahack.trace.geode` into the `runtime511` profile's mods
+   directory (`geode profile` reports the profile; the default `a` profile is off limits).
+2. Write the context:
+   `python harness/tools/preflight.py --target samples/absolllute.hackmega/absolllute.hackmega_original.dll --gd <runtime511>/GeometryDash.exe --geode <runtime511>/Geode.dll --harness <installed>/megahack.trace.geode --profile runtime511 --gd-version 2.2081 --geode-version 5.11.2 --scenario <manifest> --repetition 0 --context <path>`
+3. Launch with `MH_TRACE_CONTEXT=<path>` in the environment, load one level, quit.
+4. The trace appears as `<mod save dir>/traces/<run_id>.jsonl`. Validating it needs a host
+   tool that runs the reader over a file; the core's reader is a library, so O4c adds that
+   command (`harness/tools` or a small `mh_trace_check` target) before the capture is graded.
+5. `python harness/tools/preflight.py --sidecar <trace>` writes its digest.
+
 ## Open questions
 
 - **Does the observer link the portable core under MSVC?** Yes as of iteration 3: the mod

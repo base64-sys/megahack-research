@@ -14,6 +14,7 @@ add_executable(mh_trace_tests
   test_sequence.cpp
   test_comparison.cpp
   test_corpus.cpp
+  test_context.cpp
 )
 
 target_link_libraries(mh_trace_tests PRIVATE mh_trace)
@@ -27,3 +28,4 @@ endif()
 
 add_test(NAME mh_trace_tests COMMAND mh_trace_tests)
 set_tests_properties(mh_trace_tests PROPERTIES TIMEOUT 60)
+

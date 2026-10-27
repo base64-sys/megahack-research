@@ -15,7 +15,8 @@ Status vocabulary: `pending`, `in progress`, `done`, `blocked`.
 | O3a | Hook bridge, one hook end to end: `PlayLayer::resetLevel` enter/exit with call ids, depth, parent and `thread.role` from the load thread | done (build only — firing unproven until a run) |
 | O3b | Hook bridge, remaining pilot keys: `PlayLayer::postUpdate`, `PlayerObject::pushButton`, `PlayerObject::releaseButton` | done (build only) |
 | O4a | Runner preflight: target/environment hashes, one-target rule, profile refusal, trace sha256 sidecar, fragment in meta spelling, python tests | done |
-| O4b | Run-context handshake: the runner writes a context file before launch, the observer fills meta (target, environment, scenario, level, settings) and the real `run_fingerprint` from it at load, then marks it consumed | pending |
+| O4b | Run-context handshake: the runner writes a context file before launch, the observer fills meta (target, environment, scenario, level, settings) and the real `run_fingerprint` from it at load, then marks it consumed | done (build only - the load path is unproven until a run) |
+| O4c | Validator CLI: a host command that runs `read_trace` over a captured JSONL and prints its issues, so a capture can be graded without a test build | pending |
 | O5 | Pilot capture in runtime511 and a real `read_trace` pass, plus the proofs only a run can give (hooks fire; the load thread is the main thread) - needs the user to launch | pending |
 
 ## Evidence log
@@ -130,3 +131,21 @@ Status vocabulary: `pending`, `in progress`, `done`, `blocked`.
   computable instead of all-zero.
 - Commit: `feat(runner): preflight hashes, one-target rule and profile refusal`.
 - Next: O4b, the run-context handshake.
+
+### Iteration 7 — O4b: the runner's facts reach the observer before the run
+
+- New core unit `mh::read_run_context` (`harness/include/mh/context.hpp`,
+  `harness/src/context.cpp`) with 8 tests: it requires the same five members the trace reader
+  requires of a meta record, a non-negative integer `repetition_index`, `settings.tags` as an
+  array, and four 64-lowercase-hex digests - so a placeholder cannot slip into a fingerprint.
+- The observer reads `MH_TRACE_CONTEXT` at load, splices the body into `meta`, computes
+  `run_fingerprint` with the core's own implementation instead of the all-zero placeholder,
+  and renames the file to `*.consumed`. Without a context it keeps the null body with
+  `capture.missing`, so a build still yields an honestly ineligible trace.
+- `harness/tools/preflight.py --scenario <manifest> --repetition N --context <path>` writes
+  the context from the same fragment it already produces; 1 new test (8 total) covers the
+  manifest digest, tags, level and repetition.
+- Test count: 162 -> 170 (`ctest` green). Observer builds and packages, exit 0.
+- The load path itself is still unproven - it needs a run, which is O5.
+- Commit: `feat(context): hand the runner's facts to the observer before launch`.
+- Next: O4c, the validator CLI (the last item that does not need a game run).

@@ -144,6 +144,35 @@ def test_fragment_uses_the_contract_field_names() -> None:
     assert unknown["environment"]["geode"]["version"] is None
 
 
+def test_context_carries_the_manifest_and_repetition() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        target = Path(tmp) / "target.dll"
+        gd = Path(tmp) / "GeometryDash.exe"
+        geode = Path(tmp) / "Geode.dll"
+        harness = Path(tmp) / "megahack.trace.geode"
+        for path in (target, gd, geode, harness):
+            make_pe(path)
+        fragment = preflight.build_fragment(
+            target=target, gd=gd, geode=geode, harness=harness,
+            gd_version="2.2081", geode_version="5.11.2",
+        )
+    manifest = json.dumps({
+        "schema": "mh-scenario/1",
+        "id": "safe-mode-smoke",
+        "settings": {"reset": "defaults", "tags": [{"tag": "0x1E2", "value": True}]},
+        "level": {"fixture": "f.gmd", "sha256": "5" * 64, "source": "generated"},
+    }).encode("utf-8")
+
+    context = preflight.build_context(fragment=fragment, scenario_bytes=manifest, repetition=1)
+    assert context["scenario"]["id"] == "safe-mode-smoke"
+    assert context["scenario"]["sha256"] == hashlib.sha256(manifest).hexdigest()
+    assert context["repetition_index"] == 1
+    assert context["settings"]["tags"] == [{"tag": "0x1E2", "value": True}]
+    assert context["level"] == {"fixture": "f.gmd", "sha256": "5" * 64, "source": "generated"}
+    assert context["target"] == fragment["target"]
+    assert context["environment"] == fragment["environment"]
+
+
 def test_cli_refuses_a_live_profile_and_writes_a_fragment() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         target = Path(tmp) / "target.dll"
@@ -178,5 +207,7 @@ if __name__ == "__main__":
     test_profile_refusals()
     test_one_target_rule()
     test_fragment_uses_the_contract_field_names()
+    test_context_carries_the_manifest_and_repetition()
     test_cli_refuses_a_live_profile_and_writes_a_fragment()
     print("all preflight tests passed")
+

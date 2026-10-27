@@ -25,6 +25,7 @@ add_library(observer SHARED
     ${MH_CORE_DIR}/src/sha256.cpp
     ${MH_CORE_DIR}/src/fingerprint.cpp
     ${MH_CORE_DIR}/src/trace_writer.cpp
+    ${MH_CORE_DIR}/src/context.cpp
 )
 target_include_directories(observer PRIVATE "${MH_CORE_DIR}/include")
 

@@ -20,6 +20,7 @@
 #include <Geode/modify/PlayerObject.hpp>
 
 #include <mh/contract.hpp>
+#include <mh/context.hpp>
 #include <mh/json.hpp>
 #include <mh/json_parse.hpp>
 #include <mh/trace_writer.hpp>
@@ -29,6 +30,7 @@
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <ctime>
 #include <filesystem>
 #include <memory>
@@ -133,6 +135,52 @@ mh::json::Json value_json(const mh::Value& value) {
 void mark_unobserved(mh::Capture& capture, std::string path, std::string reason) {
     capture.missing.push_back(path);
     capture.reasons.emplace_back(std::move(path), std::move(reason));
+}
+
+bool has_member(const mh::json::Json& object, std::string_view key) {
+    for (const auto& entry : object.members()) {
+        if (entry.first == key) {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::string read_text_file(const std::filesystem::path& path) {
+    std::ifstream input(path, std::ios::binary);
+    std::string text((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+    return text;
+}
+
+// The runner's half of the run: `MH_TRACE_CONTEXT` points at a file holding the meta body
+// (target, scenario, environment, mods, settings, level) plus repetition_index. The observer
+// splices it instead of inventing nulls, computes the fingerprint from those members, and
+// renames the file to `*.consumed` so a stale context cannot apply to a second run.
+bool load_run_context(const char* path, mh::json::Json& body, std::string& fingerprint,
+                      mh::Capture& capture) {
+    const std::string text = read_text_file(path);
+    if (text.empty()) {
+        log::error("run context is empty or unreadable: {}", path);
+        return false;
+    }
+    const mh::ContextResult result = mh::read_run_context(text);
+    if (!result.ok()) {
+        log::error("run context rejected: {}", result.error);
+        return false;
+    }
+
+    body = result.context->body;
+    fingerprint = mh::run_fingerprint(result.context->fingerprint_input());
+    capture.status = mh::CaptureStatus::complete;
+    capture.missing.clear();
+    capture.reasons.clear();
+
+    std::error_code ec;
+    std::filesystem::rename(path, std::string(path) + ".consumed", ec);
+    if (ec) {
+        log::warn("run context could not be marked consumed: {}", ec.message());
+    }
+    return true;
 }
 
 mh::ThreadInfo current_thread(const Session& session) {
@@ -303,10 +351,21 @@ $on_mod(Loaded) {
         log::error("cannot open trace file: {}", path.string());
         return;
     }
-    session->writer = std::make_unique<mh::TraceWriter>(
-        session->sink, mh::TraceHeader{run_id, kUnknownDigest});
-
     mh::Capture capture;
+    mh::json::Json body = object();
+    std::string fingerprint = kUnknownDigest;
+
+    const char* context_path = std::getenv("MH_TRACE_CONTEXT");
+    if (context_path && *context_path) {
+        if (!load_run_context(context_path, body, fingerprint, capture)) {
+            capture.status = mh::CaptureStatus::partial;
+            mark_unobserved(capture, "run_context",
+                            "the run context was rejected; the log names why");
+            body = object();
+        }
+    }
+
+    if (body.members().empty()) {
     capture.status = mh::CaptureStatus::partial;
     mark_unobserved(capture, "target.artifact", "the runner resolves the target artifact");
     mark_unobserved(capture, "target.sha256", "the runner hashes the target artifact");
@@ -323,7 +382,6 @@ $on_mod(Loaded) {
     mark_unobserved(capture, "environment.geode.sha256", "the runner hashes the Geode image");
     mark_unobserved(capture, "environment.harness.sha256", "the runner hashes the observer module");
 
-    mh::json::Json body = object();
     body.set("created_utc", mh::json::Json::string(utc_now()));
 
     mh::json::Json target = object();
@@ -397,6 +455,14 @@ $on_mod(Loaded) {
     clock.set("source", mh::json::Json::string("steady_clock"));
     clock.set("unit", mh::json::Json::string("ns"));
     body.set("clock", std::move(clock));
+    } // end unobserved fallback
+
+    if (!has_member(body, "created_utc")) {
+        body.set("created_utc", mh::json::Json::string(utc_now()));
+    }
+
+    session->writer = std::make_unique<mh::TraceWriter>(
+        session->sink, mh::TraceHeader{run_id, fingerprint});
 
     session->writer->write_meta(body, capture);
     session->sink.flush();
