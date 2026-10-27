@@ -45,6 +45,12 @@ refreshed by `watchdog.ps1 -Action Start`; `--check` fails if any is stale, and
 `test_progress_svg.py` asserts no text leaves the canvas and that every criterion gets
 exactly one checkbox.
 
+Each image stamps the commit it was rendered from in its bottom-right corner, which is why
+an image committed alongside a change names that change's parent: the stamp records the tree
+the picture was drawn from, and a commit cannot contain its own hash. The stamp is the
+staleness marker — if it lags further behind than that one commit, the image is older than
+the tracker and `--check` says so.
+
 ## Baseline
 
 All work targets one pinned triple. Do not mix baselines.

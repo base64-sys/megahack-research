@@ -3,49 +3,49 @@
 <rect x="0.5" y="0.5" width="899" height="493" fill="none" stroke="#30363d" rx="10"/>
 <text x="28" y="40" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="19" font-weight="600" fill="#e6edf3">Recent work — what moved, newest first</text>
 <text x="28" y="61" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#8b949e">14 most recent commits · exit criteria currently 28/33</text>
-<circle cx="38.0" cy="94.0" r="4" fill="#d29922"/>
-<text x="52.0" y="98.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">fix(harness): compare frames against the capture anchor</text>
-<text x="872.0" y="98.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#d29922" text-anchor="end">fix</text>
-<circle cx="38.0" cy="118.0" r="4" fill="#d29922"/>
-<text x="52.0" y="122.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">fix(harness-tools): read the observer version from its package</text>
-<text x="872.0" y="122.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#d29922" text-anchor="end">fix</text>
-<circle cx="38.0" cy="142.0" r="4" fill="#3fb950"/>
-<text x="52.0" y="146.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">feat(harness): enforce a frame-bounded capture window</text>
-<text x="872.0" y="146.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#3fb950" text-anchor="end">feat</text>
-<circle cx="38.0" cy="166.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="170.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs: decide the path to deterministic capture</text>
-<text x="872.0" y="170.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
-<circle cx="38.0" cy="190.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="194.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs: close the savePercentage asymmetry as an explained variant difference</text>
-<text x="872.0" y="194.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
+<circle cx="38.0" cy="94.0" r="4" fill="#8b949e"/>
+<text x="52.0" y="98.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs: show the repository's current state</text>
+<text x="872.0" y="98.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
+<circle cx="38.0" cy="118.0" r="4" fill="#8b949e"/>
+<text x="52.0" y="122.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs: record the first deterministic capture pass</text>
+<text x="872.0" y="122.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
+<circle cx="38.0" cy="142.0" r="4" fill="#d29922"/>
+<text x="52.0" y="146.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">fix(harness): compare frames against the capture anchor</text>
+<text x="872.0" y="146.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#d29922" text-anchor="end">fix</text>
+<circle cx="38.0" cy="166.0" r="4" fill="#d29922"/>
+<text x="52.0" y="170.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">fix(harness-tools): read the observer version from its package</text>
+<text x="872.0" y="170.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#d29922" text-anchor="end">fix</text>
+<circle cx="38.0" cy="190.0" r="4" fill="#3fb950"/>
+<text x="52.0" y="194.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">feat(harness): enforce a frame-bounded capture window</text>
+<text x="872.0" y="194.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#3fb950" text-anchor="end">feat</text>
 <circle cx="38.0" cy="214.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="218.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs: record the five-run runtime validation outcome</text>
+<text x="52.0" y="218.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs: decide the path to deterministic capture</text>
 <text x="872.0" y="218.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <circle cx="38.0" cy="238.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="242.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs: record the level-digest observation and its k4 resolution</text>
+<text x="52.0" y="242.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs: close the savePercentage asymmetry as an explained variant difference</text>
 <text x="872.0" y="242.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
-<circle cx="38.0" cy="262.0" r="4" fill="#3fb950"/>
-<text x="52.0" y="266.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">feat(harness): observe the level digest at level_started</text>
-<text x="872.0" y="266.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#3fb950" text-anchor="end">feat</text>
-<circle cx="38.0" cy="286.0" r="4" fill="#484f58"/>
-<text x="52.0" y="290.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">chore(tools): make the manifest extractor non-destructive</text>
-<text x="872.0" y="290.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#484f58" text-anchor="end">chore</text>
+<circle cx="38.0" cy="262.0" r="4" fill="#8b949e"/>
+<text x="52.0" y="266.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs: record the five-run runtime validation outcome</text>
+<text x="872.0" y="266.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
+<circle cx="38.0" cy="286.0" r="4" fill="#8b949e"/>
+<text x="52.0" y="290.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs: record the level-digest observation and its k4 resolution</text>
+<text x="872.0" y="290.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <circle cx="38.0" cy="310.0" r="4" fill="#3fb950"/>
-<text x="52.0" y="314.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">feat(tools): report the fixture's candidate level digests</text>
+<text x="52.0" y="314.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">feat(harness): observe the level digest at level_started</text>
 <text x="872.0" y="314.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#3fb950" text-anchor="end">feat</text>
-<circle cx="38.0" cy="334.0" r="4" fill="#d29922"/>
-<text x="52.0" y="338.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">fix(harness): restore both CCLocalLevels files as a pair</text>
-<text x="872.0" y="338.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#d29922" text-anchor="end">fix</text>
-<circle cx="38.0" cy="358.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="362.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(notes): record the first four-run comparison</text>
-<text x="872.0" y="362.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
+<circle cx="38.0" cy="334.0" r="4" fill="#484f58"/>
+<text x="52.0" y="338.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">chore(tools): make the manifest extractor non-destructive</text>
+<text x="872.0" y="338.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#484f58" text-anchor="end">chore</text>
+<circle cx="38.0" cy="358.0" r="4" fill="#3fb950"/>
+<text x="52.0" y="362.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">feat(tools): report the fixture's candidate level digests</text>
+<text x="872.0" y="362.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#3fb950" text-anchor="end">feat</text>
 <circle cx="38.0" cy="382.0" r="4" fill="#d29922"/>
-<text x="52.0" y="386.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">fix(fixture): emit LLM_02 and LLM_03, and record the first level GD accepted</text>
+<text x="52.0" y="386.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">fix(harness): restore both CCLocalLevels files as a pair</text>
 <text x="872.0" y="386.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#d29922" text-anchor="end">fix</text>
-<circle cx="38.0" cy="406.0" r="4" fill="#d29922"/>
-<text x="52.0" y="410.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">fix(fixture): match the key shape a level the editor writes</text>
-<text x="872.0" y="410.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#d29922" text-anchor="end">fix</text>
+<circle cx="38.0" cy="406.0" r="4" fill="#8b949e"/>
+<text x="52.0" y="410.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(notes): record the first four-run comparison</text>
+<text x="872.0" y="410.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <line x1="28.0" y1="450.0" x2="872.0" y2="450.0" stroke="#30363d" stroke-width="1"/>
 <text x="28.0" y="464.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="10" fill="#8b949e">regenerated on every watchdog start, so a turn's work shows up here · image 4 of 4</text>
-<text x="872.0" y="464.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">git cdd37c7</text>
+<text x="872.0" y="464.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">git b561d8f</text>
 </svg>
