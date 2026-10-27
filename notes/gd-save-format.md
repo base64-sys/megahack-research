@@ -204,5 +204,12 @@ Still missing before an M3 run:
 - **Save isolation.** The fixture cannot be installed into a live save (see above): the
   environment redirect is ruled out by the import tables, so the run needs a separate Windows
   account, a VM, or the reversible-but-not-isolating `save_sandbox.py` under an explicit label.
-- **Proof GD loads the generated file.** Only a run closes that. Until then the manifest keeps
-  its placeholder and the gate keeps saying `blocked` on that row — which is the honest state.
+- ~~Proof GD loads the generated file.~~ **Closed 2026-10-27.** Run
+  `e717db95-1d42-47af-b4b0-361f27eb2ae1`: the fixture was installed with
+  `save_sandbox.py --install`, verified byte-identical on disk (556 bytes) *before* launch, and
+  the game then played it — `capture: complete`, 8,725 events, 0 errors and 0 warnings, 4,361
+  balanced hook pairs, `level_started` 1, `attempt_started` 2, all four required hooks owned by
+  `absolllute.hackmega.dll`. The fixture's name appears **nowhere** in the trace
+  (`level_started.data` is the redacted value), and the four save files were restored to their
+  recorded digests afterwards. A generated level is therefore something GD loads and plays, not
+  merely a file that parses.
