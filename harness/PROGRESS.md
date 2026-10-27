@@ -467,6 +467,18 @@ evidence (test name, gate output, commit subject).
 - Also rewritten: `gen_scenario_manifest.py` now checks the committed manifest by default and
   only rewrites with `--write`, so a pinned digest cannot be clobbered by re-running it.
 - Supersedes the "Not done" line above: the fixture exists, so the placeholder is gone.
+- **Outcome, five launches later:** the gate reached `pass` for the first time. Four traces
+  (`b6fae021`, `c06b599f` release; `8cd6075c`, `418de514` reconstruction) all carry
+  `level_started` = `58d4b320…`, and every identity row matches. The verdict is
+  `status: unstable` because the operator's two runs per variant are different sessions (event
+  counts 4,801/9,013 and 6,127/5,623), so payload comparison cannot stabilise - session
+  variability, not a variant difference, and recorded as such in
+  [reconstruction-variant.md](../notes/reconstruction-variant.md).
+- **What the four runs did surface:** `save_requested` and the `0x16c8b0` (`savePercentage`)
+  hook fired in both reconstruction runs and neither release run, including a 34-second
+  reconstruction session against an 82-second release session, with `HACK_SAFE_MODE` true in
+  both. That is either the Safe Mode veto behaving differently or a session artefact;
+  UNVERIFIED, and the discriminator is named in the note.
 
 ## Open questions
 

@@ -199,12 +199,13 @@ context rebuilt, because the manifest's own digest is part of the context.
 
 State left behind on 2026-10-27, all verified:
 
-- `runtime511` `geode/mods/` holds the release target and the rebuilt observer
-  (`megahack.trace.geode`, `f3ab5f60…`); `geode/unzipped/megahack.trace` was deleted so the
-  loader must extract the new package rather than keep the old DLL.
+- `runtime511` `geode/mods/` holds one target package and the rebuilt observer
+  (`megahack.trace.geode`, `4b70fdec…`, v0.1.1); the release `.geode` and the reconstruction
+  `.geode` are swapped, never both present. `geode/unzipped/megahack.trace` is deleted before a
+  rebuild so the loader extracts the new package rather than keeping the old DLL.
 - `%LOCALAPPDATA%\...\megahack.trace\pending-context.json` is a **release, repetition 0**
-  context built from the current manifest: scenario `f499f219…`, harness `f3ab5f60…`,
-  target `1635c339…`, tag `0x1E2 = true`.
+  context built from the current manifest: scenario `6246e09d…`, harness `4b70fdec…`,
+  level `58d4b320…`, target `1635c339…`, tag `0x1E2 = true`.
 
 1. Launch `geode profile run runtime511`, load one local level, play for a few seconds, quit.
    The context is consumed (renamed `.consumed`) and a trace appears under
@@ -287,3 +288,56 @@ Two observations to carry forward:
   is two per variant, so this is a lead, not a finding.
   UNVERIFIED: whether the difference is the variant or the session — closing it needs the same
   level, same duration, same actions, which the operator controls and the traces already record.
+
+## Five-run comparison with the level observation (2026-10-27)
+
+Four in-scope traces, all harness `megahack.trace` v0.1.1 (`4b70fdec…`), all on the generated
+fixture, all with `level_started` = `58d4b320…` (the encoded `k4` pin). A fifth launch
+(`65d0bde5`) carried the pre-observation pin and is excluded; it is recorded under
+"The `level` row is an observation" in [gd-save-format.md](gd-save-format.md).
+
+| Run | Variant | Events | Milestones | Hook owner |
+| --- | --- | --- | --- | --- |
+| `b6fae021` | release `1635c339…` | 4,801 | 1 `level_started`, 2 `attempt_started` | `absolllute.hackmega.dll` |
+| `c06b599f` | release `1635c339…` | 9,013 | 1 / 4 | same |
+| `8cd6075c` | reconstruction `5f214c5f…` | 6,127 | 1 / 5, 5 `save_requested` | `megahack.reconstruction.dll` |
+| `418de514` | reconstruction `5f214c5f…` | 5,623 | 1 / 2, 2 `save_requested` | same |
+
+`mh_trace_compare` with all four:
+
+```
+status: unstable | gate: pass | unstable: yes
+  unstable release variant: gd_method|…0x397f40|enter|1 - run 2 vs run 1: payload differs
+  unstable reconstruction variant: 0x16c8b0, 0x397f40, 0x3981d0 (payload differs)
+  pass_with_warnings alignment: 0x16c8b0 depth 1: 5 extra event(s) in the reconstruction
+  fail alignment: 0x397f40 depth 1: 1 changed, 16 missing, 61 extra
+```
+
+**The gate passes.** Two runs per variant, matching target, harness and scenario digests, and the
+level observation equals the pin in every run — the row that had never been checkable is now the
+row that confirms the fixture. That is the milestone this note was opened for.
+
+**The verdict is `unstable`, and the reason is the operator, not the variants.** The comparator's
+precondition for a behavioural claim is that two runs of the *same* variant agree; with
+`input.driver: operator` and no input injection, the two sessions differ in length (63 s vs 82 s
+release, 87 s vs 34 s reconstruction), in deaths and in jumps, so payload and alignment cannot
+stabilise. `unstable: yes` is therefore the correct reading of "these two sessions are not the
+same run", and it must not be reported as a variant difference. A behavioural claim needs
+deterministic input (frame-scheduled key events replayed identically to both variants) or a
+comparison restricted to canonical counts; both are manifest/comparator changes, not something to
+assume here.
+
+**One lead survives the instability.** `save_requested` and the `GJGameLevel::savePercentage`
+(`0x16c8b0`) hook appear in **both reconstruction runs and neither release run** — and not merely
+as a function of length: the shortest session (34 s, reconstruction) recorded two save requests
+while the longest (82 s, release) recorded none. Both variants ran with `0x1E2 = HACK_SAFE_MODE`
+`true`, and the manifest says the scenario exists to verify the savePercentage veto path
+(`safe-mode-smoke.json`, `description`). If Safe Mode's veto is what keeps GD out of the save
+path, then a release that vetoes and a reconstruction that does not is exactly the behavioural
+divergence this pipeline was built to find.
+
+UNVERIFIED: whether the reconstruction's save path is a missing veto or a session artefact.
+Closing it needs (a) a static check that the release's `0x1E2` callback is on the path that
+reaches `0x16c8b0`, and (b) a re-run of both variants under the same short session with no
+death — the traces already record whether `save_requested` fires, so the discriminator is cheap
+once input is deterministic.
