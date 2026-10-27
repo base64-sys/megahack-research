@@ -101,6 +101,31 @@ every restored file against its recorded digest. Its own docstring says it is no
 Until one is in place, a fixture must not be installed into the live save directory, and an M3
 run is not eligible on the isolation row regardless of how good the comparison is.
 
+## Runbook for the fixture (needs a run)
+
+Nothing below installs anything until the operator has a backup:
+
+```
+python harness\tools\save_sandbox.py --backup  --save-dir "%LOCALAPPDATA%\GeometryDash" --backup-dir <outside-the-repo>\gd-save-backup
+python harness\tools\save_sandbox.py --install --save-dir "%LOCALAPPDATA%\GeometryDash" --backup-dir <outside-the-repo>\gd-save-backup --fixture harness\fixtures\runtime\safe-mode-smoke.gmd
+python harness\tools\save_sandbox.py --status  --save-dir "%LOCALAPPDATA%\GeometryDash" --backup-dir <outside-the-repo>\gd-save-backup
+```
+
+Then launch the profile, play the level named `safe-mode-smoke fixture`, quit, and run:
+
+```
+python harness\tools\save_sandbox.py --restore --save-dir "%LOCALAPPDATA%\GeometryDash" --backup-dir <outside-the-repo>\gd-save-backup
+```
+
+`--status` between install and restore answers "has the game rewritten the save since?" — which
+is also the moment the level's own `<k>k2</k>` name can be read back out of `CCLocalLevels.dat`
+with `gd_save.py --check`. If the fixture did not load, the restore is still correct and the
+run simply produced no `level_started` with that name.
+
+Three things this does **not** do: isolate the save (see above), prove GD loaded the fixture
+(a run does), or make `level.sha256` safe to fill (the gate still does not compare the observed
+name).
+
 ## What this unblocks, and what is still missing
 
 Unblocked: a fixture generator can now write a complete `CCLocalLevels.dat` (or a single-level
