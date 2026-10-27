@@ -165,6 +165,7 @@ These live in `scripts/`, so they exist on a fresh clone. Neither needs `samples
 | ----------------------------- | -------------------------------------------------------------------------- |
 | `pe_rva.py`                   | Resolve an RVA or VA to a file offset, or explain why there isn't one        |
 | `test_pe_rva.py`              | Regression tests for the above; skips itself when no sample set is present    |
+| `env_check.py`                | One-pass readiness report: Python, packages, sample digest, indexes, build tools |
 | `decompile_all.py`            | Drive Ghidra headless and write the recovered pseudocode tree                |
 | `ghidra_scripts/ExportAllFunctions.java` | Decompiles every function, one `.c` per function                   |
 | `resolve_wrappers.py`         | Map Mega Hack's 277 runtime hook sites to their real targets                |
@@ -262,6 +263,7 @@ confirmed to fail the suite before the guards were trusted. See
 ```powershell
 python scripts/pe_rva.py <image.dll> <rva-or-va> ... [--sections]
 python scripts/test_pe_rva.py
+python scripts/env_check.py
 python scripts/resolve_wrappers.py
 python scripts/build_xref_index.py --grep best
 python scripts/settings_index.py

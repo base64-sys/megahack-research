@@ -2,7 +2,10 @@
 
 - **Question** — which reconstructed M3 modules have been validated against the
   release, and how?
-- **Baseline** — Mega Hack v9.1.3, GD 2.2081, Geode 5.6.1.
+- **Baseline** — Mega Hack v9.1.3, GD 2.2081, Geode 5.6.1 static reference.
+- **Runtime baseline** — Geode 5.11.2, GD 2.2081, in the separate local `runtime511`
+  profile. Traces from this profile are evidence about 5.11.2, not a silent claim about
+  5.6.1; see [runtime-validation.md](runtime-validation.md#runtime-baseline-decision-2026-10-27).
 
 ## Sampled clusters
 
@@ -28,7 +31,11 @@
 ## What remains
 
 - Runtime comparison of reconstructed hook callbacks against the release's
-  observable behaviour.
+  observable behaviour. The method is now fixed in
+  [runtime-validation.md](runtime-validation.md): JSONL trace schema, scenario
+  manifest, comparability gate, comparison rules, and the evidence needed to
+  promote a cluster. No trace has been captured; all five clusters remain
+  structural-only.
 - Cluster assignment exists but is only a lead for most rows. Counted from the status
   column on 2026-10-26: **106 of the 389** changelog rows in
   [feature-inventory.md](feature-inventory.md) are `mapped` and **283** are `cluster`;

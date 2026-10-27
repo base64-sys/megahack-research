@@ -29,6 +29,7 @@ samples/
 
 # --- Runtime data and scratch databases --------------------------------------
 # best_runs.bin and friends are player data, not source.
+runtime-traces/
 *.bin
 *.tmp
 *.bak
@@ -84,6 +85,8 @@ node_modules/
 # --- Long-run wrapper scratch --------------------------------------------------
 .oc/
 .opencode/
+# Local emergency-stop helper for the agent loop; not part of the project.
+/LoopEmergencyStop.ps1
 
 # --- Watchdog runtime state ----------------------------------------------------
 # Generated worker, pid file and log. The script that writes them is tracked.

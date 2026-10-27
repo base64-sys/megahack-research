@@ -1573,3 +1573,54 @@ Hack never sets it - and the reading "the level-complete sequence is running" is
 from the hook pair and the changelog wording, not observed. Also unproven is the tag-to-row
 binding itself: the key name and the hook target corroborate it, but no static label ties
 tag 372 to `LEVEL/HACK_PAUSE_DURING_COMPLETE`.
+
+## Lead - tag 366 on pushButton/releaseButton (2026-10-27)
+
+Tag 366 (`0x16E`, no static label) is the only hook on `PlayerObject::pushButton` (RVA
+`0x397F40`) and `PlayerObject::releaseButton` (RVA `0x3981D0`), so it must be the input
+synthesis behind a click-related row. `Added Auto Clicker` (v9.0.8) is the strongest
+candidate: its settings are `LEVEL/AUTO_CLICKER/DROPDOWN/{HOLD,RELEASE,OFFSET,MODE}`
+(defaults 10/10/10/0 in the user's `hackpro.json`), and the v9.0.9 fix "Auto Clicker crashing
+when hold and release are both set to zero" names the same two values.
+
+| Field | Value |
+| --- | --- |
+| Registration | `0x1800B2D3D` |
+| Callback | `FUN_180183CA0`, body `0x180183CA0..0x180183D69` |
+| Target 1 | `PlayerObject::pushButton` RVA `0x397F40`, detour `0x180183D70`, installer `0x1801580D0` |
+| Target 2 | `PlayerObject::releaseButton` RVA `0x3981D0`, detour `0x180183DC0`, same installer |
+
+```
+0x180183D70  push rsi / push rbx / sub rsp,0x28
+0x180183D76  mov  rsi, rcx                  ; player
+0x180183D79  call 0x1801A85A0               ; original pushButton (RVA 0x397F40)
+0x180183D7E  mov  ebx, eax
+0x180183D80  call 0x1801299D0               ; get PlayLayer
+0x180183D85  test rax, rax / je  epilogue
+0x180183D8A  cmp  rsi, [rax+0xDA0]          ; player 1?
+0x180183D91  je   0x180183D9C
+0x180183D93  cmp  rsi, [rax+0xDA8]          ; player 2?
+0x180183D9A  jne  epilogue
+0x180183D9C  cmp  byte [rsi+0x9C4], 1
+0x180183DA3  jne  epilogue
+0x180183DA5  movzx edx, byte [rsi+0x9BF]
+0x180183DAC  mov  rcx, rsi / mov r8b, 1
+0x180183DB2  call 0x1801A7770               ; RVA 0x39A1D0, third arg = 1
+0x180183DB7  mov  eax, ebx / epilogue / ret
+```
+
+The release detour is the same shape with `xor dl, 1` on the byte at `+0x9BF` before the
+second call (`0x180183DFC`), so the pair calls RVA `0x39A1D0` once with the current button
+state and once with its inverse.
+
+Not promoted, because two links are unread: neither detour reads a config tag, and RVA
+`0x39A1D0` has no name string in the image (`lazy_stubs.py` lists only IAT stubs, and the
+trampoline at `0x1801A7770` carries the bare RVA). The keys describe hold/release durations,
+which implies a timer somewhere else - possibly a `postUpdate` driver that calls
+`pushButton`/`releaseButton` on a schedule - so tag 366 may be the click *gate* rather than
+the clicker itself.
+
+UNVERIFIED: the identity of RVA `0x39A1D0`; what `byte [player+0x9BF]` and
+`byte [player+0x9C4]` are (plausible: held-button id and a "clicking enabled" flag); where
+`HOLD`/`RELEASE`/`OFFSET`/`MODE` are read; and therefore whether this tag serves
+"Auto Clicker" or a different input row such as "Replay option to block inputs".
