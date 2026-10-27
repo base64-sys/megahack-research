@@ -103,37 +103,18 @@ def level_dict(name: str, author: str, objects: Iterable[tuple[int, int, int]]) 
     whose correctness a run has to confirm.
     """
     object_string = level_string(objects)
+    # A minimal dict: only the keys whose meaning is established (kCEK level class, k2 name,
+    # k4 objects, k5 author). The first version emitted all 43 keys GD wrote for a real level
+    # with zeros for the 39 unknown ones, plus an empty <d></d> for kI6; GD then showed **no
+    # levels at all**, and because the same blob was in both CCLocalLevels.dat and
+    # CCLocalLevels2.dat there was nothing to fall back to. A keyed decoder normally defaults
+    # missing keys, so the honest choice is to omit what is not understood instead of inventing
+    # values for it - and to say here that this is a hypothesis a run has to confirm.
     return [
         ("kCEK", "i", 4),
-        ("k18", "i", 0),
-        ("k36", "i", 0),
-        ("k23", "i", 0),
         ("k2", "s", name),
         ("k4", "s", encode_level_string(object_string)),
         ("k5", "s", author),
-        ("k95", "i", 0),
-        ("k101", "s", ""),
-        ("k11", "i", 0),
-        ("k13", "t", None),
-        ("k21", "i", 2),
-        ("k16", "i", 0),
-        ("k80", "i", 0),
-        ("k81", "i", 0),
-        ("k72", "t", None),
-        ("k27", "i", 0),
-        ("k42", "i", 0),
-        ("k45", "i", 0),
-        ("k50", "i", 0),
-        ("k47", "t", None),
-        ("k48", "i", 0),
-        ("k104", "s", ""),
-        ("k106", "i", 0),
-        ("kI1", "r", 0.0),
-        ("kI2", "r", 0.0),
-        ("kI3", "r", 0.0),
-        ("kI7", "i", 0),
-        ("kI6", "d", None),
-        *[(str(slot), "s", "") for slot in range(14)],
     ]
 
 

@@ -55,11 +55,12 @@ class FixtureTest(unittest.TestCase):
         self.assertEqual(xml.count("<k>LLM_01</k>"), 1)
         self.assertEqual(xml.count("<k>k_0</k>"), 1)
 
-    def test_carries_the_observed_key_set_in_order(self) -> None:
+    def test_carries_only_the_keys_whose_meaning_is_established(self) -> None:
+        # Regression: emitting all 43 observed keys with invented zeros (including an empty
+        # `<d></d>` for kI6) made GD show no levels at all. Only kCEK, k2, k4 and k5 are
+        # understood, so only those are written.
         keys = [key for key, _, _ in fixture.level_dict("n", "a", OBJECTS)]
-        self.assertEqual(len(keys), 43)
-        self.assertEqual(keys[:6], ["kCEK", "k18", "k36", "k23", "k2", "k4"])
-        self.assertEqual(keys[-1], "13")
+        self.assertEqual(keys, ["kCEK", "k2", "k4", "k5"])
 
     def test_name_and_author_are_escaped(self) -> None:
         xml = fixture.render_level("a<b&c", "x>y", OBJECTS).decode("utf-8")

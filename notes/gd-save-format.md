@@ -208,16 +208,21 @@ Still missing before an M3 run:
 - **Save isolation.** The fixture cannot be installed into a live save (see above): the
   environment redirect is ruled out by the import tables, so the run needs a separate Windows
   account, a VM, or the reversible-but-not-isolating `save_sandbox.py` under an explicit label.
-- ~~Proof GD loads the generated file.~~ **Half-closed 2026-10-27.** Run
-  `e717db95-1d42-47af-b4b0-361f27eb2ae1`: the fixture was installed with
-  `save_sandbox.py --install`, verified byte-identical on disk (556 bytes) *before* launch, and
-  the game then played it — `capture: complete`, 8,725 events, 0 errors and 0 warnings, 4,361
-  balanced hook pairs, `level_started` 1, `attempt_started` 2, all four required hooks owned by
-  `absolllute.hackmega.dll`. The fixture's name appears **nowhere** in the trace
-  (`level_started.data` is the redacted value), and the four save files were restored to their
-  recorded digests afterwards. So GD **loads and runs** the generated container.
-  **What that run does not show:** that the generated *object string* renders. Its obstacles sat
-  14.5 s apart from the start, the operator reported an apparently empty level, and nothing in
-  the trace carries object count or position. The fixture now places its first block ~4.8 s in,
-  and a run that reports seeing it is what closes the remaining half. Until then the claim is
-  "GD loads a generated level", not "GD plays the level we generated".
+- ~~Proof GD loads the generated file.~~ **Partially closed, and the earlier claim was too
+  strong.** Run `e717db95-1d42-47af-b4b0-361f27eb2ae1` was a complete capture and the fixture was
+  byte-verified on disk before launch, but the operator was looking at their **own** levels: the
+  install had been rolled back at startup (see below), so nothing in that run shows the generated
+  level loading. What *is* established by observation, on 2026-10-27:
+
+  | Observation | Evidence |
+  | --- | --- |
+  | GD restores `CCLocalLevels.dat` from `CCLocalLevels2.dat` at startup | the primary flipped to the 3 MB backup 1.3 s after launch, sampled 4×/s |
+  | an install of the primary alone is therefore undone | same measurement; the operator then saw their own levels again |
+  | a 43-key dict with invented zeros and an empty `<d></d>` for `kI6` yields **no levels** | operator report, no trace needed |
+  | a 4-key dict (`kCEK`,`k2`,`k4`,`k5`) is **listed**, but as an *online* level ("Get it") | operator report |
+  | the same dict plus `k21 = 2` (Local) yields **no levels** | operator report |
+
+  The last two contradict each other about what the client requires, and no amount of guessing
+  resolved it: see [gd-docs-level-format.md](../references/gd-docs-level-format.md) for the key
+  table and exactly what it does and does not settle. **A generated level that GD lists as Local
+  and plays has not been produced yet.**
