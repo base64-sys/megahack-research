@@ -35,29 +35,53 @@
 5. Hand-rolled target: `add_library(... SHARED)` + `loader/include` + `bin/Geode.lib` —
    compiles, then fails on `Geode/Bindings.hpp(9): Cannot open include file:
    'Geode/Enums.hpp'`.
+6. `geode sdk install C:\Users\Robert_\Documents\geode-sdk-511` — refused: `SDK is already
+   installed at C:\Users\Robert_\Documents\Geode`; only `--reinstall` (which uninstalls) or
+   `--force` change that, and neither is worth risking the existing checkout for.
+7. **Working attempt** — consume the SDK as a subdirectory, which is what it is designed for:
+
+   ```cmake
+   cmake_minimum_required(VERSION 3.21)
+   project(<mod> CXX)
+   set(CMAKE_CXX_STANDARD 20)
+   add_library(<mod> SHARED main.cpp)
+   add_subdirectory("$ENV{GEODE_SDK}" "${CMAKE_BINARY_DIR}/geode-sdk")
+   include("$ENV{GEODE_SDK}/cmake/GeodeFile.cmake")
+   setup_geode_mod(<mod> DONT_INSTALL)
+   ```
+
+   The SDK's own `CMakeLists.txt` is `project(geode-sdk ...)` (line 97), so it defines the
+   `geode-sdk` target that `setup_geode_mod` links. It fetches its dependencies with CPM,
+   downloads a prebuilt `Codegen.exe` ("Downloading Codegen … Skipping building Codegen"),
+   and runs it over the `bindings/2.2081` package to produce the generated headers.
+   First run failed at `CMakeLists.txt:403`: `No valid loader binary to link to!` because
+   `bin/` had `5.10.1/` and `5.11.1/` but no `5.11.2/`.
 
 ## Conclusion
 
-**The tree at `GEODE_SDK` is the Geode loader source, not a mod SDK.** `Geode/Enums.hpp` is a
-generated header: it exists nowhere under `C:\Users\Robert_\Documents\Geode`, and there is no
-`codegen/` directory to produce it. `cmake/GeodeFile.cmake` links a `geode-sdk` target that
-nothing in the tree defines, and `cmake/Platform.cmake` cannot be included from outside it.
+The SDK is **not** installed as a mod SDK until its matching loader binaries are installed.
+`geode sdk install-binaries` (non-interactive, one run, `Installing binaries for 5.11.2 … Done`)
+created `bin/5.11.2/`, and after that the probe configured, compiled, linked and packaged:
+`build/RelWithDebInfo/mh.probe.dll` and `build/mh.probe.geode`. The first build after
+installing the binaries still exited 1 during packaging; an unchanged re-run completed with
+`| Done | Successfully packaged mh.probe.geode`, so treat a first-run packaging failure as a
+"configure dirty, build again" case rather than a defect.
 
-So a mod cannot be compiled against the current `GEODE_SDK`, and the sanctioned fix is to
-install the actual mod SDK with `geode sdk install <path>` (a distribution that ships the
-generated headers and a self-contained CMake package), then point only the observer's build at
-it — not the global CLI configuration, so the existing loader checkout and the reconstruction
-build keep working.
+So the observer is buildable on this machine with no user action: MSVC 14.44.35207 (VS 2022
+BuildTools), Windows SDK 10.0.26100, Codegen downloaded per build, and a CMakeLists that adds
+`$ENV{GEODE_SDK}` as a subdirectory. `harness/observer/` can now be written for real, and its
+build output stays untracked.
 
-`geode new` being interactive-only is a permanent constraint: `harness/observer/` must carry
-its own `mod.json` and `CMakeLists.txt` in the repository, written to match the SDK's expected
-layout once the SDK is available.
+`geode new` being interactive-only remains true, so `harness/observer/` carries its own
+`mod.json` and `CMakeLists.txt` written to this recipe.
 
 ## Open questions
 
-- **Does `geode sdk install` work non-interactively here?** Untested. If it prompts, the item
-  is blocked on the user.
-- **Which SDK version string to pin.** The loader is 5.11.2; the contract's runtime baseline is
-  Geode 5.11.2, so the mod SDK must be 5.11.x. UNVERIFIED until the install is done.
-- **Generated-header set.** Whether the SDK distribution's include tree is complete for
-  `#include <Geode/Geode.hpp>` on this toolchain is unknown until a probe compiles again.
+- **Does the observer link the portable core under MSVC?** The core has only been built with
+  g++; O2 compiles `harness/src/*.cpp` into the mod, which is the real test. If a unit fails
+  under MSVC, fixing it must not break the g++ tests.
+- **Is `bin/5.11.2` complete for linking?** The probe links and packages, but it does not
+  exercise a hook or a Geode symbol beyond `$on_mod`; O3 is the proof.
+- **Packaging needs `mod.json` to be valid enough for the CLI's install step.** `DONT_INSTALL`
+  keeps the probe out of every profile; the observer must do the same until the user installs
+  it into `runtime511`.

@@ -10,7 +10,7 @@ Status vocabulary: `pending`, `in progress`, `done`, `blocked`.
 
 | id | item | status |
 | --- | --- | --- |
-| O1 | Discover the Geode 5.11.2 mod build path: SDK layout, exact command, produced artifacts, host toolchain | in progress |
+| O1 | Discover the Geode 5.11.2 mod build path: SDK layout, exact command, produced artifacts, host toolchain | done |
 | O2 | Observer skeleton: mod `megahack.trace`, links the portable core, writes meta + end to `runtime-traces/` | pending |
 | O3 | Hook bridge: enter/exit events with call ids, depth and proven main-thread role | pending |
 | O4 | Runner: hashes, one-target enforcement, sha256 sidecar, runtime511 selection, manifest feeding | pending |
@@ -31,3 +31,17 @@ Status vocabulary: `pending`, `in progress`, `done`, `blocked`.
   re-probe, pointing only the observer build at it. If the install is interactive, O1 becomes
   blocked on the user.
 - Commit: `docs(observer): record the Geode 5.11.2 mod build path probe`.
+
+### Iteration 2 — O1 done: the SDK builds a mod once its loader binaries exist
+
+- `geode sdk install <path>` refuses to install a second SDK; `--reinstall` would uninstall
+  the existing checkout, so it was not used.
+- `geode sdk install-binaries` (non-interactive) added `bin/5.11.2/`; without it configure
+  dies at `CMakeLists.txt:403` with "No valid loader binary to link to!".
+- The working project shape is `add_subdirectory($ENV{GEODE_SDK} ...)` then
+  `include($ENV{GEODE_SDK}/cmake/GeodeFile.cmake)` then `setup_geode_mod(<target> DONT_INSTALL)`;
+  the SDK fetches CPM deps and downloads `Codegen.exe` itself.
+- Evidence: probe produced `build/RelWithDebInfo/mh.probe.dll` and `build/mh.probe.geode`
+  with MSVC 14.44.35207 and Windows SDK 10.0.26100. Nothing was installed into a profile.
+- Commit: `docs(observer): record the working Geode mod build recipe`.
+- Next: O2, the observer skeleton against this recipe.
