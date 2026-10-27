@@ -1,0 +1,15 @@
+add_executable(mh_trace_tests
+  test_main.cpp
+)
+
+target_link_libraries(mh_trace_tests PRIVATE mh_trace)
+target_compile_features(mh_trace_tests PRIVATE cxx_std_20)
+
+if(MSVC)
+  target_compile_options(mh_trace_tests PRIVATE /W4 /permissive-)
+else()
+  target_compile_options(mh_trace_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+
+add_test(NAME mh_trace_tests COMMAND mh_trace_tests)
+set_tests_properties(mh_trace_tests PROPERTIES TIMEOUT 60)

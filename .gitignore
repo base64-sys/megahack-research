@@ -82,6 +82,10 @@ venv/
 # lockfile are tracked; the installed tree never is.
 node_modules/
 
+# --- Trace harness build tree --------------------------------------------------
+# Out-of-source build output for harness/CMakeLists.txt. Regenerate; never commit.
+/harness/build/
+
 # --- Long-run wrapper scratch --------------------------------------------------
 .oc/
 .opencode/
