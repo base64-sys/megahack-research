@@ -15,7 +15,7 @@ evidence (test name, gate output, commit subject).
 | 2 | Value model: observed(u64, i32, f32 with bits, bool, str, bytes, ptr), null, unavailable, redacted; equality rules; JSON serialisation | done |
 | 3 | Canonical JSON writer: sorted keys, no insignificant whitespace, UTF-8, plus run_fingerprint as SHA-256 over the canonical object (own SHA-256, no deps) | done |
 | 4 | Trace writer: meta/event/end, seq from 0, attempted/dropped counters, capture status, JSONL, no BOM | done |
-| 5 | Call pairing and call-stack validation: unique call_id, depth/parent chain, unclosed enters, exit without enter, reused id | pending |
+| 5 | Call pairing and call-stack validation: unique call_id, depth/parent chain, unclosed enters, exit without enter, reused id | done |
 | 6 | Trace reader/validator: required keys present, seq gaps, end record required, capture gate | pending |
 | 7 | Scenario manifest parser and validator (mh-scenario/1): required fields, status vocabulary, level/profile/settings rules | pending |
 | 8 | Comparator core: comparability gate, volatile-field normalisation, canonical event keys | pending |
@@ -142,6 +142,34 @@ evidence (test name, gate output, commit subject).
   `trace_writer_requires_meta_first_and_closes_after_end`,
   `trace_file_is_lf_terminated_utf8_without_bom`.
 - Build: `44 test(s), 0 failed`, `ctest` `100% tests passed out of 1`.
+
+### Item 5 — call pairing and call-stack validation
+
+- Files: `include/mh/call_stack.hpp`, `src/call_stack.cpp`, `tests/test_call_stack.cpp`.
+- Pure function `validate_call_stack(events)` over hook events in file order, one stack per
+  thread. `call_id` uniqueness is per run, not per thread ("unique within a run"), so two
+  threads cannot both own `c1`.
+- Error kinds map to the contract's sentence: `exit_without_enter`, `reused_call_id`,
+  `depth_mismatch` (a jump in either direction, since the chain implies exactly one depth),
+  `parent_mismatch`, `not_innermost`, `unclosed_enter`.
+- An exit of a non-innermost call is an error and the frames above it stay open, so they
+  surface as `counts.unclosed` instead of being silently closed. `unclosed` counts open
+  frames at end of file and each one carries the enter's `seq`, `thread_id` and `call_id`,
+  so `end.counts.unclosed` can be explained rather than merely counted.
+- Determinism: stacks are keyed by an ordered map, so the report does not depend on
+  hash-table iteration order.
+- Tests (14): `call_stack_pairs_nested_calls_per_thread`,
+  `call_stack_counts_unclosed_enters_without_closing_them`,
+  `call_stack_rejects_exit_without_enter`, `call_stack_rejects_reused_call_id`,
+  `call_stack_rejects_reused_id_after_close`, `call_stack_is_unique_across_threads`,
+  `call_stack_allows_independent_stacks_per_thread`, `call_stack_rejects_depth_jump`,
+  `call_stack_rejects_shallower_depth_than_the_chain`,
+  `call_stack_rejects_parent_that_is_not_the_enclosing_call`,
+  `call_stack_requires_null_parent_at_depth_one`,
+  `call_stack_rejects_exit_of_a_non_innermost_call`,
+  `call_stack_rejects_exit_depth_that_does_not_match_the_enter`,
+  `call_stack_ignores_an_empty_event_list`.
+- Build: `58 test(s), 0 failed`, `ctest` `100% tests passed out of 1`.
 
 ## Open questions
 
