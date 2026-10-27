@@ -14,7 +14,8 @@ Status vocabulary: `pending`, `in progress`, `done`, `blocked`.
 | O2 | Observer skeleton: mod `megahack.trace`, links the portable core, writes meta + end to its save directory (`traces/`) | done (build only — the write is unproven until a run) |
 | O3a | Hook bridge, one hook end to end: `PlayLayer::resetLevel` enter/exit with call ids, depth, parent and `thread.role` from the load thread | done (build only — firing unproven until a run) |
 | O3b | Hook bridge, remaining pilot keys: `PlayLayer::postUpdate`, `PlayerObject::pushButton`, `PlayerObject::releaseButton` | done (build only) |
-| O4 | Runner: hashes, one-target enforcement, sha256 sidecar, runtime511 selection, manifest feeding | pending |
+| O4a | Runner preflight: target/environment hashes, one-target rule, profile refusal, trace sha256 sidecar, fragment in meta spelling, python tests | done |
+| O4b | Run-context handshake: the runner writes a context file before launch, the observer fills meta (target, environment, scenario, level, settings) and the real `run_fingerprint` from it at load, then marks it consumed | pending |
 | O5 | Pilot capture in runtime511 and a real `read_trace` pass, plus the proofs only a run can give (hooks fire; the load thread is the main thread) - needs the user to launch | pending |
 
 ## Evidence log
@@ -111,3 +112,21 @@ Status vocabulary: `pending`, `in progress`, `done`, `blocked`.
   the main thread. A build cannot answer either.
 - Commit: `feat(observer): hook the four required pilot methods`.
 - Next: O4, the runner.
+
+### Iteration 6 — O4a: preflight refuses what must not run, and hashes what must
+
+- `harness/tools/preflight.py` + 7 tests (`harness/tools/test_preflight.py`, all passing).
+  It refuses the live `a` profile, any GD path under `steamapps`, zero or two targets, and a
+  missing artifact; it hashes target/GD/Geode/observer and emits the contract's exact
+  `target`/`environment` objects, so there is no second schema.
+- Run against the real files, read-only: target `1635c339…e1107a92`, size `8697056`, image
+  base `0x180000000` (all match AGENTS.md), GD `fc5a16c2…` (matches the documented
+  2.2081 image), Geode `0c34f504…`.
+- `--sidecar <trace>` writes sha256sum-form `<trace>.sha256`.
+- The item grew a second half, so it is split: the observer still writes `null` for what only
+  the runner knows, and patching a trace's meta afterwards would be rewriting evidence.
+  O4b therefore makes the runner write a **run-context file** before launch and the observer
+  read it at load - meta is written once, with real values, and `run_fingerprint` becomes
+  computable instead of all-zero.
+- Commit: `feat(runner): preflight hashes, one-target rule and profile refusal`.
+- Next: O4b, the run-context handshake.

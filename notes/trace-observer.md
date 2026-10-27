@@ -109,6 +109,36 @@ UNVERIFIED: that the hook fires at all, and that the thread running `$on_mod(Loa
 game's main thread. The record says `role: main` only when the hook runs on that same thread,
 and the code carries the same caveat. A captured run closes both.
 
+## Runner preflight (O4a)
+
+`harness/tools/preflight.py` collects what the observer cannot know at load and emits it as
+the exact `target` and `environment` objects of a meta record - no new schema, no second
+spelling:
+
+```
+python harness/tools/preflight.py --target <artifact> --gd <GD exe> --geode <Geode.dll>
+    --harness <megahack.trace.geode> --profile runtime511 --gd-version 2.2081
+    --geode-version 5.11.2 [--out fragment.json] [--sidecar <trace>]
+```
+
+It refuses a run when the profile is the live `a`, when the GD path is under `steamapps`,
+when there is not exactly one target artifact, and when an artifact is missing. `--sidecar`
+writes `<trace>.sha256` in sha256sum form.
+
+Run against the real files on 2026-10-27 (read-only; nothing written into the profile):
+
+| Field | Value | Matches |
+| --- | --- | --- |
+| target sha256 | `1635c339…e1107a92` | AGENTS.md ground truth |
+| target size | `8697056` | AGENTS.md ground truth |
+| target image_base | `0x180000000` | AGENTS.md ground truth |
+| GD sha256 | `fc5a16c2…d9ec6d0` | AGENTS.md GD 2.2081 prefix `FC5A16C2…C6D0` |
+| Geode sha256 | `0c34f504…33684d3` | not previously recorded |
+
+Tests (`python harness/tools/test_preflight.py`, 7 cases) cover the digest against
+`hashlib`, the PE header read, the sidecar format, both profile refusals, the one-target rule
+(0, 1, 2 and missing), the fragment's field names, and the CLI's refusal exit code.
+
 ## Open questions
 
 - **Does the observer link the portable core under MSVC?** Yes as of iteration 3: the mod
