@@ -69,11 +69,28 @@ storage, not GD's saves. That contradicts an explicit gate row ("a run against a
 not eligible"), and it is the reason installing a generated level fixture by writing
 `CCLocalLevels.dat` in place would destroy the user's levels.
 
-Closing it needs one of:
+**Redirecting `%LOCALAPPDATA%` for the child process will not work, and that was checked before
+it cost a run.** Import tables of the three binaries in `GD-Runtime-511`:
 
-- redirect the child process's `%LOCALAPPDATA%` (does GD resolve its save dir through the
-  environment or through `SHGetKnownFolderPath`? UNVERIFIED — one run with a probe answers it),
-- or a VM/profile snapshot as the contract already suggests.
+| Module | Path-related imports |
+| --- | --- |
+| `GeometryDash.exe` | no environment, known-folder or shell-folder API at all |
+| `libcocos2d.dll` | `SHELL32!SHGetFolderPathA`; **no** `GetEnvironmentVariable*`, no `getenv` |
+| `Geode.dll` | `SHGetFolderPathW`, `ExpandEnvironmentStringsA`, `GetEnvironmentVariableA/W`, `getenv`, `getenv_s` |
+
+The writable path is built by cocos2d, and cocos2d resolves it through `SHGetFolderPathA`
+(CSIDL_LOCAL_APPDATA), which reads the shell known folder from the profile, not the environment.
+Two angles: the import is present, and no environment-reading API is imported by the module that
+owns the path — while the directory GD actually writes *is* the LOCAL_APPDATA known folder.
+Geode does read environment variables, but for its own directories, which is exactly the split
+observed earlier (mod data under `%LOCALAPPDATA%\GeometryDash\geode`, GD's saves beside it).
+
+Closing it therefore needs one of:
+
+- a second Windows user account (its known folders are separate), 
+- a VM or Windows Sandbox,
+- or a scripted backup/install/restore of `%LOCALAPPDATA%\GeometryDash\*.dat` around each run,
+  which is *controlled mutation of the live save*, not isolation, and must be labelled as such.
 
 Until one is in place, a fixture must not be installed into the live save directory, and an M3
 run is not eligible on the isolation row regardless of how good the comparison is.
