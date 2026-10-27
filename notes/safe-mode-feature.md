@@ -271,12 +271,13 @@ binding from the message callback to `FUN_18019A780`.
 
 The `reconstruction/geode` variant implements the hook *surface* only (`ReconstructionGJGameLevel::savePercentage`
 forwards to the original unconditionally, `reconstruction/geode/src/main.cpp`), so it has no
-settings layer and never consults the gate above. That is visible in traces: across four
-captures on 2026-10-27 the release recorded **no** `GJGameLevel::savePercentage` (`0x16C8B0`)
-enter/exit pair with `0x1E2` true, while the reconstruction recorded them in both of its runs —
-including a 34 s session against an 82 s release session, which rules out length. The
-comparator classifies the extra events as a `pass_with_warnings` alignment difference, not a
-failure.
+settings layer and never consults the gate above. The controlled `save-percentage-death` runs
+on 2026-10-27 (4500-frame window, one death every ~433 frames) show the difference directly:
+with `0x1E2` true the release recorded **no** `GJGameLevel::savePercentage` (`0x16C8B0`) entry
+across nine deaths, while the reconstruction recorded eight; with `0x1E2` false the release
+recorded nine. The four 0.2.0 captures cannot support this comparison: their 600-frame window
+was 0.9 s and contains no save call in either variant. The comparator classifies extra events
+as a `pass_with_warnings` alignment difference, not a failure.
 
 Reproducing the gate would mean reproducing the Map A/Map B settings reads (tags 482, 481, 73),
 the `hasCheatedInAttempt` cache and its refresh hooks, and the progress accumulators at

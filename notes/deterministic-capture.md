@@ -87,8 +87,12 @@ Implemented as harness **0.2.0** (observer `megahack.trace.geode`
    so "stopped at the bound" and "the writer dropped records" stay distinguishable.
 3. **Scenario** — `harness/scenarios/no-input-smoke.json`: `input.driver` stays `"operator"` with
    `"actions": []`, because the vocabulary has no `"none"` and a human still launches and quits;
-   `timing.window = {"anchor": "level_started", "max_frames": 600}` (10 s at 60 fps, past the
-   fixture's first block); `hooks.required` is `0x3b8eb0` + `0x3b4ba0` only, with
+   `timing.window = {"anchor": "level_started", "max_frames": 600}`. **Corrected by
+   measurement (2026-10-27, later):** the "10 s at 60 fps" reading was wrong. The game ignored
+   the requested 60 fps cap and rendered at 662.3-666.4 fps in these four captures, so 600
+   frames was only 0.899-0.904 s and never reached the first block. The window length is
+   frames, not seconds; see *Result: a bounded run does reach 0x16c8b0*. `hooks.required` is
+   `0x3b8eb0` + `0x3b4ba0` only, with
    `0x397f40`/`0x3981d0`/`0x16c8b0` optional. **Corrected by measurement:** the first draft of
    this item justified the optional input hooks by saying an input-free run never fires
    `pushButton`/`releaseButton`. That is half wrong, and the four captures prove it — with no key
@@ -189,7 +193,40 @@ target was present in every session; the loader log was read for `multiple_targe
 restored after the last, and the restore was verified independently (17 level rows, no fixture
 string).
 
+## Result: a bounded run does reach 0x16c8b0 (2026-10-27, later)
 
+**Question this closes.** Does a bounded, input-free capture reach `GJGameLevel::savePercentage`
+(GD RVA `0x16C8B0`) at all? The earlier answer was no, measured on a 600-frame window that was
+actually 0.9 s. Retaken with `harness/scenarios/save-percentage-death.json` (`d232c4ca…`,
+window 4500 frames, fixture and `0x1E2 = true` unchanged).
+
+| variant / setting | run | events | attempts | `0x16c8b0` | `save_requested` | `save` |
+| --- | --- | --- | --- | --- | --- | --- |
+| release `1635c339…`, `0x1E2 = true` | `62cdbc87` | 4,060 | 9 | 0 | 0 | 0 |
+| reconstruction `5f214c5f…`, `0x1E2 = true` | `1ed7b3a0` | 4,077 | 8 | 16 | 8 | 16 |
+| release `1635c339…`, `0x1E2 = false` | `be5a3ec1` | 4,095 | 9 | 18 | 9 | 18 |
+
+All three: `capture: complete`, `end.status = completed`, spans 4,497-4,499 frames, 0 dropped,
+0 unclosed. The safe-off run used `save-percentage-death-safe-off.json` (`5c06aa52…`) after
+removing `CHEAT_SAFETY/HACK_SAFE_MODE` from `PROFILES.DEFAULT` in `hackpro.json`; the file was
+restored afterwards.
+
+**Conclusion.** A bounded run does reach `0x16c8b0`: eight times in the reconstruction under
+Safe Mode, once per death, and nine times in the release with `0x1E2 = false`. With `0x1E2 =
+true` the release records no `0x16c8b0` entry and no `save` record across nine deaths, while
+the reconstruction records one per death: runtime confirmation of the veto, independent of the
+static call-site evidence (`PlayLayer::destroyPlayer` `0x1403B3DEA` and
+`PlayLayer::levelComplete` `0x1403A8177` both call it). The `save` snapshots are all 548 B with
+the same digest `a39e67b8…` before and after, so these captures observe the call and the
+milestone, not a completed disk write; the earlier framing "never writes a percentage" conflated
+the two.
+
+**UNVERIFIED answered.** `0x1E2 = false` does make the release reach the producer side and emit
+`save`; the second candidate resolution is executable. Whether to adopt that scenario (which
+stops exercising the Safe Mode gate) or widen the claim class is still a manifest/contract
+decision, not something this capture decides; `derive_claim` and the claim status are unchanged.
+
+## What this change does not do
 
 - It does not add a tolerance, a volatility entry, or a "counts may differ" rule. The comparator's
   complaint is correct; the fix belongs in the capture.
@@ -206,16 +243,14 @@ string).
   11541 in the four captures of 2026-10-27).
 - **Answered: frames, not wall-clock.** The window counts frames; `timeout_ms` stays an operator
   instruction because a wall-clock stop is not comparable across runs.
-- **Answered: does a no-input run reach any target-dependent site?** No — and the answer is
-  stronger than "we saw none", because the observation is bounded. `0x16c8b0` (`savePercentage`)
-  is installed by the observer in every one of the four runs (its hook line appears in each
-  launch log) and fired **zero times in all four**; the hook census is exactly
-  `0x3981d0` 8, `0x3b4ba0` 1198, `0x3b8eb0` 2, and there are no `save`/`save_requested` records in
-  any trace. So the fixture's one-block layout produces a death and a restart (`0x3b8eb0` twice,
-  `attempt_started` once) and never a percentage write inside 600 frames. This does **not** make
+- **Answered and corrected: does a no-input run reach a target-dependent site?** Yes, once the
+  window is long enough. The earlier "no" was measured on 600 frames = 0.9 s, which never reached
+  the first block; at 4500 frames a death calls `0x16c8b0` in the reconstruction, and in the
+  release when `0x1E2 = false`. The old "`0x3b8eb0` twice / `attempt_started` once" census was
+  init/reset, not a death-and-restart cycle. See the result table above. This does **not** make
   D3 "required": input injection would add jumps, not completion, so it is the wrong lever for
-  this question. The lever is a level and a scenario shape that reach a percentage write.
-- **Still open, and now structural: can `behavioural` ever be reached under Safe Mode?**
+  this question.
+- **Still open, now narrowed: should the claim class widen, or the scenario change?**
   `derive_claim` requires the target-dependent kind in **both** variants' runs, but the release's
   whole purpose at `0x16c8b0` is to *suppress* the write when `0x1E2` is set
   ([safe-mode-feature.md](safe-mode-feature.md)); the five-run comparison observed exactly that
