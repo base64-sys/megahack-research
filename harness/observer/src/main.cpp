@@ -404,8 +404,14 @@ void emit_hook_locked(Session& session, const char* phase, const HookSpec& spec,
 
 // notes/runtime-validation.md "milestone": kind, name, and data as a value object. The pilot
 // manifest's required milestones are level_started and attempt_started.
-void emit_milestone_locked(Session& session, const char* name) {
-    mh::json::Json body = mh::records::milestone_event(name);
+//
+// `data` carries what was observed at the site, when anything was. `level_started` passes the
+// level's own name: that is the one field which makes the trace say *which* level ran, instead
+// of repeating what the run context asserted. A null pointer keeps the record at the model's
+// null value, which is what every other milestone still writes.
+void emit_milestone_locked(Session& session, const char* name, const mh::Value* data) {
+    mh::json::Json body = data != nullptr ? mh::records::milestone_event(name, *data)
+                                          : mh::records::milestone_event(name);
 
     mh::EventContext context;
     context.t_ns = steady_ns();
@@ -515,12 +521,12 @@ void verify_session(Session& session, const mh::json::Json& body) {
     }
 }
 
-void emit_milestone(const char* name) {
+void emit_milestone(const char* name, const mh::Value* data = nullptr) {
     std::lock_guard<std::mutex> lock(g_mutex);
     if (!g_session || !g_session->writer) {
         return;
     }
-    emit_milestone_locked(*g_session, name);
+    emit_milestone_locked(*g_session, name, data);
 }
 
 HookScope begin_hook(const HookSpec& spec, void* self) {
@@ -571,7 +577,15 @@ class $modify(TracePlayLayer, PlayLayer) {
         // Emitted before the original runs: PlayLayer::init sets the level up and may call
         // resetLevel itself, and the manifest's order group requires level_started first.
         // A failed init therefore still records the attempt, which is the honest reading.
-        emit_milestone("level_started");
+        //
+        // The level's name is observed here, not asserted: it is the only field in the trace
+        // that says which level the game actually loaded. `m_levelName` is the 2.2081 binding
+        // field (harness/observer/build/bindings/.../binding/GJGameLevel.hpp:485).
+        mh::Value observed = mh::Value::unavailable("no level was passed to PlayLayer::init");
+        if (level != nullptr) {
+            observed = mh::Value::observed_str(level->m_levelName.c_str());
+        }
+        emit_milestone("level_started", &observed);
         return PlayLayer::init(level, useReplay, dontCreateObjects);
     }
 

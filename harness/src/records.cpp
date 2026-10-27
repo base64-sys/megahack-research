@@ -93,16 +93,18 @@ json::Json hook_event(std::string_view phase, const HookIdentity& identity, json
   return body;
 }
 
-json::Json milestone_event(std::string_view name) {
+json::Json milestone_event(std::string_view name, const Value& data) {
   json::Json body = object();
   body.set("kind", json::Json::string("milestone"));
   body.set("name", json::Json::string(name));
   // `data` is a value object, so "nothing observed" is the model's own null value
   // (`{"state":"null"}`), not a JSON null. The captured trace is the authority here: a JSON
   // null would be a second spelling of the same claim.
-  body.set("data", value_json(Value::null_value()));
+  body.set("data", value_json(data));
   return body;
 }
+
+json::Json milestone_event(std::string_view name) { return milestone_event(name, Value::null_value()); }
 
 json::Json save_event(std::string_view phase, bool exists, std::optional<std::int64_t> size,
                       std::optional<std::string> sha256, std::string local_path) {

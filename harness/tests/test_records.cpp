@@ -113,6 +113,24 @@ MH_TEST(records_milestone_event_has_no_invented_data) {
               R"({"kind":"milestone","name":"level_started","data":{"state":"null"}})");
 }
 
+// A milestone may carry what was observed at the site. The observer uses this for
+// `level_started`, so the trace says which level ran instead of repeating the run context.
+MH_TEST(records_milestone_event_can_carry_an_observed_value) {
+  const Json started = mh::records::milestone_event(
+      "level_started", mh::Value::observed_str("safe-mode-smoke fixture"));
+  MH_CHECK_EQ(started.to_json(),
+              R"({"kind":"milestone","name":"level_started",)"
+              R"("data":{"state":"observed","type":"str","value":"safe-mode-smoke fixture"}})");
+}
+
+MH_TEST(records_milestone_event_states_an_unavailable_value_rather_than_guessing) {
+  const Json started = mh::records::milestone_event(
+      "level_started", mh::Value::unavailable("no level was passed to PlayLayer::init"));
+  MH_CHECK_EQ(started.to_json(),
+              R"({"kind":"milestone","name":"level_started",)"
+              R"("data":{"state":"unavailable","reason":"no level was passed to PlayLayer::init"}})");
+}
+
 MH_TEST(records_save_event_states_absence_with_nulls) {
   const Json absent =
       mh::records::save_event("snapshot_before", false, std::nullopt, std::nullopt, "saves/x.dat");

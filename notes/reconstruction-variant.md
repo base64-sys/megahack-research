@@ -118,12 +118,12 @@ Artifacts from this build (not committed, `.gitignore` has `/reconstruction/geod
 | --- | --- |
 | `megahack.reconstruction.dll` | `5f214c5f086c6339300a9adfeec94376f8e7f33a119272fda28d879b6117ac1f` |
 | `megahack.reconstruction.geode` | `df5961623d01f4d336f7d1f88fc01e55e188182843153981e8566bf6450a3ba7` |
-| `megahack.trace.geode` (observer, after the record refactor) | `9b4065b264d2f5301ba095435e0fb3bcea73ca051c636b07cb20458aeea5e454` |
+| `megahack.trace.geode` (observer, after the record refactor) | `f3ab5f6097b6675c49d005efac2efbbb44b2a27c30f5d2adebb7a3d7d1a4f726` |
 
 That last row is a re-pin: touching the observer source during the commit split forced a
-rebuild, the package digest moved (`8be7118a…` → `9b4065b2…`), and the manifest had to be
-re-filled and re-hashed. This is the cost of a non-reproducible build made concrete, and it is
-why the pin is per build rather than per source tree.
+rebuild, the package digest moved (`8be7118a…` → `9b4065b2…` → `f3ab5f60…`), and the manifest
+had to be re-filled and re-hashed. This is the cost of a non-reproducible build made concrete,
+and it is why the pin is per build rather than per source tree.
 
 `geode build` reports exit 1 on the first build after a configure change while still packaging,
 and 0 on an unchanged re-run - the same behaviour already recorded for the observer, not a new
@@ -155,7 +155,7 @@ context rebuilt, because the manifest's own digest is part of the context.
   the two traces' `environment.geode.version` with each other - so
   `scenario_accepts_a_baseline_that_differs_from_the_runtime` pins that editing `baseline` does
   not invalidate a manifest.
-- New manifest SHA-256: `9a871e0638c06edc28984c3c105a952beccced6fce72c03a351390f708411da1`.
+- New manifest SHA-256: `499f219cb1f1cc79f9c5ccbaf9769b6ab510bb90ad2c957e17f0af5288ef9f6`.
 
 ## Evidence
 
@@ -195,10 +195,10 @@ context rebuilt, because the manifest's own digest is part of the context.
 State left behind on 2026-10-27, all verified:
 
 - `runtime511` `geode/mods/` holds the release target and the rebuilt observer
-  (`megahack.trace.geode`, `9b4065b2…`); `geode/unzipped/megahack.trace` was deleted so the
+  (`megahack.trace.geode`, `f3ab5f60…`); `geode/unzipped/megahack.trace` was deleted so the
   loader must extract the new package rather than keep the old DLL.
 - `%LOCALAPPDATA%\...\megahack.trace\pending-context.json` is a **release, repetition 0**
-  context built from the current manifest: scenario `9a871e06…`, harness `9b4065b2…`,
+  context built from the current manifest: scenario `f499f219…`, harness `f3ab5f60…`,
   target `1635c339…`, tag `0x1E2 = true`.
 
 1. Launch `geode profile run runtime511`, load one local level, play for a few seconds, quit.

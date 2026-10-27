@@ -21,6 +21,7 @@
 #include <string_view>
 
 #include "mh/json.hpp"
+#include "mh/value.hpp"
 
 namespace mh::records {
 
@@ -55,7 +56,10 @@ json::Json call_object(std::string_view call_id, std::int64_t depth,
 json::Json hook_event(std::string_view phase, const HookIdentity& identity, json::Json target,
                       json::Json call);
 
+// `data` is what was observed at the site. The one-argument form writes the model's null value,
+// which is what a milestone with nothing observed must say.
 json::Json milestone_event(std::string_view name);
+json::Json milestone_event(std::string_view name, const Value& data);
 
 // A `save` record is an observed file state, never an inference: `exists` decides whether
 // `size`/`sha256` are numbers or null.
