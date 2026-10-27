@@ -15,10 +15,13 @@ add_executable(mh_trace_tests
   test_comparison.cpp
   test_corpus.cpp
   test_context.cpp
+  test_records.cpp
 )
 
 target_link_libraries(mh_trace_tests PRIVATE mh_trace)
 target_compile_features(mh_trace_tests PRIVATE cxx_std_20)
+target_compile_definitions(mh_trace_tests PRIVATE
+  MH_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
 
 if(MSVC)
   target_compile_options(mh_trace_tests PRIVATE /W4 /permissive-)

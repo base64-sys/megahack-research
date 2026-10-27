@@ -24,10 +24,9 @@
 #include <mh/contract.hpp>
 #include <mh/context.hpp>
 #include <mh/json.hpp>
-#include <mh/json_parse.hpp>
+#include <mh/records.hpp>
 #include <mh/sha256.hpp>
 #include <mh/trace_writer.hpp>
-#include <mh/value.hpp>
 
 #include <algorithm>
 #include <chrono>
@@ -151,16 +150,6 @@ std::int64_t steady_ns() {
 }
 
 mh::json::Json object() { return mh::json::Json::object(); }
-
-// The value model owns its serialisation; parsing it back keeps one spelling of a value
-// object in the repository instead of a second, hand-written one here.
-mh::json::Json value_json(const mh::Value& value) {
-    auto parsed = mh::json::parse(value.to_json());
-    if (parsed.value) {
-        return *parsed.value;
-    }
-    return mh::json::Json::null();
-}
 
 void mark_unobserved(mh::Capture& capture, std::string path, std::string reason) {
     capture.missing.push_back(path);
@@ -338,37 +327,15 @@ mh::json::Json target_hook_object(std::uintptr_t address) {
     if (!target) {
         return mh::json::Json::null();
     }
-    mh::json::Json object_value = object();
-    object_value.set("module", mh::json::Json::string(target->module));
-    object_value.set("callback_va", mh::json::Json::null());
-    object_value.set("callback_rva", mh::json::Json::null());
-    object_value.set("registration_va", mh::json::Json::null());
-    object_value.set("tag", mh::json::Json::null());
-    object_value.set("tag_label", mh::json::Json::null());
-    object_value.set("order_raw", mh::json::Json::null());
-    object_value.set("order_signed", mh::json::Json::null());
-    object_value.set("priority", mh::json::Json::integer(target->priority));
-    return object_value;
+    return mh::records::hook_target(target->module, target->priority);
 }
 
-mh::json::Json build_hook_object(const HookSpec& spec) {
-    char rva[16];
-    std::snprintf(rva, sizeof(rva), "0x%X", spec.rva);
-    char va[32];
-    const std::uintptr_t address = image_base() + spec.rva;
-    std::snprintf(va, sizeof(va), "0x%llX", static_cast<unsigned long long>(address));
-
-    mh::json::Json hook = object();
-    hook.set("observer", mh::json::Json::string("gd_method"));
-    hook.set("key", mh::json::Json::string(spec.key));
-    hook.set("module", mh::json::Json::string("GeometryDash.exe"));
-    hook.set("method", mh::json::Json::string(spec.method));
-    hook.set("resolution", mh::json::Json::string("rva"));
-    hook.set("rva", mh::json::Json::string(rva));
-    hook.set("va", mh::json::Json::string(va));
-    hook.set("target", target_hook_object(address));
-    hook.set("convention", mh::json::Json::string("unknown"));
-    return hook;
+// The `hook` object's shape lives in the portable core (`mh/records.hpp`), so the observer
+// and any second implementation cannot drift apart on a key name. This only supplies the
+// resolved address and the target it found.
+mh::records::HookIdentity identity_for(const HookSpec& spec) {
+    return mh::records::HookIdentity{spec.key, spec.method, "GeometryDash.exe", spec.rva,
+                                     image_base() + spec.rva};
 }
 
 // Every record goes through here: it enforces the event cap and the flush batching, so no
@@ -380,13 +347,9 @@ void write_event(Session& session, const mh::json::Json& body, const mh::EventCo
     if (session.writer->counts().attempted >= kMaxEvents) {
         if (!session.overflow_reported) {
             session.overflow_reported = true;
-            mh::json::Json overflow = object();
-            overflow.set("kind", mh::json::Json::string("error"));
-            overflow.set("code", mh::json::Json::string("capture_overflow"));
-            overflow.set("message",
-                         mh::json::Json::string("event cap reached; recording stopped here"));
-            overflow.set("fatal", mh::json::Json::boolean(true));
-            overflow.set("hook_key", mh::json::Json::null());
+            mh::json::Json overflow = mh::records::error_event(
+                "capture_overflow", "event cap reached; recording stopped here", true,
+                std::nullopt);
             session.writer->write_event(overflow, context);
             session.sink.flush();
         }
@@ -401,25 +364,18 @@ void write_event(Session& session, const mh::json::Json& body, const mh::EventCo
 
 // Emits one record. Caller holds g_mutex.
 void emit_hook_locked(Session& session, const char* phase, const HookSpec& spec,
-                      const HookScope& scope, void* self, std::int64_t duration_ns) {    mh::json::Json call = object();
-    call.set("call_id", mh::json::Json::string(scope.call_id));
-    call.set("depth", mh::json::Json::integer(scope.depth));
-    call.set("parent_call_id", scope.parent.empty() ? mh::json::Json::null()
-                                                    : mh::json::Json::string(scope.parent));
-    call.set("this", value_json(mh::Value::observed_ptr(
-                       static_cast<std::uint64_t>(reinterpret_cast<std::uintptr_t>(self)))));
-    call.set("args",
-             value_json(mh::Value::unavailable("arguments are not captured by this hook")));
-    call.set("return", value_json(mh::Value::null_value()));
-    if (duration_ns >= 0) {
-        call.set("duration_ns", mh::json::Json::integer(duration_ns));
-    }
+                      const HookScope& scope, void* self, std::int64_t duration_ns) {
+    const std::optional<std::string_view> parent =
+        scope.parent.empty() ? std::nullopt
+                             : std::optional<std::string_view>(scope.parent);
+    mh::json::Json call = mh::records::call_object(
+        scope.call_id, scope.depth, parent,
+        static_cast<std::uint64_t>(reinterpret_cast<std::uintptr_t>(self)),
+        duration_ns >= 0 ? std::optional<std::int64_t>(duration_ns) : std::nullopt);
 
-    mh::json::Json body = object();
-    body.set("kind", mh::json::Json::string("hook"));
-    body.set("phase", mh::json::Json::string(phase));
-    body.set("hook", build_hook_object(spec));
-    body.set("call", std::move(call));
+    mh::json::Json body = mh::records::hook_event(
+        phase, identity_for(spec), target_hook_object(image_base() + spec.rva),
+        std::move(call));
 
     // Two mods hooking the same function makes `hook.target` a guess, so it is left null and the
     // ambiguity is reported once instead of being resolved by iteration order.
@@ -443,10 +399,7 @@ void emit_hook_locked(Session& session, const char* phase, const HookSpec& spec,
 // notes/runtime-validation.md "milestone": kind, name, and data as a value object. The pilot
 // manifest's required milestones are level_started and attempt_started.
 void emit_milestone_locked(Session& session, const char* name) {
-    mh::json::Json body = object();
-    body.set("kind", mh::json::Json::string("milestone"));
-    body.set("name", mh::json::Json::string(name));
-    body.set("data", value_json(mh::Value::null_value()));
+    mh::json::Json body = mh::records::milestone_event(name);
 
     mh::EventContext context;
     context.t_ns = steady_ns();
@@ -466,30 +419,15 @@ mh::json::Json save_snapshot_object(const char* phase) {
     const std::filesystem::path save_dir = geode::dirs::getSaveDir();
     const std::filesystem::path path = save_dir / "CCLocalLevels.dat";
 
-    mh::json::Json body = object();
-    body.set("kind", mh::json::Json::string("save"));
-    body.set("store", mh::json::Json::string("gd_save"));
-    body.set("phase", mh::json::Json::string(phase));
-    body.set("source", mh::json::Json::string("filesystem"));
-    body.set("path_template", mh::json::Json::string("<gd_save>/CCLocalLevels.dat"));
-
     std::error_code error;
     const bool exists = std::filesystem::exists(path, error) && !error;
-    body.set("exists", mh::json::Json::boolean(exists));
     if (!exists) {
-        body.set("size", mh::json::Json::null());
-        body.set("sha256", mh::json::Json::null());
-        body.set("keys", mh::json::Json::null());
-        body.set("local_path", mh::json::Json::string(path.string()));
-        return body;
+        return mh::records::save_event(phase, false, std::nullopt, std::nullopt, path.string());
     }
 
     const std::string bytes = read_text_file(path);
-    body.set("size", mh::json::Json::integer(static_cast<std::int64_t>(bytes.size())));
-    body.set("sha256", mh::json::Json::string(mh::sha256_hex(bytes)));
-    body.set("keys", mh::json::Json::null());
-    body.set("local_path", mh::json::Json::string(path.string()));
-    return body;
+    return mh::records::save_event(phase, true, static_cast<std::int64_t>(bytes.size()),
+                                   mh::sha256_hex(bytes), path.string());
 }
 
 void emit_save_locked(Session& session, const char* phase) {
@@ -513,13 +451,9 @@ void emit_save(const char* phase) {
 // One `error` record, per the contract's error kind: code, message, fatal, hook_key.
 void emit_error_locked(Session& session, const char* code, const char* message, bool fatal,
                        const char* hook_key) {
-    mh::json::Json body = object();
-    body.set("kind", mh::json::Json::string("error"));
-    body.set("code", mh::json::Json::string(code));
-    body.set("message", mh::json::Json::string(message));
-    body.set("fatal", mh::json::Json::boolean(fatal));
-    body.set("hook_key",
-             hook_key ? mh::json::Json::string(hook_key) : mh::json::Json::null());
+    mh::json::Json body = mh::records::error_event(
+        code, message, fatal,
+        hook_key ? std::optional<std::string_view>(hook_key) : std::nullopt);
 
     mh::EventContext context;
     context.t_ns = steady_ns();
