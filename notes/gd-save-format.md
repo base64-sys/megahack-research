@@ -154,13 +154,17 @@ implemented and tested.
 ### The generator, and the fixture it writes
 
 `harness/tools/make_level_fixture.py` (+ `test_make_level_fixture.py`, 12 cases) emits one
-level from a declarative spec: three blocks in the player's path, at x = 150, 300 and 600, the
-last one also setting the level's length.
+level from a declarative spec: three blocks in the player's path at x = 50, 100 and 150 grid
+units — roughly 4.8 s, 9.6 s and 14.5 s of running at ~10 units/s — the last one also setting
+the level's length. Coordinates are 30 px per unit, and the first version of this fixture used
+x = 150/300/600, which put the first obstacle ~14.5 s out and made the level look empty for a
+whole short session. That was a fixture defect, recorded here because it is exactly the kind of
+thing a "the run passed" claim hides.
 
 | Artifact | Detail |
 | --- | --- |
-| `harness/fixtures/runtime/safe-mode-smoke.gmd` | 1,031 bytes of GD plist XML |
-| SHA-256 | `edcfd088e227efda17a4c45a635518771d2261ad99ae3799cdda4bde9bc73e34` |
+| `harness/fixtures/runtime/safe-mode-smoke.gmd` | 1,029 bytes of GD plist XML |
+| SHA-256 | `b931a31d5cb3fc87ff38075dd76582061c76af298b62c9ff58fa07ac91c97661` |
 | level dict | the 43 keys GD 2.2081 wrote for a real level, same order |
 | `k4` | `base64url(gzip("kS38,…;1,1,2,150,3,15;…"))`, deterministic |
 
@@ -204,12 +208,16 @@ Still missing before an M3 run:
 - **Save isolation.** The fixture cannot be installed into a live save (see above): the
   environment redirect is ruled out by the import tables, so the run needs a separate Windows
   account, a VM, or the reversible-but-not-isolating `save_sandbox.py` under an explicit label.
-- ~~Proof GD loads the generated file.~~ **Closed 2026-10-27.** Run
+- ~~Proof GD loads the generated file.~~ **Half-closed 2026-10-27.** Run
   `e717db95-1d42-47af-b4b0-361f27eb2ae1`: the fixture was installed with
   `save_sandbox.py --install`, verified byte-identical on disk (556 bytes) *before* launch, and
   the game then played it — `capture: complete`, 8,725 events, 0 errors and 0 warnings, 4,361
   balanced hook pairs, `level_started` 1, `attempt_started` 2, all four required hooks owned by
   `absolllute.hackmega.dll`. The fixture's name appears **nowhere** in the trace
   (`level_started.data` is the redacted value), and the four save files were restored to their
-  recorded digests afterwards. A generated level is therefore something GD loads and plays, not
-  merely a file that parses.
+  recorded digests afterwards. So GD **loads and runs** the generated container.
+  **What that run does not show:** that the generated *object string* renders. Its obstacles sat
+  14.5 s apart from the start, the operator reported an apparently empty level, and nothing in
+  the trace carries object count or position. The fixture now places its first block ~4.8 s in,
+  and a run that reports seeing it is what closes the remaining half. Until then the claim is
+  "GD loads a generated level", not "GD plays the level we generated".

@@ -148,11 +148,14 @@ def render_level(name: str, author: str, objects: Iterable[tuple[int, int, int]]
 
 
 DEFAULT_OBJECTS: tuple[tuple[int, int, int], ...] = (
-    # One solid block in the player's path (~5 s in) so an attempt has a real ending, one
-    # further block for the retry, and a marker far right that sets the level's length.
+    # Coordinates are 30-pixel grid units, and the player covers roughly 10 units per second,
+    # so these are ~4.8 s, ~9.6 s and ~14.5 s into the run. The first version of this fixture
+    # used x = 150/300/600 - about 14.5 s before the first obstacle - and the level looked
+    # empty for the whole of a short session, which is a fixture defect, not a loading failure.
+    # Keep the first obstacle inside the first few seconds so "is anything there" is visible.
+    (1, 50, 15),
+    (1, 100, 15),
     (1, 150, 15),
-    (1, 300, 15),
-    (1, 600, 15),
 )
 
 
