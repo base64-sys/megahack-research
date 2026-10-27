@@ -200,7 +200,7 @@ fresh clone with CMake and a compiler.
 ```powershell
 cmake -S harness -B harness/build -G Ninja
 cmake --build harness/build
-ctest --test-dir harness/build --output-on-failure     # 6 entries, 189 cases
+ctest --test-dir harness/build --output-on-failure     # 6 entries, 194 cases
 ```
 
 The fixtures are the contract's own worked examples, extracted from the note by
@@ -214,11 +214,23 @@ cannot drift from the contract without a test failing.
 
 Proving the contract is executable is not runtime validation. The Geode observer
 (`megahack.trace`) and the second comparison target (`megahack.reconstruction`) both build and
-package; a release-versus-reconstruction comparison still needs two captures per variant, and
-the level fixture the manifest names does not exist yet. Method, evidence and open questions:
-[trace-harness.md](notes/trace-harness.md), [trace-observer.md](notes/trace-observer.md),
-[reconstruction-variant.md](notes/reconstruction-variant.md); running logs:
+package. The level fixture exists and is generated, not hand-made:
+`harness/tools/make_level_fixture.py` writes `harness/fixtures/runtime/safe-mode-smoke.gmd`
+(1,031 bytes, `edcfd088…`) from a declarative spec, and installs it only through the sandbox.
+What is still missing for a comparison is four captures, and the manifest's `level.sha256` is
+deliberately still a placeholder because nothing observes the loaded level yet. Method,
+evidence and open questions: [trace-harness.md](notes/trace-harness.md),
+[trace-observer.md](notes/trace-observer.md), [reconstruction-variant.md](notes/reconstruction-variant.md),
+[gd-save-format.md](notes/gd-save-format.md); running logs:
 [harness/PROGRESS.md](harness/PROGRESS.md), [harness/OBSERVER-PROGRESS.md](harness/OBSERVER-PROGRESS.md).
+
+The runner half lives in `harness/tools/`: `preflight.py` (hashes, profile guard, run context,
+settings tags), `grade_trace.py` (grade the newest capture), `gd_save.py` (the 2.2081 save and
+`k4` container), `make_level_fixture.py` (the generated level), `save_sandbox.py` (guarded,
+atomic, digest-verified backup/install/restore of a save directory), `verify_record_bytes.py`
+(record shapes, plus a player-data source guard), and `test_compare_rehearsal.py`, which drives
+the real comparison CLI over four synthetic traces so the gate's integration is exercised
+before anyone spends four real runs. All of them test on temporary directories only.
 
 ## Notes map
 
