@@ -145,9 +145,13 @@ reconstruction behaves like the release.
 - [ ] Reconstructed modules validated against release behaviour for the sampled clusters.
       **Method fixed** in [runtime-validation.md](../notes/runtime-validation.md): JSONL
       trace schema, scenario manifest, comparability gate, comparison rules and the M3
-      evidence checklist. No trace has been captured; all five clusters in
-      [m3-validation.md](../notes/m3-validation.md) remain structural-only. This needs the
-      `megahack.trace` observer in `harness/`, its runner and the comparator.
+      evidence checklist. The observer, runner and comparator now exist and reach a verdict
+      on real captures: four bounded no-input runs (two per variant) compare `pass` with no
+      unstable and no failing row, but the claim is `surface`, because the one
+      target-dependent site (`0x16c8b0`/`save`) never fires inside the bounded window. All
+      five clusters in [m3-validation.md](../notes/m3-validation.md) therefore remain
+      structural-only until a scenario reaches behaviour; the reason is measured rather than
+      assumed ([deterministic-capture.md](../notes/deterministic-capture.md), "Result").
 
 ### M4 — Persistence and the `.dt` importer (done)
 

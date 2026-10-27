@@ -503,13 +503,45 @@ evidence (test name, gate output, commit subject).
   declaring both is refused, and so is `stop_on` inside a window.
 - New `harness/scenarios/no-input-smoke.json`: `input.driver` stays `"operator"` with no actions
   (the vocabulary has no `"none"`; a human still launches and quits), window 600 frames, and
-  `hooks.required` reduced to `0x3b8eb0`/`0x3b4ba0` because an input-free run never fires
-  `pushButton`/`releaseButton`. `safe-mode-smoke.json` and its pinned evidence are untouched.
+  `hooks.required` reduced to `0x3b8eb0`/`0x3b4ba0`. The first draft justified the reduction by
+  saying an input-free run never fires `pushButton`/`releaseButton`; the captures refuted half of
+  that — `0x3981d0` (`releaseButton`) fires 8 times per run with no key touched and `0x397f40`
+  (`pushButton`) fires zero — so the justification is now "the engine's own calls are not the
+  input this scenario describes", and both stay optional. `safe-mode-smoke.json` and its pinned
+  evidence are untouched.
 - Observer version `0.2.0`; packaged `megahack.trace.geode` `27fdc58a…`. Tests: `test_window.cpp`
   (6), four context cases, four scenario cases; `210 test(s), 0 failed`, and
   `scenario_check_no_input` added to ctest.
-- **Not yet done:** the four captures that would show whether two runs now agree. The acceptance
-  criteria are in [deterministic-capture.md](../notes/deterministic-capture.md).
+- **Outcome: `pass`.** Four fresh captures — release `874caa47` (`dcdaa095…`) and `3838cf41`
+  (`08a3737b…`), reconstruction `e5ddd6f2` (`8f697340…`) and `27cffad5` (`ca51c988…`) — all under
+  manifest `5c77e28b…`, all `capture: complete`, `end.frames = 600`, 1,210 events, 0 dropped,
+  604/604 enter/exit, 1210/1210 on the main thread, `level_started` = `58d4b320…`, and the same
+  hook census 8/1198/2. `mh_trace_compare` returns `status: pass | gate: pass | unstable: no`
+  with **no alignment row of any kind**. Detail:
+  [deterministic-capture.md](../notes/deterministic-capture.md), "Result".
+- Two comparator defects had to be fixed before that verdict meant anything, both found by
+  running the real captures rather than by reading the code:
+  1. **`frame` was compared as an absolute number.** `CCDirector::getTotalFrames()` counts from
+     launch, so two runs of one variant could never agree. `comparison_payload()` now rebases each
+     document's `frame` on that document's own `level_started` (`frame - anchor + 1`); a document
+     without `level_started` keeps absolute frames. It *rebases* rather than declares volatile, so
+     a hook that fires one frame later still reports as a difference. Proof on real traces: with
+     the pre-amendment manifest (`c2f5bcdb…`, extracted from `git show`) the earlier four captures
+     go from six `unstable release variant` rows to **zero**.
+  2. **`comparison.volatile` was parsed and never applied.** It is now threaded through
+     `comparison_payload`, `payloads_by_key`, `variant_differences`, `variant_is_unstable`,
+     `note_variant_drift` and `align_by_key`, and `call.call_id`/`call.parent_call_id` are declared
+     in the manifest — after being observed to vary, per the contract, which is why the four
+     earlier captures were retaken instead of having a declaration fitted to them.
+- Tests: three new comparator cases (`a_later_launch_of_the_same_behaviour_is_comparable`,
+  `a_hook_that_fires_one_frame_later_is_still_unstable`,
+  `a_volatile_path_the_manifest_declares_is_not_compared`); `213 test(s), 0 failed`.
+- **Not done, deliberately:** the claim is `surface`, not `behavioural`. `derive_claim` needs a
+  record kind only the target can produce in *both* variants, and the only registered site is
+  `0x16c8b0`/`save`; `0x16c8b0` is installed in all four runs and fires zero times, because the
+  one-block fixture kills the player before any percentage write. Whether the claim class can rise
+  above `surface` while Safe Mode suppresses the release's write at all is an open structural
+  question in [deterministic-capture.md](../notes/deterministic-capture.md), "Open questions".
 
 ## Open questions
 
@@ -539,8 +571,6 @@ evidence (test name, gate output, commit subject).
   `meta.mods` and `end.artifacts`. UNVERIFIED: whether the example is abbreviated or the
   sentence is aspirational. Until a captured trace exists, absence of those two is a
   warning.
-- **Non-finite floats.**
-
 - **Non-finite floats.** The contract says floats always carry `bits` and that `value` is
   convenience, but JSON has no `NaN`/`Infinity` literal. The model emits `"value":null`
   for non-finite bits and keeps `bits` exact. UNVERIFIED: whether the writer should

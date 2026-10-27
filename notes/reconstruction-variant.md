@@ -359,3 +359,39 @@ The design for closing that last item is
 `timing.max_frames` so per-frame hook counts are equal by construction, and add a no-input
 scenario whose deaths come from the fixture rather than a hand on the keyboard. Synthetic input
 injection is deliberately deferred there, with the reason and the acceptance criteria named.
+
+## Deterministic capture supersedes the five-run comparison (2026-10-27)
+
+The design above was implemented as harness 0.2.0 and run. Four fresh captures — two per variant,
+manifest `5c77e28b…`, window `level_started` + 600 frames — produce:
+
+```
+status: pass | gate: pass | unstable: no
+claim: surface
+```
+
+with an identical hook census (8 / 1198 / 2), 1,210 events, 0 dropped and `end.frames = 600` in
+all four. The `unstable` verdict in the section above is therefore a property of *those* sessions,
+not of the variants: the two runs per variant disagreed because they were 63 s and 82 s of
+hand-played game, not because the release disagrees with itself. Details and trace digests are in
+[deterministic-capture.md](deterministic-capture.md), "Result".
+
+Two corrections this forces on the record above:
+
+- **The `save_requested` asymmetry is not reproducible in the bounded scenario.** In the five-run
+  comparison every reconstruction run produced save requests and no release run did. In these
+  four runs **neither variant produces any**: `0x16c8b0` is installed in both and fires zero
+  times, because the one-block fixture kills the player and restarts before any percentage write.
+  So the earlier asymmetry was real but session-dependent (it needed a run long enough, or far
+  enough, to reach a save), and the static explanation — the release vetoes `0x16c8b0` under
+  `0x1E2`, `ReconstructionGJGameLevel::savePercentage` forwards unconditionally
+  ([safe-mode-feature.md](safe-mode-feature.md)) — remains the explanation, while the *runtime
+  reproduction* of it is now out of reach of this scenario rather than contradicted by it.
+  UNVERIFIED: a bounded scenario that reaches a percentage write would show whether the veto
+  difference survives determinism.
+- **`claim: surface` is a statement about the comparison, not a demotion of the work.** The
+  release and the reconstruction are indistinguishable at the captured surface — same hook
+  sequence, same phases, same relative frames, same payloads modulo run identity — and that is all
+  the manifest asks the evidence to establish. Whether the claim class can ever rise above
+  `surface` while Safe Mode is on is now an open structural question in
+  [deterministic-capture.md](deterministic-capture.md), "Open questions", not a missing capture.
