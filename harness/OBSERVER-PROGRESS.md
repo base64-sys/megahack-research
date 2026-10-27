@@ -210,18 +210,25 @@ Status vocabulary: `pending`, `in progress`, `done`, `blocked`.
 - Commit: `feat(runner): read settings tags from the settings file instead of the manifest`.
 - Next: no unblocked items remain except documentation polish; O5 needs the user.
 
-### Iteration 11 — O10: `level_started` now says which level ran
+### Iteration 11 — O10: `level_started` says a level started, and withholds its name
 
-- `milestone.data` was already a value object, so the observation needed no schema member:
+- `milestone.data` was already a value object, so the record needed no schema member:
   `mh::records::milestone_event(name, Value)` is a new overload, and the one-argument form
   still writes `{"state":"null"}`, so every captured record keeps its bytes.
-- `PlayLayer::init` receives the `GJGameLevel*`, so the name is read from its own argument
-  (`m_levelName`; binding `harness/observer/build/bindings/…/binding/GJGameLevel.hpp:485`)
-  rather than from a global or an offset guessed here. A null level records
-  `{"state":"unavailable","reason":…}` instead of an empty string.
-- 3 record tests: the null form is unchanged, an observed string survives, an unavailable
-  value carries its reason.
-- Rebuilt and re-pinned: `megahack.trace.geode` `f3ab5f60…`, manifest `f499f219…`.
-- Known gap, deliberate: `mh::compare` reads a milestone's `name` for ordering and ignores
-  `data`, so the level row is still the manifest compared with itself. Making the observed
-  name a gate row is a comparator-semantics change and is left to the user.
+- **Correction to the first version of this change:** it recorded the level's name verbatim
+  from `GJGameLevel::m_levelName`. `notes/runtime-validation.md` requires a level name to be
+  `redacted`, so that was a contract violation. The observer now reads nothing: a level records
+  `{"state":"redacted","reason":"level name is player data"}`, and a null `GJGameLevel*` records
+  `{"state":"unavailable","reason":…}` so "there was no level" stays distinguishable from
+  "the level is withheld". Because the name is never read, an unusual name (non-UTF-8, embedded
+  NUL, very long) cannot reach the writer at all.
+- Tests: the exact redacted record and the exact missing-level record in `test_records.cpp`, and
+  four cases around the new source guard in `test_verify_record_bytes.py`. The guard fails if the
+  observer names `m_levelName`, `m_levelDesc` or `m_playerName`; its docstring states what a
+  source scan cannot see, so it is a tripwire in front of the contract rather than a proof.
+- The identity question is open, not solved: the record names no level, and the gate still
+  compares the manifest with itself. The sanctioned path is a digest of the level's object
+  string (`observed_bytes`), which needs the `k4`-vs-`m_levelString` relation established first.
+- Rebuilt and re-pinned: `megahack.trace.geode` `f3ab5f60…`, manifest `f499f219…` — **stale
+  after this correction**; the observer must be rebuilt before any run, and both variants must
+  use that one build.

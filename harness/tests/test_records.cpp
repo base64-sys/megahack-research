@@ -113,22 +113,38 @@ MH_TEST(records_milestone_event_has_no_invented_data) {
               R"({"kind":"milestone","name":"level_started","data":{"state":"null"}})");
 }
 
-// A milestone may carry what was observed at the site. The observer uses this for
-// `level_started`, so the trace says which level ran instead of repeating the run context.
+// A milestone may carry what was observed at the site. This is a builder test, not a statement
+// about level identities: player-data strings are redacted at the call site, and the level-name
+// shape is asserted separately below.
 MH_TEST(records_milestone_event_can_carry_an_observed_value) {
   const Json started = mh::records::milestone_event(
-      "level_started", mh::Value::observed_str("safe-mode-smoke fixture"));
+      "level_started", mh::Value::observed_str("example observed value"));
   MH_CHECK_EQ(started.to_json(),
               R"({"kind":"milestone","name":"level_started",)"
-              R"("data":{"state":"observed","type":"str","value":"safe-mode-smoke fixture"}})");
+              R"("data":{"state":"observed","type":"str","value":"example observed value"}})");
 }
 
-MH_TEST(records_milestone_event_states_an_unavailable_value_rather_than_guessing) {
+// The record `level_started` emits when a level exists. notes/runtime-validation.md requires a
+// level name to be redacted, so the only thing this record may carry is the reason it is
+// withheld - no name, no digest of a name, and no string type that could hold one.
+MH_TEST(records_milestone_level_started_redacts_the_level_name) {
+  const Json started = mh::records::milestone_event(
+      "level_started", mh::Value::redacted("level name is player data"));
+  MH_CHECK_EQ(started.to_json(),
+              R"({"kind":"milestone","name":"level_started",)"
+              R"("data":{"state":"redacted","reason":"level name is player data"}})");
+  MH_CHECK(started.to_json().find(R"("type":"str")") == std::string::npos);
+}
+
+// The record `level_started` emits when PlayLayer::init is given no level at all. It must stay
+// distinguishable from the redacted form: "there was no level" is not "the level is withheld".
+MH_TEST(records_milestone_level_started_states_a_missing_level) {
   const Json started = mh::records::milestone_event(
       "level_started", mh::Value::unavailable("no level was passed to PlayLayer::init"));
   MH_CHECK_EQ(started.to_json(),
               R"({"kind":"milestone","name":"level_started",)"
               R"("data":{"state":"unavailable","reason":"no level was passed to PlayLayer::init"}})");
+  MH_CHECK(started.to_json().find(R"("state":"redacted")") == std::string::npos);
 }
 
 MH_TEST(records_save_event_states_absence_with_nulls) {

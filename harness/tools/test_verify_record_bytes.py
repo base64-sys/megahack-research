@@ -101,6 +101,35 @@ class VerifyRecordBytesTest(unittest.TestCase):
         clean = self.write("main.cpp", "// no hand-built record here\nmh::records::hook_event(...);\n")
         self.assertEqual(self.run_main(trace, clean), 0)
 
+    def test_the_player_data_guard_fails_a_mod_that_reads_a_level_name(self) -> None:
+        payloads = FIXTURES.read_text(encoding="utf-8").splitlines()
+        trace = self.write("t.jsonl", "\n".join(wrapped(p) for p in payloads) + "\n")
+        offender = self.write(
+            "main.cpp",
+            "auto name = mh::Value::observed_str(level->m_levelName.c_str());\n",
+        )
+        self.assertEqual(self.run_main(trace, offender), 1)
+        self.assertEqual(verify.player_data_reading(offender.read_text(encoding="utf-8")),
+                         "m_levelName")
+
+    def test_the_player_data_guard_names_every_field_it_watches(self) -> None:
+        # A field silently dropping out of the list is how a guard stops guarding.
+        self.assertEqual(set(verify.PLAYER_DATA_FIELDS),
+                         {"m_levelName", "m_levelDesc", "m_playerName"})
+
+    def test_the_player_data_guard_passes_a_redacting_mod(self) -> None:
+        payloads = FIXTURES.read_text(encoding="utf-8").splitlines()
+        trace = self.write("t.jsonl", "\n".join(wrapped(p) for p in payloads) + "\n")
+        clean = self.write(
+            "main.cpp",
+            'mh::Value::redacted("level name is player data");\n',
+        )
+        self.assertIsNone(verify.player_data_reading(clean.read_text(encoding="utf-8")))
+        self.assertEqual(self.run_main(trace, clean), 0)
+
+    def test_the_real_observer_source_passes_the_player_data_guard(self) -> None:
+        self.assertIsNone(verify.player_data_reading(verify.OBSERVER.read_text(encoding="utf-8")))
+
 
 if __name__ == "__main__":
     sys.exit(0 if unittest.main(exit=False).result.wasSuccessful() else 1)

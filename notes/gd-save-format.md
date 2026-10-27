@@ -161,22 +161,29 @@ Values for the keys whose meaning is not established (`k18`, `k36`, `k23`, `k11`
 So the gate's level row compares the manifest's hash with itself: it can show `pass` without
 anything having observed which level the game loaded.
 
-**Half of that is now closed.** `level_started` carries the level's own name in the milestone's
-existing `data` value (`mh::records::milestone_event(name, Value::observed_str(levelName))`,
-from `GJGameLevel::m_levelName`, `PlayLayer::init`'s own argument). No schema member was added:
-`data` was already a value object. If the name could not be read, `data` says
-`{"state":"unavailable","reason":…}` rather than guessing.
+`level_started` does carry a `data` value, but it is `{"state":"redacted","reason":"level name
+is player data"}` — the level's name may not be recorded at all (notes/runtime-validation.md,
+"Value objects": a string containing a level name is redacted), and a null level records
+`unavailable`. So the record distinguishes "a level started" from "no level was passed", and
+deliberately carries no identity. The row is therefore still an assertion.
 
-What is still open is the gate: `mh::compare` reads a milestone's `name` for ordering and never
-looks at `data`, so the observed name is recorded but not yet *compared*. Making it a row would
-be a change to comparator semantics, which this task was told not to make — so the decision is
-open, and until it is made `level.sha256` **stays zero** in
-`harness/scenarios/safe-mode-smoke.json`. Filling it now would make a row pass that proves
-nothing.
+What would make it an observation is a **content digest**: SHA-256 of the level's object string,
+recorded as `observed_bytes`, which the contract permits because a digest is derived data rather
+than player data. That is not implemented, and it needs one fact nobody has established:
+whether the in-memory level string is the encoded `k4` form or the decoded object string, i.e.
+which digest the fixture's `k4` should produce. A digest of the *name* is not an acceptable
+substitute — level names are low-entropy and guessable, so hashing one is still recording it.
+
+`mh::compare` reads a milestone's `name` for ordering and never looks at `data`, so nothing
+compares the record today. Making it a row would be a change to comparator semantics, which this
+task was told not to make — so the decision is open, and until it is made `level.sha256`
+**stays zero** in `harness/scenarios/safe-mode-smoke.json`. Filling it now would make a row pass
+that proves nothing.
 
 Still missing before an M3 run:
 
-- **Save isolation.** The fixture cannot be installed into a live save (see above), so either
-  `%LOCALAPPDATA%` redirects GD's save directory or the run happens in a VM.
+- **Save isolation.** The fixture cannot be installed into a live save (see above): the
+  environment redirect is ruled out by the import tables, so the run needs a separate Windows
+  account, a VM, or the reversible-but-not-isolating `save_sandbox.py` under an explicit label.
 - **Proof GD loads the generated file.** Only a run closes that. Until then the manifest keeps
   its placeholder and the gate keeps saying `blocked` on that row — which is the honest state.

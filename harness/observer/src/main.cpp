@@ -578,13 +578,15 @@ class $modify(TracePlayLayer, PlayLayer) {
         // resetLevel itself, and the manifest's order group requires level_started first.
         // A failed init therefore still records the attempt, which is the honest reading.
         //
-        // The level's name is observed here, not asserted: it is the only field in the trace
-        // that says which level the game actually loaded. `m_levelName` is the 2.2081 binding
-        // field (harness/observer/build/bindings/.../binding/GJGameLevel.hpp:485).
-        mh::Value observed = mh::Value::unavailable("no level was passed to PlayLayer::init");
-        if (level != nullptr) {
-            observed = mh::Value::observed_str(level->m_levelName.c_str());
-        }
+        // The level's name is player data and notes/runtime-validation.md requires it to be
+        // redacted, so it is never read: the string does not enter this process' string
+        // handling at all, which is why an unusual name - non-UTF-8, embedded NUL, very long -
+        // cannot reach the writer. A null level is "unavailable", a different fact from
+        // "redacted", so the two states stay distinguishable.
+        const mh::Value observed =
+            level != nullptr
+                ? mh::Value::redacted("level name is player data")
+                : mh::Value::unavailable("no level was passed to PlayLayer::init");
         emit_milestone("level_started", &observed);
         return PlayLayer::init(level, useReplay, dontCreateObjects);
     }

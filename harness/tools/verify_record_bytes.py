@@ -5,6 +5,11 @@ fixture byte-for-byte, and `harness/observer/src/main.cpp` builds no record of i
 script fails if it tries). Together those two facts are the claim "the observer emits what the
 fixture says" - neither is worth much alone.
 
+It also carries a **source guard** against one specific contract violation: the observer reading
+a named player-data field (`m_levelName`, `m_levelDesc`, `m_playerName`), which
+notes/runtime-validation.md requires to be redacted. The guard is a tripwire, not a proof of
+privacy - see `player_data_reading` for what it does and does not cover.
+
     python harness/tools/verify_record_bytes.py <trace.jsonl> [--fixture PATH]
 
 Two fields are normalised on both sides before comparing, because they are per-run:
@@ -54,6 +59,33 @@ def identity(payload: str) -> tuple[str, str] | None:
     return (kind, record.get("code", ""))
 
 
+# Fields whose value is player data: notes/runtime-validation.md says a string containing a
+# level name, player name or account identifier is `redacted`, so the observer must not read
+# one into a value it could serialise.
+#
+# WHAT THIS CATCHES: the observer source naming one of these fields, i.e. the exact mistake that
+# shipped once and the obvious way to reintroduce it.
+#
+# WHAT IT DOES NOT CATCH, and must not be read as proving:
+#   - the same value reached through another accessor (`level->getName()`, a helper, a cast);
+#   - player data obtained from anything other than these three fields (settings, GD save,
+#     a mod's own storage);
+#   - a value that is redacted correctly being compared, logged or written elsewhere;
+#   - `m_levelString`, which is deliberately absent because a digest of it is the sanctioned
+#     future level identity - a blocklist entry would forbid reading the field at all.
+# A source scan is a tripwire in front of a contract; it is not a proof that no player data is
+# recorded.
+PLAYER_DATA_FIELDS = ("m_levelName", "m_levelDesc", "m_playerName")
+
+
+def player_data_reading(source: str) -> str | None:
+    """The first player-data field the observer mentions, or None."""
+    for field in PLAYER_DATA_FIELDS:
+        if field in source:
+            return field
+    return None
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("trace")
@@ -65,6 +97,14 @@ def main(argv: list[str]) -> int:
     # A record built by hand in the mod is the failure this whole split exists to prevent.
     if '"kind"' in source:
         print("differs: the observer builds a record itself instead of calling mh::records")
+        return 1
+    # A tripwire, not a proof - see PLAYER_DATA_FIELDS for what it cannot see.
+    field = player_data_reading(source)
+    if field is not None:
+        print(
+            f"differs: the observer reads player data ({field}); a level or player name "
+            "must be recorded as redacted, never as a value"
+        )
         return 1
 
     expected: dict[tuple[str, str], str] = {}

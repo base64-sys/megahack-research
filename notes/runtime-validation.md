@@ -168,7 +168,7 @@ Common event fields are `schema`, `type`, `run_id`, `run_fingerprint`, `seq`, `t
 | `kind` | Payload | Purpose |
 | --- | --- | --- |
 | `hook` | `phase`, `hook`, `call`, `feature` | A GD method or target callback was entered or exited |
-| `milestone` | `name`, `data` | A scenario boundary such as level start, death, completion, save request. `data` is a value object: it holds what was observed at the site (`level_started` carries the loaded level's name) or the model's null value when nothing was |
+| `milestone` | `name`, `data` | A scenario boundary such as level start, death, completion, save request. `data` is a value object: it holds what was observed at the site, or the model's null value when nothing was. A level name is player data, so `level_started` records it as `redacted` (or `unavailable` when no level was passed), never as a value |
 | `save` | `store`, `phase`, `source`, `path_template`, `exists`, `size`, `sha256`, `keys` | An observed file state or write; not inferred from a hook |
 | `error` | `code`, `message`, `fatal`, `hook_key` | Harness, hook-install, scenario, or target error |
 
