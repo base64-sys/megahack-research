@@ -19,6 +19,7 @@ import argparse
 import hashlib
 import json
 import sys
+import zipfile
 from pathlib import Path
 from typing import Sequence
 
@@ -29,7 +30,12 @@ if str(_SCRIPTS) not in sys.path:
 import pe_rva  # noqa: E402
 
 HARNESS_ID = "megahack.trace"
-HARNESS_VERSION = "0.1.1"
+
+# Fallback only: the version that matters is the one inside the packaged observer, because a
+# build that bumped `kHarnessVersion` but not this constant would otherwise be recorded under
+# the wrong version - which is exactly what happened once (the 0.2.0 package was described as
+# 0.1.1 in a context). `harness_version` reads the archive's own mod.json first.
+HARNESS_VERSION = "0.2.0"
 
 # The default profile is the live Steam install. A run against it can write a player's save,
 # so it is refused by name and, independently, by the path it points at.
@@ -54,6 +60,26 @@ def sha256_file(path: str | Path) -> str:
 def image_base_hex(path: str | Path) -> str:
     """The image base from the PE header. Never derived by arithmetic from an RVA."""
     return f"0x{pe_rva.Image.from_path(path).image_base:X}"
+
+
+def harness_version(path: str | Path) -> str:
+    """The observer's own declared version, read from its archive when it has one.
+
+    A `.geode` is a zip and its `mod.json` carries the version the loader shows, so that is what
+    a meta record must carry: it is a fact about the bytes that ran, not about the source tree.
+    A bare `.dll` - or a fixture that is not an archive - falls back to `HARNESS_VERSION`.
+    """
+    artifact = Path(path)
+    try:
+        with zipfile.ZipFile(artifact) as archive:
+            if "mod.json" in archive.namelist():
+                block = json.loads(archive.read("mod.json").decode("utf-8"))
+                declared = block.get("version")
+                if isinstance(declared, str) and declared.strip():
+                    return declared.strip().lstrip("vV")
+    except (zipfile.BadZipFile, OSError, KeyError, json.JSONDecodeError):
+        pass
+    return HARNESS_VERSION
 
 
 def check_profile(profile: str, gd_path: str | Path) -> None:
@@ -119,7 +145,7 @@ def build_fragment(
             "geode": {"version": geode_version, "sha256": sha256_file(geode)},
             "harness": {
                 "id": HARNESS_ID,
-                "version": HARNESS_VERSION,
+                "version": harness_version(harness),
                 "sha256": sha256_file(harness),
             },
         },

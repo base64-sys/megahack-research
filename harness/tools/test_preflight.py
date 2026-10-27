@@ -13,6 +13,7 @@ import json
 import struct
 import sys
 import tempfile
+import zipfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -142,6 +143,30 @@ def test_fragment_uses_the_contract_field_names() -> None:
     # Unknown versions stay null rather than being guessed.
     assert unknown["environment"]["gd"]["version"] is None
     assert unknown["environment"]["geode"]["version"] is None
+
+
+def test_harness_version_comes_from_the_packaged_archive() -> None:
+    """A meta record names the version inside the `.geode`, not a hand-kept constant.
+
+    That constant drifted once: the 0.2.0 observer was described as 0.1.1 in a run context
+    because nobody remembered to bump it with the package.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        target = Path(tmp) / "target.dll"
+        gd = Path(tmp) / "GeometryDash.exe"
+        geode = Path(tmp) / "Geode.dll"
+        harness = Path(tmp) / "megahack.trace.geode"
+        for path in (target, gd, geode):
+            make_pe(path)
+        with zipfile.ZipFile(harness, "w") as archive:
+            archive.writestr("megahack.trace.dll", b"MZ")
+            archive.writestr("mod.json", json.dumps({"version": "v0.9.9"}))
+        fragment = preflight.build_fragment(
+            target=target, gd=gd, geode=geode, harness=harness,
+            gd_version="2.2081", geode_version="5.11.2",
+        )
+
+    assert fragment["environment"]["harness"]["version"] == "0.9.9"
 
 
 def test_context_carries_the_manifest_and_repetition() -> None:
@@ -460,6 +485,7 @@ if __name__ == "__main__":
     test_profile_refusals()
     test_one_target_rule()
     test_fragment_uses_the_contract_field_names()
+    test_harness_version_comes_from_the_packaged_archive()
     test_context_carries_the_manifest_and_repetition()
     test_context_refuses_declared_tags_without_a_settings_file()
     test_context_refuses_the_unimplemented_harness_input_driver()
