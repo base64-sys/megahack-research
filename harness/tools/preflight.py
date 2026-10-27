@@ -227,6 +227,28 @@ def resolve_tags(settings: dict, declared_tags: list[dict],
     return resolved
 
 
+def check_input_driver(manifest: dict) -> None:
+    """Refuse a scenario that claims an input driver this project does not have.
+
+    `operator` is the honest declaration for a human-driven run. `os` is allowed: an external
+    tool can synthesise OS input, and the trace's input hooks are what prove it happened.
+    `harness` is refused because nothing implements input injection through the game's input
+    path - a manifest declaring it would record a claim nobody can keep.
+    """
+    driver = (manifest.get("input") or {}).get("driver")
+    if driver == "harness":
+        raise PreflightError(
+            "input.driver is 'harness' but no input injection is implemented; declare "
+            "'operator' for a human-driven run (or 'os' for an external tool)"
+        )
+    if driver == "os":
+        print(
+            "warning: input.driver is 'os'; the harness sends no input, so an external tool "
+            "must, and only the pushButton/releaseButton records prove it did",
+            file=sys.stderr,
+        )
+
+
 def build_context(*, fragment: dict, scenario_bytes: bytes, repetition: int,
                   settings: dict | None = None, tag_keys: dict[str, str] | None = None,
                   settings_bytes: bytes | None = None) -> dict:
@@ -236,6 +258,7 @@ def build_context(*, fragment: dict, scenario_bytes: bytes, repetition: int,
     fingerprint input and is never part of the meta record.
     """
     manifest = json.loads(scenario_bytes.decode("utf-8"))
+    check_input_driver(manifest)
     settings_block = manifest.get("settings") or {}
     level = manifest.get("level") or {}
     declared_tags = settings_block.get("tags") or []

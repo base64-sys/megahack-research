@@ -190,6 +190,49 @@ def test_context_refuses_declared_tags_without_a_settings_file() -> None:
         raise AssertionError("declared tags without a settings file should be refused")
 
 
+def test_context_refuses_the_unimplemented_harness_input_driver() -> None:
+    """`harness` claims injected input through the game, and nothing injects input."""
+    fragment = {"target": {"role": "release"}, "environment": {}}
+    manifest = json.dumps({
+        "id": "safe-mode-smoke",
+        "settings": {"reset": "defaults", "tags": []},
+        "level": {"fixture": "f.gmd", "sha256": "5" * 64, "source": "generated"},
+        "input": {"driver": "harness", "actions": []},
+    }).encode("utf-8")
+    try:
+        preflight.build_context(fragment=fragment, scenario_bytes=manifest, repetition=0)
+    except preflight.PreflightError as error:
+        assert "no input injection is implemented" in str(error), error
+    else:
+        raise AssertionError("a harness-driven scenario should be refused")
+
+
+def test_context_accepts_the_operator_input_driver() -> None:
+    fragment = {"target": {"role": "release"}, "environment": {}}
+    manifest = json.dumps({
+        "id": "safe-mode-smoke",
+        "settings": {"reset": "defaults", "tags": []},
+        "level": {"fixture": "f.gmd", "sha256": "5" * 64, "source": "generated"},
+        "input": {"driver": "operator", "actions": []},
+    }).encode("utf-8")
+    context = preflight.build_context(fragment=fragment, scenario_bytes=manifest, repetition=0)
+    assert context["scenario"]["id"] == "safe-mode-smoke"
+
+
+def test_context_warns_about_the_os_input_driver() -> None:
+    fragment = {"target": {"role": "release"}, "environment": {}}
+    manifest = json.dumps({
+        "id": "safe-mode-smoke",
+        "settings": {"reset": "defaults", "tags": []},
+        "level": {"fixture": "f.gmd", "sha256": "5" * 64, "source": "generated"},
+        "input": {"driver": "os", "actions": []},
+    }).encode("utf-8")
+    captured = io.StringIO()
+    with contextlib.redirect_stderr(captured):
+        preflight.build_context(fragment=fragment, scenario_bytes=manifest, repetition=0)
+    assert "external tool" in captured.getvalue()
+
+
 def test_context_reads_tag_values_from_the_settings_file() -> None:
     fragment = {"target": {"role": "release"}, "environment": {}}
     manifest = json.dumps({
