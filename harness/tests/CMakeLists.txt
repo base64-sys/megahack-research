@@ -1,5 +1,7 @@
 add_executable(mh_trace_tests
   test_main.cpp
+  test_contract.cpp
+  test_value.cpp
 )
 
 target_link_libraries(mh_trace_tests PRIVATE mh_trace)

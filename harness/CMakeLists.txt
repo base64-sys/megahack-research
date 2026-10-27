@@ -17,6 +17,7 @@ endif()
 
 add_library(mh_trace STATIC
   src/contract.cpp
+  src/value.cpp
 )
 
 target_include_directories(mh_trace PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
