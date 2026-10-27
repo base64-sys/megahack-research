@@ -165,18 +165,18 @@ thing a "the run passed" claim hides.
 | --- | --- |
 | `harness/fixtures/runtime/safe-mode-smoke.gmd` | 1,029 bytes of GD plist XML |
 | SHA-256 | `b931a31d5cb3fc87ff38075dd76582061c76af298b62c9ff58fa07ac91c97661` |
-| level dict | the 43 keys GD 2.2081 wrote for a real level, same order |
-| `k4` | `base64url(gzip("kS38,…;1,1,2,150,3,15;…"))`, deterministic |
+| level dict | the 18 keys a working local level has, in the editor's order |
+| `k4` | `base64url(gzip("kS38,…;1,1,2,50,3,15;…"))`, deterministic |
 
 The `.gmd` is the canonical text form and the file whose digest the manifest will pin; it is
 *our* interchange artifact, and `gd_save.py --check` correctly refuses it, because a `.gmd` is
-not a container. `--install <save-dir>` converts the same XML into `CCLocalLevels.dat` through
-`gd_save.encode`, refusing to replace an existing save without `--force` and keeping a `.dat.bak`
-when forced.
+not a container. `--backup-dir` is required to install: the tool converts this XML into
+`CCLocalLevels.dat` **and** `CCLocalLevels2.dat` through `gd_save.encode`, and refuses to write
+either without a digest-verified backup (see the isolation section below).
 
-Values for the keys whose meaning is not established (`k18`, `k36`, `k23`, `k11`, `k16`, `k21`,
-`k27`, `k42`, `k45`, `k50`, `k48`, `k106`, `kI*`) are ordinary defaults. Only `kCEK`, `k2`,
-`k4` and `k5` are read as what they obviously are.
+Session state (`k18` attempts, `k36` jumps, `k80` edit seconds) and the editor camera
+(`kI1`–`kI3`) are zero, which is what a level that has never been played looks like. `k101` is
+the only field whose meaning is unknown; its *shape* is copied, its value is zeros.
 
 ### The `level` row is an assertion, not an observation
 
@@ -224,5 +224,29 @@ Still missing before an M3 run:
 
   The last two contradict each other about what the client requires, and no amount of guessing
   resolved it: see [gd-docs-level-format.md](../references/gd-docs-level-format.md) for the key
-  table and exactly what it does and does not settle. **A generated level that GD lists as Local
-  and plays has not been produced yet.**
+  table and exactly what it does and does not settle.
+
+  **Resolved 2026-10-27 by reading a level the editor wrote.** A level created in the editor
+  (`megahacklevel`) and read back through `gd_save.decode` has **18 keys**, not 43:
+
+  ```
+  kCEK k18 k36 k2 k4 k5 k101 k13 k21 k16 k80 k50 k47 k48 kI1 kI2 kI3 kI6
+  ```
+
+  Three corrections follow, and they explain every failed attempt:
+
+  - The earlier "43 keys" was a measurement error: that scan flattened `kI6`'s contents into the
+    level dict. `kI6` is a **dict of fourteen single-character slots**, and emitting it as an
+    empty `<d></d>` is what made the 43-key attempt show nothing.
+  - `k21 = 2` is correct and is what the editor writes. The 4-key dict showed "Get it" because it
+    had no `k21`, and the "k21 = 2 shows nothing" attempt failed for the `kI6` reason above, not
+    because of `k21`.
+  - `k48` is the **object count** and agrees with `k4` (2 objects in the editor's level, 2 in
+    `k48`). A level whose count disagrees with its objects is a different level.
+
+  The fixture now emits exactly that key set, in that order, with the same element types; its
+  `k48` is derived from the object list rather than written by hand. `k101` is the one field
+  whose meaning is unknown (a 39-character list of twenty small integers); the fixture repeats
+  the shape with zeros and says so.
+
+  Still unproven: that the client **lists and plays** this shape. That needs one run.

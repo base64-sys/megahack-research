@@ -55,12 +55,37 @@ class FixtureTest(unittest.TestCase):
         self.assertEqual(xml.count("<k>LLM_01</k>"), 1)
         self.assertEqual(xml.count("<k>k_0</k>"), 1)
 
-    def test_carries_only_the_keys_whose_meaning_is_established(self) -> None:
-        # Regression: emitting all 43 observed keys with invented zeros (including an empty
-        # `<d></d>` for kI6) made GD show no levels at all. Only kCEK, k2, k4 and k5 are
-        # understood, so only those are written.
+    def test_carries_the_keys_a_working_local_level_has(self) -> None:
+        # Source: a level the editor created on 2026-10-27, read back through gd_save.decode.
+        # Regression: emitting all 43 observed keys with invented zeros, and an empty `<d></d>`
+        # for kI6, made GD show no levels at all; a 4-key dict made it show the level as an
+        # online level ("Get it"). Both are worse than matching the shape the client wrote.
         keys = [key for key, _, _ in fixture.level_dict("n", "a", OBJECTS)]
-        self.assertEqual(keys, ["kCEK", "k2", "k4", "k5"])
+        self.assertEqual(
+            keys,
+            [
+                "kCEK", "k18", "k36", "k2", "k4", "k5", "k101", "k13", "k21",
+                "k16", "k80", "k50", "k47", "k48", "kI1", "kI2", "kI3", "kI6",
+            ],
+        )
+
+    def test_declares_itself_a_local_level_the_client_must_be_willing_to_list(self) -> None:
+        fields = {key: value for key, _, value in fixture.level_dict("n", "a", OBJECTS)}
+        self.assertEqual(fields["k21"], 2)  # local, not online ("Get it")
+        self.assertEqual(fields["kCEK"], 4)  # a level, not an object
+        self.assertEqual(fields["k50"], 47)  # binary version the client wrote
+
+    def test_object_count_agrees_with_the_object_string(self) -> None:
+        # k48 is the object count; a level whose count disagrees is a different level.
+        for objects in ((), ((1, 50, 15),), OBJECTS):
+            fields = {key: value for key, _, value in fixture.level_dict("n", "a", objects)}
+            self.assertEqual(fields["k48"], len(objects))
+
+    def test_kI6_is_fourteen_slots_not_an_empty_dict(self) -> None:
+        fields = {key: value for key, _, value in fixture.level_dict("n", "a", OBJECTS)}
+        slots = fields["kI6"]
+        self.assertEqual([key for key, _, _ in slots], [str(i) for i in range(14)])
+        self.assertTrue(all(kind == "s" for _, kind, _ in slots))
 
     def test_name_and_author_are_escaped(self) -> None:
         xml = fixture.render_level("a<b&c", "x>y", OBJECTS).decode("utf-8")

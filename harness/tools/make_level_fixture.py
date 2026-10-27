@@ -87,7 +87,8 @@ def _value(kind: str, value: object) -> str:
     if kind == "t":
         return "<t />"
     if kind == "d":
-        return "<d></d>"
+        body = "".join(f"<k>{escape(key)}</k>{_value(inner, item)}" for key, inner, item in value)
+        return f"<d>{body}</d>"
     if kind == "i":
         return f"<i>{int(value)}</i>"
     if kind == "r":
@@ -95,26 +96,47 @@ def _value(kind: str, value: object) -> str:
     return f"<s>{escape(str(value))}</s>"
 
 
-def level_dict(name: str, author: str, objects: Iterable[tuple[int, int, int]]) -> list[tuple[str, str, object]]:
-    """The 43 keys GD 2.2081 wrote for a level, in the order it wrote them.
+# UNVERIFIED: `k101` is a 39-character list of twenty comma-separated single digits in a level
+# the editor wrote. Its meaning is not established, so the fixture repeats the *shape* with
+# zeros rather than inventing something else. It is the one field here whose value is a guess.
+DEFAULT_K101 = ",".join(["0"] * 20)
 
-    Key meanings are not established here; only `k2` (name), `k4` (objects), `k5` (author) and
-    `kCEK` (object class) are read as what they obviously are. Everything else is a default
-    whose correctness a run has to confirm.
+
+def level_dict(name: str, author: str, objects: Iterable[tuple[int, int, int]]) -> list[tuple[str, str, object]]:
+    """The 18 keys a working local level has, in the order the editor wrote them.
+
+    Source: a level created in the editor on 2026-10-27 and read back through
+    `gd_save.decode` (notes/gd-save-format.md, "What a working local level looks like").
+    Values GD chose for that level are not copied; what is reproduced is the key set and the
+    relations that are understood:
+
+    - `kCEK` 4 (level), `k21` 2 (local), `k13`/`k47` true, `k16` 1, `k50` 47
+    - `k48` is the object count and must agree with `k4`; a level whose count disagrees is a
+      different level as far as the client is concerned
+    - `kI6` is a dict of fourteen single-character slots, not an empty dict: the earlier empty
+      `<d></d>` is what made the 43-key attempt show nothing
     """
+    objects = tuple(objects)
     object_string = level_string(objects)
-    # A minimal dict: only the keys whose meaning is established (kCEK level class, k2 name,
-    # k4 objects, k5 author). The first version emitted all 43 keys GD wrote for a real level
-    # with zeros for the 39 unknown ones, plus an empty <d></d> for kI6; GD then showed **no
-    # levels at all**, and because the same blob was in both CCLocalLevels.dat and
-    # CCLocalLevels2.dat there was nothing to fall back to. A keyed decoder normally defaults
-    # missing keys, so the honest choice is to omit what is not understood instead of inventing
-    # values for it - and to say here that this is a hypothesis a run has to confirm.
     return [
         ("kCEK", "i", 4),
+        ("k18", "i", 0),
+        ("k36", "i", 0),
         ("k2", "s", name),
         ("k4", "s", encode_level_string(object_string)),
         ("k5", "s", author),
+        ("k101", "s", DEFAULT_K101),
+        ("k13", "t", None),
+        ("k21", "i", 2),
+        ("k16", "i", 1),
+        ("k80", "i", 0),
+        ("k50", "i", 47),
+        ("k47", "t", None),
+        ("k48", "i", len(objects)),
+        ("kI1", "r", 0.0),
+        ("kI2", "r", 0.0),
+        ("kI3", "r", 0.0),
+        ("kI6", "d", [(str(slot), "s", "0") for slot in range(14)]),
     ]
 
 
