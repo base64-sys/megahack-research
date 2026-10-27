@@ -49,8 +49,9 @@ Only when every backlog item is done: run the full verification set, write
 `notes/trace-harness.md` (question, method, evidence, conclusion, open questions), add a
 short harness section to `README.md`, notify with `scripts/notify.ps1 -Kind Done`, stop
 the watchdog if one is armed, and call `stop_loop` with reason "trace core complete".
-Do NOT mark any M3 criterion complete: runtime validation still needs a captured trace
-from the game.
+Do NOT mark any M3 criterion complete: captures exist now and compare `pass`, but the claim
+is `surface` because no run reaches a site only the target can produce, so no cluster is
+behavioural yet.
 
 ## HARD RULES
 

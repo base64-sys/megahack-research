@@ -8,10 +8,15 @@
 - **Ground truth** - `samples/absolllute.hackmega/absolllute.hackmega_original.dll`,
   SHA-256 `1635c3391e853d68eb718965a756fd411ec6a876c23c0b92db508366e1107a92`,
   8,697,056 bytes, image base `0x180000000`.
-- **Status** - contract only. No trace has been captured, no game process has been
-  launched, and no cluster is runtime-validated by this note. Fields marked
-  `UNVERIFIED` need a run and, where noted, a pinned-SDK check before they can be used
-  as evidence.
+- **Status** - implemented, and it has produced a verdict. The observer
+  (`megahack.trace` 0.2.0), the runner tools in `harness/tools/` and the comparator
+  exist; four bounded no-input captures (two per variant) compare `pass` with no
+  unstable and no failing row, so the method below is executable end to end, not a
+  contract awaiting a run. No cluster is behavioural yet: the only target-dependent
+  site in the registry (`0x16c8b0`, the save-percentage veto) never fires inside the
+  bounded window, so the claim is `surface` - a statement about the manifest, measured
+  rather than assumed. Fields still marked `UNVERIFIED` need a run that reaches them.
+  The capture result is [deterministic-capture.md](deterministic-capture.md), "Result".
 
 ## Runtime baseline decision (2026-10-27)
 
@@ -35,12 +40,14 @@ evidence about 5.11.2; it must not be silently quoted as 5.6.1 evidence. If the 
 later restores a 5.6.1 profile, the scenario must be re-run there rather than merging
 the two sets.
 
-The profile has not been launched yet. The loader copy is verified by file version and
-hash; actual loading is a Step 2 check.
+The profile has been launched many times since 2026-10-27 - the four evidence captures and the
+rehearsals before them all ran there - so the loader copy is verified by file version and hash
+*and* by actual loading, not by the hash alone.
 
 ## What already exists, and what it does not establish
 
-The static side is substantially complete. The runtime side is not.
+The static side is substantially complete. The runtime side has a working tool and four
+captures, and still lacks a scenario that reaches behaviour.
 
 | Surface | Evidence | What it provides | What it does not provide |
 | --- | --- | --- | --- |
@@ -49,11 +56,22 @@ The static side is substantially complete. The runtime side is not.
 | Thunks | `recovered/functions/_wrappers.tsv`; [hook-dispatch.md](hook-dispatch.md) | 277 thunk rows and hook-target RVAs; a second, independent angle on host addresses | No runtime invocation evidence |
 | Settings | `recovered/functions/_settings.tsv`; [settings-registry.md](settings-registry.md) | Accessor-verified tag rows and types | No shipped defaults for every tag, no runtime snapshot |
 | Feature state | [feature-inventory.md](feature-inventory.md) | 106 of 389 changelog rows were `mapped` on 2026-10-26 | The other rows are `cluster`; mapping is not behavioural validation |
-| Cluster status | [m3-validation.md](m3-validation.md) | All five sampled clusters are `UNVERIFIED - structural only` | No release-versus-reconstruction comparison |
+| Cluster status | [m3-validation.md](m3-validation.md) | All five sampled clusters are `UNVERIFIED - structural only` | No behavioural comparison: the captured pair compares `pass` but the claim is `surface` |
 | Host ABI | [host-abi.md](host-abi.md); [hook-dispatch.md](hook-dispatch.md) | `GetModuleHandleA(NULL) + RVA` path, verified RVA examples, `GJGameLevel::savePercentage` veto | No runtime tracing of those paths |
 | Persistence | [persistence.md](persistence.md); [save-lifecycle.md](save-lifecycle.md) | `hackpro.json`, GD `data.json`/`save.json`; the only storage-side hook is the `savePercentage` veto; `onQuit` is a key replay, not a flush | No hook-boundary file-write event; save files need external observation |
-| Reconstruction | `reconstruction/tests/test_reconstruction.cpp` | Nine host-side C++ tests for entry, settings, listeners, serialization, actions | No Geode-loaded build, no GD hook, no runtime trace |
+| Reconstruction | `reconstruction/tests/test_reconstruction.cpp` | Nine host-side C++ tests for entry, settings, listeners, serialization, actions; a Geode-loaded build (`megahack.reconstruction` v0.0.1) that installs the same six hooks the observer watches | No behavioural comparison: identical surface, `claim: surface` |
 | Skeleton | `reconstruction/geode_skeleton/mod.json`; `reconstruction/CMakeLists.txt` | Geode 5.6.1 / GD 2.2081 skeleton, `megahack.skeleton` v0.0.1 | It is a compile-time stub, not the harness |
+
+**What the captures changed (2026-10-27).** The "does not provide" column above is the
+static side's limit, and one column of it has since been filled in for the hooks the
+observer installs: four bounded traces now carry runtime arguments, returns, call order,
+thread and relative frame for `0x3b8eb0`, `0x3b4ba0`, `0x3981d0` and (when it fires)
+`0x16c8b0`, and the release and the reconstruction produce the **same** event sequence
+under that surface. What has *not* changed is the cluster status: a callback observed
+entering and exiting is not the callback's decision, so every row in
+[m3-validation.md](m3-validation.md) stays structural until a scenario reaches a site that
+only the target can produce. Details: [deterministic-capture.md](deterministic-capture.md),
+"Result".
 
 The release manifest is `absolllute.hackmega` v9.1.3, `early-load: true`, with a
 `geode.node-ids >= v1.22.0` dependency. The skeleton is `megahack.skeleton` v0.0.1,
@@ -699,6 +717,10 @@ traces, logs, and dumps go under `runtime-traces/` (gitignored); they are not co
 ## Consequences for the roadmap
 
 This note supplies the method for the open M3 criterion "Reconstructed modules validated
-against release behaviour for the sampled clusters", but it does not change any
-cluster's status. The next step is a Geode 5.11.x harness that emits this format; until
-then, `m3-validation.md` remains correct that all five clusters are structural-only.
+against release behaviour for the sampled clusters", and that method has now been run
+end to end: four bounded captures compare `pass`, so the pipeline is no longer the
+obstacle. What is still missing is a scenario that reaches behaviour - the claim stays
+`surface` because no run reaches a site only the target can produce
+([deterministic-capture.md](deterministic-capture.md), "Result"). Until such a scenario
+exists, `m3-validation.md` remains correct that all five clusters are structural-only, and
+that is now a statement about the scenario rather than about the tooling.

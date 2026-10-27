@@ -31,11 +31,17 @@
 ## What remains
 
 - Runtime comparison of reconstructed hook callbacks against the release's
-  observable behaviour. The method is now fixed in
+  observable behaviour. The method is fixed in
   [runtime-validation.md](runtime-validation.md): JSONL trace schema, scenario
   manifest, comparability gate, comparison rules, and the evidence needed to
-  promote a cluster. No trace has been captured; all five clusters remain
-  structural-only.
+  promote a cluster - and it has now been run. Four bounded no-input captures
+  (two per variant) compare `pass` with no unstable and no failing row, so the
+  tooling is no longer the obstacle. All five clusters nonetheless remain
+  structural-only, and for a measured reason rather than a missing run: the one
+  record kind only the target can produce (`0x16c8b0`/`save`) never fires inside
+  the bounded window, so the claim is `surface`. Promoting a cluster needs a
+  scenario that reaches a target-dependent site, not another capture of this one
+  ([deterministic-capture.md](deterministic-capture.md), "Result").
 - Cluster assignment exists but is only a lead for most rows. Counted from the status
   column on 2026-10-26: **106 of the 389** changelog rows in
   [feature-inventory.md](feature-inventory.md) are `mapped` and **283** are `cluster`;

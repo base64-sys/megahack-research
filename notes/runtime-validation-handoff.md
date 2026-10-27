@@ -18,10 +18,21 @@
   `Geode.dll` SHA-256 (`0C34F50454C102637038CAE48C8C7DD685DA3582FE474358024B1EB6833684D3`).
 - The copied `GeometryDash.exe` SHA-256 is
   `FC5A16C292278BC2E8E078FB1D5023C2BD658322DD72712767EA70C2DD9EC6D0`.
-- No harness, runner or comparator exists yet. No trace has been captured. The
-  `runtime511` profile has not been launched.
+- At the time of this handoff no harness, runner or comparator existed, no trace had been
+  captured, and `runtime511` had not been launched. **All three are now false** - see
+  "Superseded later on 2026-10-27" below.
 - No production code, reconstruction code or original DLL was modified. `runtime-traces/`
   is gitignored; no trace files exist.
+
+**Superseded later on 2026-10-27.** The observer (`megahack.trace` 0.2.0), the runner
+tools in `harness/tools/` and the comparator exist and have been run: four bounded
+no-input captures (two per variant) compare `pass` with no unstable and no failing row,
+and the reconstruction loaded in Geode and installed the same six hooks the observer
+watches. The claim is still `surface` because no run reaches a site only the target can
+produce, so all five clusters stay structural-only - what those two bullets call missing
+tooling is now a missing *scenario*. Current record:
+[deterministic-capture.md](deterministic-capture.md), "Result"; observer detail:
+[trace-observer.md](trace-observer.md).
 
 ## Read first in the new chat
 

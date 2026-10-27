@@ -13,6 +13,17 @@ rules.
 
 Four generated graphics, four lenses, because one number cannot portray progress honestly.
 
+Where this stands: the release is statically mapped — 18,825 of 19,496 functions decompiled,
+338 hook registrations over 215 GD methods and 125 tag bindings enumerated from instruction
+bytes — and 28 of the roadmap's 33 exit criteria are met. The reconstruction is a Geode mod
+(`megahack.reconstruction` v0.0.1) that reproduces the release's hook surface on the six
+methods the observer watches; its own log line describes it exactly: `hook surface only, no
+trace`. Runtime validation is no longer hypothetical — four frame-bounded, input-free
+captures (two per variant) compare `pass`, with no unstable and no failing row — but the claim
+stays `surface`, because no capture reaches a site only the release can produce.
+[deterministic-capture.md](notes/deterministic-capture.md) records why that is now a scenario
+problem rather than a tooling one.
+
 ![Overview](docs/progress.svg)
 
 ![Exit criteria](docs/progress-criteria.svg)
@@ -220,8 +231,9 @@ package. The level fixture exists and is generated, not hand-made:
 manifest's `level.sha256` is no longer a placeholder: the observer records the SHA-256 of the
 level string at `level_started` (`58d4b320…` for the fixture, the encoded `k4` form the game
 holds) and the gate compares each run's observation with it — `blocked` when a run recorded
-none, `invalid` when a run started a different level. Four captures (two per variant) are what
-the comparison still needs.
+none, `invalid` when a run started a different level. Four captures (two per variant) have now been taken, and they compare
+`pass`; the claim they support is `surface`, and
+[deterministic-capture.md](notes/deterministic-capture.md) is the record.
 Method, evidence and open questions: [trace-harness.md](notes/trace-harness.md),
 [trace-observer.md](notes/trace-observer.md), [reconstruction-variant.md](notes/reconstruction-variant.md),
 [gd-save-format.md](notes/gd-save-format.md); running logs:
@@ -237,7 +249,7 @@ before anyone spends four real runs. All of them test on temporary directories o
 
 ## Notes map
 
-`notes/` holds 83 files and no index beyond this one. Start with the subsystem, not the
+`notes/` holds 84 files and no index beyond this one. Start with the subsystem, not the
 feature.
 
 | Theme | Notes |
@@ -250,7 +262,7 @@ feature.
 | Persistence | `persistence`, `save-lifecycle`, `import-dt`, `gd-save-format` |
 | Features | one `<feature>-feature.md` per mapped feature, plus `unlock-bypasses` |
 | Android parity | `android-abi`, `android-symbol-parity`, `android-string-parity`, `android-input-parity` |
-| Validation and state | `feature-inventory`, `m3-validation`, `runtime-validation`, `runtime-validation-handoff`, `trace-harness`, `trace-observer`, `reconstruction-variant`, `geode-skeleton`, `portable-build` |
+| Validation and state | `feature-inventory`, `m3-validation`, `runtime-validation`, `runtime-validation-handoff`, `trace-harness`, `trace-observer`, `deterministic-capture`, `reconstruction-variant`, `geode-skeleton`, `portable-build` |
 
 ## Sample tooling
 

@@ -99,6 +99,13 @@ observer half of `megahack.trace` does not exist yet, and M3's fourth criterion 
 release-versus-reconstruction comparison on a captured pair. Per the working rules, no
 roadmap criterion is marked complete by this work.
 
+**Superseded on 2026-10-27.** The observer now exists (`megahack.trace` 0.2.0, packaged
+`27fdc58a…`), four bounded captures have been taken, and the release-versus-reconstruction
+comparison has been run: `pass`, no unstable row, `claim: surface`
+([deterministic-capture.md](deterministic-capture.md), "Result"). An executable contract was
+the precondition for that comparison, not the comparison itself - which is why this note's
+own conclusion stands and the M3 criterion is still open.
+
 Two contradictions inside the contract surfaced and are recorded rather than smoothed over
 (see [harness/PROGRESS.md](../harness/PROGRESS.md), open questions):
 
