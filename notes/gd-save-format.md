@@ -92,6 +92,12 @@ Closing it therefore needs one of:
 - or a scripted backup/install/restore of `%LOCALAPPDATA%\GeometryDash\*.dat` around each run,
   which is *controlled mutation of the live save*, not isolation, and must be labelled as such.
 
+The third is implemented: `harness/tools/save_sandbox.py` (+ `test_save_sandbox.py`, 10 cases)
+with `--backup`, `--install`, `--status` and `--restore`. Its invariants are the point — it
+refuses to install unless a digest-verified backup exists, refuses to overwrite a save whose
+bytes have changed since that backup, refuses a second backup over an existing one, and verifies
+every restored file against its recorded digest. Its own docstring says it is not isolation.
+
 Until one is in place, a fixture must not be installed into the live save directory, and an M3
 run is not eligible on the isolation row regardless of how good the comparison is.
 
@@ -130,11 +136,18 @@ Values for the keys whose meaning is not established (`k18`, `k36`, `k23`, `k11`
 So the gate's level row compares the manifest's hash with itself: it can show `pass` without
 anything having observed which level the game loaded.
 
-Therefore `level.sha256` **stays zero** in `harness/scenarios/safe-mode-smoke.json` — not
-because the fixture is missing any more, but because filling it would make a row pass that
-proves nothing. Closing that needs the trace to carry an observed level identity, which the
-`milestone` record's existing `data` value can hold without a schema change — but it needs the
-`PlayLayer → GJGameLevel` field offsets and a run, so it is the next task, not this one.
+**Half of that is now closed.** `level_started` carries the level's own name in the milestone's
+existing `data` value (`mh::records::milestone_event(name, Value::observed_str(levelName))`,
+from `GJGameLevel::m_levelName`, `PlayLayer::init`'s own argument). No schema member was added:
+`data` was already a value object. If the name could not be read, `data` says
+`{"state":"unavailable","reason":…}` rather than guessing.
+
+What is still open is the gate: `mh::compare` reads a milestone's `name` for ordering and never
+looks at `data`, so the observed name is recorded but not yet *compared*. Making it a row would
+be a change to comparator semantics, which this task was told not to make — so the decision is
+open, and until it is made `level.sha256` **stays zero** in
+`harness/scenarios/safe-mode-smoke.json`. Filling it now would make a row pass that proves
+nothing.
 
 Still missing before an M3 run:
 
