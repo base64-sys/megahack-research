@@ -336,8 +336,20 @@ while the longest (82 s, release) recorded none. Both variants ran with `0x1E2 =
 path, then a release that vetoes and a reconstruction that does not is exactly the behavioural
 divergence this pipeline was built to find.
 
-UNVERIFIED: whether the reconstruction's save path is a missing veto or a session artefact.
-Closing it needs (a) a static check that the release's `0x1E2` callback is on the path that
-reaches `0x16c8b0`, and (b) a re-run of both variants under the same short session with no
-death — the traces already record whether `save_requested` fires, so the discriminator is cheap
-once input is deterministic.
+**Resolved — it is a missing veto, not a session artefact (static, 2026-10-27).** The release's
+`0x16C8B0` hook (`FUN_180199DF0`) returns before calling the original whenever `FUN_18019B5F0()`
+is true, and that predicate is the documented Safe Mode gate: `HACK_SAFE_MODE` (`0x1E2`), or
+`HACK_AUTO_SAFE_MODE` (`0x1E1`) with the `hasCheatedInAttempt` cache set, or
+`CHECKBOX_NOCLIP_DISABLE_PROGRESS` (tag 73 / `0x49`) with progress `< 1.0`
+([safe-mode-feature.md](safe-mode-feature.md), lines 43–86). With `0x1E2` true the original never
+runs, so GD never records a percentage. `ReconstructionGJGameLevel::savePercentage` forwards
+unconditionally and reads no tag at all, so the extra events are the expected signature of a
+variant that reproduces the hook surface but not the gate — and the comparator already files them
+as `pass_with_warnings`, not as a failure.
+
+The open item is now the `unstable` verdict, which is the operator's two sessions per variant and
+needs deterministic input (frame-scheduled key events replayed identically to both variants) or a
+comparison restricted to canonical counts. Reproducing the gate would mean rebuilding the settings
+layer, the attempt cache and the progress accumulators inside the reconstruction, which is beyond
+its declared scope and is recorded in [safe-mode-feature.md](safe-mode-feature.md), "What the
+reconstruction does not reproduce".

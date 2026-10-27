@@ -474,11 +474,17 @@ evidence (test name, gate output, commit subject).
   counts 4,801/9,013 and 6,127/5,623), so payload comparison cannot stabilise - session
   variability, not a variant difference, and recorded as such in
   [reconstruction-variant.md](../notes/reconstruction-variant.md).
-- **What the four runs did surface:** `save_requested` and the `0x16c8b0` (`savePercentage`)
-  hook fired in both reconstruction runs and neither release run, including a 34-second
-  reconstruction session against an 82-second release session, with `HACK_SAFE_MODE` true in
-  both. That is either the Safe Mode veto behaving differently or a session artefact;
-  UNVERIFIED, and the discriminator is named in the note.
+- **What the four runs did surface, now resolved statically:** `save_requested` and the
+  `0x16c8b0` (`savePercentage`) hook fired in both reconstruction runs and neither release run,
+  including a 34-second reconstruction session against an 82-second release session, with
+  `HACK_SAFE_MODE` true in both. `FUN_180199DF0` returns before calling the original whenever
+  `FUN_18019B5F0()` is true, and that gate covers `HACK_SAFE_MODE` (0x1E2), `HACK_AUTO_SAFE_MODE`
+  (0x1E1) with `hasCheatedInAttempt`, and `CHECKBOX_NOCLIP_DISABLE_PROGRESS` (tag 73) at less
+  than 100%. The reconstruction implements the hook surface only and reads no tag, so the extra
+  events are the expected signature of a declared scope difference - the comparator already
+  files them as `pass_with_warnings`, not a failure. See
+  [safe-mode-feature.md](../notes/safe-mode-feature.md), "What the reconstruction does not
+  reproduce".
 
 ## Open questions
 

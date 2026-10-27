@@ -267,6 +267,23 @@ The likely trigger is the confirmation dialog: `FUN_18019B050` registers
 lambda shape (captured tag at `+8`, callable at `+0x10`). UNVERIFIED: the exact vtable
 binding from the message callback to `FUN_18019A780`.
 
+## What the reconstruction does not reproduce
+
+The `reconstruction/geode` variant implements the hook *surface* only (`ReconstructionGJGameLevel::savePercentage`
+forwards to the original unconditionally, `reconstruction/geode/src/main.cpp`), so it has no
+settings layer and never consults the gate above. That is visible in traces: across four
+captures on 2026-10-27 the release recorded **no** `GJGameLevel::savePercentage` (`0x16C8B0`)
+enter/exit pair with `0x1E2` true, while the reconstruction recorded them in both of its runs —
+including a 34 s session against an 82 s release session, which rules out length. The
+comparator classifies the extra events as a `pass_with_warnings` alignment difference, not a
+failure.
+
+Reproducing the gate would mean reproducing the Map A/Map B settings reads (tags 482, 481, 73),
+the `hasCheatedInAttempt` cache and its refresh hooks, and the progress accumulators at
+`DAT_18080CB70`/`CB78` — behavioural reconstruction beyond the variant's declared scope. The
+asymmetry is therefore **expected and named**, not a defect to chase; see
+[reconstruction-variant.md](reconstruction-variant.md), "Five-run comparison".
+
 ## Open questions
 
 - UNVERIFIED: what `PlayLayer+0x3788` is, and therefore the exact condition that makes the
