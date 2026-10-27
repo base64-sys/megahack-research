@@ -75,6 +75,28 @@ build output stays untracked.
 `geode new` being interactive-only remains true, so `harness/observer/` carries its own
 `mod.json` and `CMakeLists.txt` written to this recipe.
 
+## Hook bridge (O3)
+
+One hook, end to end, as of iteration 4:
+
+| Field | Value | Evidence |
+| --- | --- | --- |
+| hook | `PlayLayer::resetLevel` | `notes/address-map.md:50`; contract example trace uses the same key |
+| key | `GeometryDash.exe:rva:0x3b8eb0` | contract §hook event |
+| rva | `0x3B8EB0` | address-map row; image base 0x140000000 |
+| mechanism | Geode `$modify`, so the loader resolves the address | `Geode/modify/PlayLayer.hpp` |
+| call ids | `c1`, `c2`, … per session; depth from an explicit stack | contract §call pairing |
+
+The detour writes `enter` before calling the original and `exit` after it, with
+`call.duration_ns` on the exit. `args` is `unavailable` (this hook does not capture them) and
+`return` is `null` for a void method; neither is invented. Events go through
+`mh::TraceWriter::write_event`, and the file stays open for the run: `meta` at load, `end` on
+`$on_game(Exiting)`, which the SDK documents as the safe place for global cleanup.
+
+UNVERIFIED: that the hook fires at all, and that the thread running `$on_mod(Loaded)` is the
+game's main thread. The record says `role: main` only when the hook runs on that same thread,
+and the code carries the same caveat. A captured run closes both.
+
 ## Open questions
 
 - **Does the observer link the portable core under MSVC?** Yes as of iteration 3: the mod

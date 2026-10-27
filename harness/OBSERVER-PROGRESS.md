@@ -12,7 +12,8 @@ Status vocabulary: `pending`, `in progress`, `done`, `blocked`.
 | --- | --- | --- |
 | O1 | Discover the Geode 5.11.2 mod build path: SDK layout, exact command, produced artifacts, host toolchain | done |
 | O2 | Observer skeleton: mod `megahack.trace`, links the portable core, writes meta + end to its save directory (`traces/`) | done (build only — the write is unproven until a run) |
-| O3 | Hook bridge: enter/exit events with call ids, depth and proven main-thread role | pending |
+| O3a | Hook bridge, one hook end to end: `PlayLayer::resetLevel` enter/exit with call ids, depth, parent and `thread.role` from the load thread | done (build only — firing unproven until a run) |
+| O3b | Hook bridge, remaining pilot keys (`PlayLayer::init`, `PlayerObject::pushButton`/`releaseButton`, `GJBaseGameLayer::handleButton`, `savePercentage`) and the observed main-thread proof | pending |
 | O4 | Runner: hashes, one-target enforcement, sha256 sidecar, runtime511 selection, manifest feeding | pending |
 | O5 | Pilot capture in runtime511 and a real `read_trace` pass (needs the user to launch) | pending |
 
@@ -68,3 +69,22 @@ Status vocabulary: `pending`, `in progress`, `done`, `blocked`.
   belongs to O5.
 - Commit: `feat(observer): add the megahack.trace observer skeleton`.
 - Next: O3, the hook bridge.
+
+### Iteration 4 — O3a: the first hook emits real enter/exit pairs
+
+- `PlayLayer::resetLevel` at RVA `0x3B8EB0` (notes/address-map.md:50, and the contract's own
+  example trace names `GeometryDash.exe:rva:0x3b8eb0`). Hooked with `$modify`, so Geode
+  resolves the address; the record still states the RVA and the runtime VA.
+- The detour writes `hook` enter before the original and `hook` exit after it, with
+  `call_id` from a per-session counter, `depth` from an explicit stack, `parent_call_id`
+  from that stack, and `call.this` as an observed `ptr` value. `args` is `unavailable` with a
+  reason and `return` is the contract's `null` - both honest for a void method whose
+  arguments this hook does not capture.
+- The session now stays open for the whole run: `meta` at load, events as they happen, `end`
+  on `$on_game(Exiting)` (the SDK documents that event as the place for global cleanup). A
+  crash therefore produces no `end`, which the reader already treats as incomplete.
+- Built and packaged: `megahack.trace.dll`, `megahack.trace.geode`, exit 0 on a clean rerun.
+- **Unverified until a run**: that the hook fires, and that the load thread is the game's
+  main thread. Both are named in the note and in the code.
+- Commit: `feat(observer): hook PlayLayer::resetLevel and emit enter/exit pairs`.
+- Next: O3b, the remaining pilot keys.
