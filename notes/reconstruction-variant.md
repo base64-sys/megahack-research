@@ -353,3 +353,9 @@ comparison restricted to canonical counts. Reproducing the gate would mean rebui
 layer, the attempt cache and the progress accumulators inside the reconstruction, which is beyond
 its declared scope and is recorded in [safe-mode-feature.md](safe-mode-feature.md), "What the
 reconstruction does not reproduce".
+
+The design for closing that last item is
+[deterministic-capture.md](deterministic-capture.md): bound the capture at the manifest's
+`timing.max_frames` so per-frame hook counts are equal by construction, and add a no-input
+scenario whose deaths come from the fixture rather than a hand on the keyboard. Synthetic input
+injection is deliberately deferred there, with the reason and the acceptance criteria named.
