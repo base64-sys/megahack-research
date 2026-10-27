@@ -25,6 +25,7 @@ add_library(mh_trace STATIC
   src/trace_writer.cpp
   src/call_stack.cpp
   src/trace_reader.cpp
+  src/scenario.cpp
 )
 
 target_include_directories(mh_trace PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
