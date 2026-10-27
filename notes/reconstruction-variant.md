@@ -235,3 +235,39 @@ printed** - which is the intended behaviour, not a missing feature.
   explicit address be closer to what the release does? `$modify` was chosen because the release
   uses it and because the loader resolves the address - but it also means the two variants
   share a hook *mechanism*, which a difference in mechanism would not survive.
+
+## First four-run comparison (2026-10-27)
+
+Two runs per variant, all `capture: complete`, all against the generated fixture, with the
+save backed up and restored around every run:
+
+| Run | Variant | Events | Milestones | Hooks observed |
+| --- | --- | --- | --- | --- |
+| `3ff34864` | release `1635c339…` | 8,327 | 1 `level_started`, 2 `attempt_started` | 4 keys, owner `absolllute.hackmega.dll` |
+| `319ce3f6` | release `1635c339…` | 5,524 | 1 / 3 | 4 keys, same owner |
+| `d5f0ecf6` | reconstruction `5f214c5f…` | 5,767 | 1 / 2, plus 2 `save_requested` | 4 keys + `0x16c8b0`, owner `megahack.reconstruction.dll` |
+| `9a972e9e` | reconstruction `5f214c5f…` | 5,737 | 1 / 4, plus 4 `save_requested` | same |
+
+`mh_trace_compare` with all four:
+
+```
+status: blocked | gate: blocked | unstable: no
+  blocked level: level fixture digest is the manifest's placeholder (level.sha256); the evidence is not there yet
+```
+
+So the gate accepts everything it can check — two runs per variant, target and harness digests
+consistent, scenario identical — and stops on the one row that has never been checkable. That is
+the whole result: the pipeline works, and the level row is now the single thing standing between
+it and a verdict.
+
+Two observations to carry forward:
+
+- **The reconstruction ran clean on its first ever launch**, on the same hooks as the release.
+  Only its `hook.target` differs, which is the intended signal.
+- **The reconstruction runs called `GJGameLevel::savePercentage` (`0x16c8b0`) and the release
+  runs did not.** Four enter/exit pairs in one, four in the other. The observer hooks that site
+  in both variants, so the difference is in the game's behaviour, not in the observer: something
+  about those two sessions reached the save path that the release sessions did not. Sample size
+  is two per variant, so this is a lead, not a finding.
+  UNVERIFIED: whether the difference is the variant or the session — closing it needs the same
+  level, same duration, same actions, which the operator controls and the traces already record.
