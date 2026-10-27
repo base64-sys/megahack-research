@@ -23,7 +23,7 @@ All VAs are in Mega Hack's image unless marked GD. RVAs (GD) are relative to
 | --- | --- |
 | `0x180800F58` | registry global (`.data` zero-fill, ≥ `0x4A8` bytes) |
 | `0x1800A27E0` | static constructor `FUN_1800A27E0(&DAT_180800F58)` |
-| `0x1800A2F90` | `FUN_18008A510` (returns `registry + 0xD8` = Config) |
+| `0x18008A510` | `FUN_18008A510` (returns `registry + 0xD8` = Config) |
 | `0x180072DF0` | `tagFor` (name → tag) |
 | `0x180072E20` | `keyFor` (tag → name) |
 | `0x18008B490` | by-tag setter |
