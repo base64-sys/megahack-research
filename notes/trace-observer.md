@@ -384,6 +384,39 @@ Two things, neither of them in the observer:
    (`hook.target`: registration VA, callback VA, tag) and/or effect events such as `save`
    records for the `savePercentage` veto. That is the next design question, not a coding gap.
 
+## `hook.target`: naming the implementation that was running (2026-10-27)
+
+A trace whose only content is the observer's own GD hooks cannot tell releases apart - the
+release and a reconstruction would hook the same four functions and align trivially. So the
+observer now resolves, per hooked address, **which other loaded mod owns a hook there**, and
+writes it as `hook.target`:
+
+```cpp
+for (Mod* mod : Loader::get()->getAllMods()) {          // every mod except the observer
+    for (Hook* hook : mod->getHooks()) {                 // loader/Hook.hpp
+        if (hook->getAddress() == address) {             // the same GD function
+            module = mod->getID(); priority = hook->getPriority();
+```
+
+Resolved lazily on the first event for an address and cached, because the target's hooks may
+not exist yet when the observer's own `$on_mod(Loaded)` runs.
+
+Fields Geode 5.11.2 exposes are filled (`module`, `priority`); the rest of the contract's
+`hook.target` object stays present-but-null rather than invented:
+
+| Field | Value | Why |
+| --- | --- | --- |
+| `module` | the owning mod's id | `Mod::getID()` |
+| `priority` | `Hook::getPriority()` | documented accessor |
+| `callback_va`, `callback_rva` | null | the hook API exposes no detour address |
+| `registration_va`, `tag`, `tag_label` | null | the target's own registration is internal to it |
+| `order_raw`, `order_signed` | null | ditto; not the same thing as Geode priority |
+
+This is the difference that matters for a comparison: a release run and a reconstruction run
+over the same session produce the same keys and the same order, and differ in `hook.target`.
+Still UNVERIFIED until a run is made: whether the release's `$modify` hooks are visible through
+`Mod::getHooks()` at all (Geode tracks modify-generated hooks, but only a run proves it).
+
 ## Runbook for the first capture (needs the user)
 
 Nothing below has been executed; installing a mod into a profile and launching a game are

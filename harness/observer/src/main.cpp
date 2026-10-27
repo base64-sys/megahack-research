@@ -243,12 +243,66 @@ std::optional<std::int64_t> current_frame() {
     return std::nullopt;
 }
 
+// The target's own hook on the same GD function, resolved once per address from the live hook
+// list. This is what makes a trace say *which implementation* was running: the release and a
+// reconstruction both hook the same addresses, and only the owner differs.
+struct TargetHook {
+    std::string module;
+    std::int64_t priority = 0;
+};
+
+const std::optional<TargetHook>& target_hook_for(std::uintptr_t address) {
+    static std::map<std::uintptr_t, std::optional<TargetHook>> cache;
+    auto found = cache.find(address);
+    if (found != cache.end()) {
+        return found->second;
+    }
+
+    std::optional<TargetHook> result;
+    for (Mod* mod : Loader::get()->getAllMods()) {
+        if (!mod || mod == Mod::get()) {
+            continue;
+        }
+        for (Hook* hook : mod->getHooks()) {
+            if (hook && hook->getAddress() == address) {
+                result = TargetHook{std::string(mod->getID()),
+                                    static_cast<std::int64_t>(hook->getPriority())};
+                break;
+            }
+        }
+        if (result) {
+            break;
+        }
+    }
+    return cache.emplace(address, std::move(result)).first->second;
+}
+
+// `hook.target`: the contract's fields are all present; the ones Geode 5.11.2 does not expose
+// (a detour address, the target's own registration VA and tag) stay null rather than invented.
+mh::json::Json target_hook_object(std::uintptr_t address) {
+    const std::optional<TargetHook>& target = target_hook_for(address);
+    if (!target) {
+        return mh::json::Json::null();
+    }
+    mh::json::Json object_value = object();
+    object_value.set("module", mh::json::Json::string(target->module));
+    object_value.set("callback_va", mh::json::Json::null());
+    object_value.set("callback_rva", mh::json::Json::null());
+    object_value.set("registration_va", mh::json::Json::null());
+    object_value.set("tag", mh::json::Json::null());
+    object_value.set("tag_label", mh::json::Json::null());
+    object_value.set("order_raw", mh::json::Json::null());
+    object_value.set("order_signed", mh::json::Json::null());
+    object_value.set("priority", mh::json::Json::integer(target->priority));
+    return object_value;
+}
+
 mh::json::Json build_hook_object(const HookSpec& spec) {
     char rva[16];
     std::snprintf(rva, sizeof(rva), "0x%X", spec.rva);
     char va[32];
-    std::snprintf(va, sizeof(va), "0x%llX",
-                  static_cast<unsigned long long>(image_base() + spec.rva));
+    const std::uintptr_t address = image_base() + spec.rva;
+    std::snprintf(va, sizeof(va), "0x%llX", static_cast<unsigned long long>(address));
 
     mh::json::Json hook = object();
     hook.set("observer", mh::json::Json::string("gd_method"));
@@ -258,7 +312,7 @@ mh::json::Json build_hook_object(const HookSpec& spec) {
     hook.set("resolution", mh::json::Json::string("rva"));
     hook.set("rva", mh::json::Json::string(rva));
     hook.set("va", mh::json::Json::string(va));
-    hook.set("target", mh::json::Json::null());
+    hook.set("target", target_hook_object(address));
     hook.set("convention", mh::json::Json::string("unknown"));
     return hook;
 }
