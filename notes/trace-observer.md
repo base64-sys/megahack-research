@@ -232,19 +232,58 @@ UNVERIFIED: the real key name. Closing it needs either a current `hackpro.json` 
 `runtime511` profile or a runtime dump of the intern map. Neither is available to this loop,
 and guessing a key would be exactly the kind of laundering `AGENTS.md` forbids.
 
+## First captured run (2026-10-27, `runtime511`)
+
+The observer was installed into the isolated profile and launched by the user. The log shows
+the mod loading and Geode enabling all five hooks, at a runtime base of `0x7FF675F50000`:
+
+```
+Enabled PlayLayer::postUpdate hook at 0x7ff676304ba0 for megahack.trace
+Enabled PlayLayer::resetLevel hook at 0x7ff676308eb0 for megahack.trace
+Enabled PlayLayer::init hook at 0x7ff6762f5b00 for megahack.trace
+Enabled PlayerObject::pushButton hook at 0x7ff6762e7f40 for megahack.trace
+Enabled PlayerObject::releaseButton hook at 0x7ff6762e81d0 for megahack.trace
+```
+
+Each runtime address is the base plus the RVA in this note, which is the second angle the
+build could not give: `0x7FF675F50000 + 0x3B8EB0 = 0x7FF676308EB0`.
+
+The trace was written to
+`%LOCALAPPDATA%\GeometryDash\geode\mods\megahack.trace\traces\<run_id>.jsonl` - **not** into
+the profile folder. Geode 5 redirects mod data to `%LOCALAPPDATA%`, so the runbook's old path
+was wrong and is corrected below.
+
+`mh_trace_check` on that file: `valid, 26 event(s), 0 error(s), 0 warning(s), meta present,
+end present`. Contents: 13 `pushButton` enter/exit pairs, `thread.role: main` on every event,
+frames 579..12260, depths all 1, `counts.unclosed: 0`. No milestones and no `postUpdate`,
+`resetLevel` or `init` records, which matches a session that never entered a level - the meta
+is the null fallback, so `capture.status` is `partial` and the fingerprint is all zeros.
+
+That answers two things the build could not: the hooks fire, and the thread running
+`$on_mod(Loaded)` is the thread that runs gameplay. It does not yet answer whether
+`level_started` precedes `attempt_started`, because no level was loaded.
+
 ## Runbook for the first capture (needs the user)
 
 Nothing below has been executed; installing a mod into a profile and launching a game are
 user actions.
 
-1. Copy `harness/observer/build/megahack.trace.geode` into the `runtime511` profile's mods
-   directory (`geode profile` reports the profile; the default `a` profile is off limits).
+1. Build the target's package and install both mods into `runtime511`. Geode loads **`.geode`
+   archives only**: a folder dropped into `mods/` produces an in-game error and fails to load
+   (observed, 2026-10-27). The CLI can build the archive, but it must be pointed away from
+   `samples/` or it writes into the evidence tree:
+   `geode package new samples/absolllute.hackmega -o <somewhere outside the repo>\absolllute.hackmega.geode`
+   then copy that archive and `harness/observer/build/megahack.trace.geode` into the profile's
+   `mods/` directory. Check the target's DLL hash first: all four sample DLLs are 8,697,056
+   bytes, so only the digest distinguishes the release from the experiments.
 2. Write the context:
    `python harness/tools/preflight.py --target samples/absolllute.hackmega/absolllute.hackmega_original.dll --gd <runtime511>/GeometryDash.exe --geode <runtime511>/Geode.dll --harness <installed>/megahack.trace.geode --profile runtime511 --gd-version 2.2081 --geode-version 5.11.2 --scenario <manifest> --settings <runtime511>/hackpro.json --tag-key 0x1E2=<stored key> --repetition 0 --context <path>`
    The `--tag-key` value is the one unknown (`notes/trace-observer.md` §Settings snapshot); the
    runner refuses rather than writing a declared value into a record that claims to observe it.
-3. Launch with `MH_TRACE_CONTEXT=<path>` in the environment, load one level, quit.
-4. The trace appears as `<mod save dir>/traces/<run_id>.jsonl`; grade it with
+3. Launch with `MH_TRACE_CONTEXT=<path>` in the environment, load one level, quit. Without a
+   context the trace is still written, with `null` fields and `capture.status: partial`.
+4. The trace appears at `%LOCALAPPDATA%\GeometryDash\geode\mods\megahack.trace\traces\<run_id>.jsonl`
+   (Geode redirects mod data there, not into the profile folder); grade it with
    `harness/build/mh_trace_check <trace>` (exit 0 means structurally valid, and it prints
    every issue the reader found).
 5. `python harness/tools/preflight.py --sidecar <trace>` writes its digest.
