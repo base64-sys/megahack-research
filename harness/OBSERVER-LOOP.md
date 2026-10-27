@@ -86,7 +86,7 @@ When the backlog is exhausted, or when the remaining work needs the user:
 | id | item | status |
 | --- | --- | --- |
 | O1 | Discover the Geode 5.11.2 mod build path on this machine: SDK layout, exact command, produced artifacts, host toolchain; record it in notes/trace-observer.md | pending |
-| O2 | Observer skeleton in harness/observer/: builds as mod `megahack.trace`, links the portable core, writes one meta + end record to runtime-traces/ on load | pending |
+| O2 | Observer skeleton in harness/observer/: builds as mod `megahack.trace`, links the portable core, writes one meta + end record to its save directory (`traces/`) on load | done |
 | O3 | Hook bridge: enter/exit hook events for the pilot's required keys from _hook_sites.tsv, with call ids, depth and main-thread role proven at PlayLayer::init | pending |
 | O4 | Runner: hashes (target/harness/GD/Geode), one-target enforcement, trace sha256 sidecar, runtime511 selection, manifest feeding; python tests | pending |
 | O5 | Pilot capture in runtime511 and a real read_trace pass, then a first comparison of a captured release pair (needs the user to launch) | pending |

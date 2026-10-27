@@ -32,7 +32,8 @@ from pathlib import Path
 
 LINK_RE = re.compile(r"\[[^\]]*\]\(([^)\s]+)\)")
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.*?)\s*$", re.M)
-SKIP_DIRS = {".git", "node_modules", "samples", "recovered", ".oc", ".idea", ".pytest_cache"}
+SKIP_DIRS = {".git", "node_modules", "samples", "recovered", ".oc", ".idea", ".pytest_cache",
+             "build", "_deps"}
 
 
 def slug(text: str) -> str:

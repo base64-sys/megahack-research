@@ -1,0 +1,11 @@
+{
+    "geode": "5.11.2",
+    "gd": {
+        "win": "2.2081"
+    },
+    "id": "megahack.trace",
+    "name": "Mega Hack Trace Observer",
+    "version": "v0.1.0",
+    "developer": "megahack-research",
+    "description": "Runtime observer: records mh-trace/1 traces for runtime validation. Not a gameplay mod."
+}

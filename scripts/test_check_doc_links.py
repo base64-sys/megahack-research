@@ -40,6 +40,12 @@ def build(root: Path) -> None:
     skipped.mkdir()
     (skipped / "c.md").write_text("[broken](nowhere.md)\n", encoding="utf-8")
 
+    # Generated build trees are not documentation: a vendored README under build/ must not
+    # be able to fail the gate.
+    generated = root / "harness" / "observer" / "build" / "_deps"
+    generated.mkdir(parents=True)
+    (generated / "README.md").write_text("[gone](nowhere.md)\n", encoding="utf-8")
+
 
 def test_slug() -> None:
     assert slug("M1 - A heading (done)") == "m1---a-heading-done", slug("M1 - A heading (done)")

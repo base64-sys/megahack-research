@@ -77,11 +77,15 @@ build output stays untracked.
 
 ## Open questions
 
-- **Does the observer link the portable core under MSVC?** The core has only been built with
-  g++; O2 compiles `harness/src/*.cpp` into the mod, which is the real test. If a unit fails
-  under MSVC, fixing it must not break the g++ tests.
-- **Is `bin/5.11.2` complete for linking?** The probe links and packages, but it does not
-  exercise a hook or a Geode symbol beyond `$on_mod`; O3 is the proof.
-- **Packaging needs `mod.json` to be valid enough for the CLI's install step.** `DONT_INSTALL`
-  keeps the probe out of every profile; the observer must do the same until the user installs
-  it into `runtime511`.
+- **Does the observer link the portable core under MSVC?** Yes as of iteration 3: the mod
+  compiles `harness/src/*.cpp` into `megahack.trace.dll` with MSVC 14.44, no source changes,
+  and the g++ suite stays at 162/162.
+- **Where do traces live?** The skeleton writes to `Mod::get()->getSaveDir()/"traces"/`
+  because that is the one location a mod may write without assuming an install layout. O4
+  decides the path the runner reads; if it must be outside the mod's save directory, the
+  observer changes, not the runner's expectations.
+- **Packaging exit code.** The first build after a configure change returns 1 while still
+  producing the `.geode`; an unchanged re-run returns 0. Treating "exit 1 with the package
+  written" as success would be a claim without a boundary, so the loop rebuilds instead.
+- **Is `bin/5.11.2` complete for linking?** The observer links and packages; a hook is still
+  the proof, and that is O3.
