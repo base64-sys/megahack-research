@@ -446,6 +446,31 @@ The check that makes this visible without guesswork: **a context that was used i
 (`pending-context.json` becomes `pending-context.json.consumed`, and `capture.status` is
 `complete` rather than `partial` with 14 missing fields).
 
+## The save-percentage site: installed, and never called (2026-10-27)
+
+Run `20be8098` (54,386 events, `capture: complete`, 0 errors) added the optional hook
+`0x16c8b0` and the save snapshots. Both hooks installed, from the Geode log:
+
+```
+13:49:19 Enabled GJGameLevel::savePercentage hook at 0x7ff6760bc8b0 for absolllute.hackmega
+13:49:21 Enabled GJGameLevel::savePercentage hook at 0x7ff6760bc8b0 for megahack.trace
+```
+
+That pairing is the target-dependent evidence the comparison needs: the same address, two
+owners, and `Meta.mods` names both. But the trace contains **no** `save` record and no
+`0x16c8b0` hook event: the function was never called, in a session with 2 `level_started`, 4
+`resetLevel` and no `level_completed`. `CCLocalLevels.dat` and `CCGameManager.dat` were both
+written at 13:51:26, so the game did save - through a path that does not go through this
+function.
+
+Why no static answer: `recovered/functions/_callers.tsv` has no caller for `FUN_18016c8b0`,
+because the call is virtual. So the trigger has to be established by observation, not by the
+call graph: an attempt that ends (death or completion) is the candidate.
+
+
+UNVERIFIED: whether ending an attempt calls it at all, and whether the before/after file
+digests differ under Safe Mode. Both need one run that dies or completes a level.
+
 ## Runbook for the first capture (needs the user)
 
 Nothing below has been executed; installing a mod into a profile and launching a game are
@@ -485,3 +510,4 @@ user actions.
   written" as success would be a claim without a boundary, so the loop rebuilds instead.
 - **Is `bin/5.11.2` complete for linking?** The observer links and packages; a hook is still
   the proof, and that is O3.
+
