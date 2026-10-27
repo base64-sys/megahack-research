@@ -479,6 +479,27 @@ Consequence: the key stays optional and unobserved, and the comparison's signal 
 lifecycle surface (which hooks exist, enter/exit balance, milestone order and counts), not the
 veto. Chasing the veto further costs user runs for a key the manifest already marks optional.
 
+## Hardening the observer (2026-10-27)
+
+Five changes, each closing a way the observer could lie or mislead. All are build-verified;
+none has been exercised in a run yet.
+
+| Change | What it prevents |
+| --- | --- |
+| Buffered writes, flush every 64 events | A flush syscall per hook event, i.e. two per frame. A crash loses at most the tail, which the missing `end` record already marks |
+| Event cap (`kMaxEvents` = 200,000) | A trace that fills a disk. On reaching it the observer writes one `error: capture_overflow` with `fatal: true` and stops recording, so `end.counts` stays truthful |
+| Runtime version guard | Hooking RVAs in a GD or Geode build that is not the one the run context names. Mismatch emits `error: scenario_mismatch` |
+| Hook-install check | A `$modify` that silently did not install. Each of the five sites is looked up in `Mod::get()->getHooks()` at startup; absence emits `error: hook_install_failed` with the hook key |
+| Multiple-target detection | Two mods hooking the same function making `hook.target` a guess. `hook.target` is then null and the run gets `error: multiple_targets_loaded` |
+
+The last one changes `target_hook_for` to return the owner count as well as the owner, so an
+ambiguous address reports nothing instead of whichever mod happened to be iterated first.
+
+UNVERIFIED: whether the hook-install check passes for `$modify`-created hooks. The evidence it
+should is indirect but good - `hook.target` already finds *Mega Hack's* `$modify` hooks through
+the same accessor - but the first run after this change must be read for
+`hook_install_failed` before trusting the check.
+
 ## Runbook for the first capture (needs the user)
 
 Nothing below has been executed; installing a mod into a profile and launching a game are

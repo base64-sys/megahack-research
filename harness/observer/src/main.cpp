@@ -32,6 +32,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdint>
+#include <array>
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
@@ -61,6 +62,10 @@ constexpr HookSpec kSavePercentage{"GeometryDash.exe:rva:0x16c8b0", "GJGameLevel
 constexpr HookSpec kReleaseButton{"GeometryDash.exe:rva:0x3981d0",
                                   "PlayerObject::releaseButton", 0x3981D0};
 
+// Every site the observer depends on, for the startup check that each one really is hooked.
+constexpr std::array<HookSpec, 5> kRequiredSites{kResetLevel, kPostUpdate, kPushButton,
+                                                 kReleaseButton, kSavePercentage};
+
 // PlayLayer::init (GeometryDash.exe RVA 0x3A5B00) is not one of the manifest's required hook
 // keys: it is observed as the `level_started` milestone, so no hook key is invented for it.
 // RVA sources: hook-registrations.md:117 and the generated Geode/modify/PlayLayer.hpp note.
@@ -75,7 +80,23 @@ struct Session {
     std::vector<std::string> call_stack;
     std::int64_t next_call = 1;
     std::int64_t started_ns = 0;
+    // Writing is buffered and flushed every few events: flushing a JSONL line per hook event
+    // cost a syscall per frame, which is why a ten-minute session produced 54k records slowly.
+    // The trade is that a crash can lose the tail, which the missing `end` record already
+    // signals - a run without `end` is not eligible anyway.
+    int pending_flush = 0;
+    bool overflow_reported = false;
+    bool multi_target_reported = false;
 };
+
+void emit_error_locked(Session& session, const char* code, const char* message, bool fatal,
+                       const char* hook_key);
+
+// A trace that grows without bound is a trace nobody can read, and an unbounded run can fill a
+// disk. The cap is reported as the contract's own `capture_overflow` error rather than silently
+// truncating, and the run then stops recording (so `end.counts` stays truthful).
+constexpr std::int64_t kMaxEvents = 200000;
+constexpr int kFlushEvery = 64;
 
 // One in-flight hook call. `active` is false when no trace is open, in which case the
 // detour behaves like the original with a few cheap checks.
@@ -153,6 +174,15 @@ bool has_member(const mh::json::Json& object, std::string_view key) {
         }
     }
     return false;
+}
+
+const mh::json::Json* find_member(const mh::json::Json& object, std::string_view key) {
+    for (const auto& entry : object.members()) {
+        if (entry.first == key) {
+            return &entry.second;
+        }
+    }
+    return nullptr;
 }
 
 std::string read_text_file(const std::filesystem::path& path) {
@@ -258,34 +288,44 @@ struct TargetHook {
     std::int64_t priority = 0;
 };
 
-const std::optional<TargetHook>& target_hook_for(std::uintptr_t address) {
-    static std::map<std::uintptr_t, std::optional<TargetHook>> cache;
+// A cached lookup plus how many distinct mods claim the same address. More than one owner means
+// `hook.target` cannot name a single implementation, so the record says nothing rather than
+// picking one, and the run is told about the ambiguity.
+struct TargetLookup {
+    std::optional<TargetHook> hook;
+    int owners = 0;
+};
+
+const TargetLookup& target_hook_for(std::uintptr_t address) {
+    static std::map<std::uintptr_t, TargetLookup> cache;
     auto found = cache.find(address);
     if (found != cache.end()) {
         return found->second;
     }
 
-    std::optional<TargetHook> result;
+    TargetLookup result;
     for (Mod* mod : Loader::get()->getAllMods()) {
         if (!mod || mod == Mod::get()) {
             continue;
         }
         for (Hook* hook : mod->getHooks()) {
             if (hook && hook->getAddress() == address) {
-                std::error_code error;
                 std::filesystem::path binary = mod->getBinaryPath();
                 std::string module = binary.filename().string();
                 if (module.empty()) {
                     module = std::string(mod->getID());
                 }
-                result = TargetHook{std::move(module),
-                                    static_cast<std::int64_t>(hook->getPriority())};
+                if (result.owners == 0) {
+                    result.hook = TargetHook{std::move(module),
+                                             static_cast<std::int64_t>(hook->getPriority())};
+                }
+                ++result.owners;
                 break;
             }
         }
-        if (result) {
-            break;
-        }
+    }
+    if (result.owners > 1) {
+        result.hook.reset();
     }
     return cache.emplace(address, std::move(result)).first->second;
 }
@@ -293,7 +333,8 @@ const std::optional<TargetHook>& target_hook_for(std::uintptr_t address) {
 // `hook.target`: the contract's fields are all present; the ones Geode 5.11.2 does not expose
 // (a detour address, the target's own registration VA and tag) stay null rather than invented.
 mh::json::Json target_hook_object(std::uintptr_t address) {
-    const std::optional<TargetHook>& target = target_hook_for(address);
+    const TargetLookup& lookup = target_hook_for(address);
+    const std::optional<TargetHook>& target = lookup.hook;
     if (!target) {
         return mh::json::Json::null();
     }
@@ -330,10 +371,37 @@ mh::json::Json build_hook_object(const HookSpec& spec) {
     return hook;
 }
 
+// Every record goes through here: it enforces the event cap and the flush batching, so no
+// emit site can forget either.
+void write_event(Session& session, const mh::json::Json& body, const mh::EventContext& context) {
+    if (!session.writer) {
+        return;
+    }
+    if (session.writer->counts().attempted >= kMaxEvents) {
+        if (!session.overflow_reported) {
+            session.overflow_reported = true;
+            mh::json::Json overflow = object();
+            overflow.set("kind", mh::json::Json::string("error"));
+            overflow.set("code", mh::json::Json::string("capture_overflow"));
+            overflow.set("message",
+                         mh::json::Json::string("event cap reached; recording stopped here"));
+            overflow.set("fatal", mh::json::Json::boolean(true));
+            overflow.set("hook_key", mh::json::Json::null());
+            session.writer->write_event(overflow, context);
+            session.sink.flush();
+        }
+        return;
+    }
+    session.writer->write_event(body, context);
+    if (++session.pending_flush >= kFlushEvery) {
+        session.sink.flush();
+        session.pending_flush = 0;
+    }
+}
+
 // Emits one record. Caller holds g_mutex.
 void emit_hook_locked(Session& session, const char* phase, const HookSpec& spec,
-                      const HookScope& scope, void* self, std::int64_t duration_ns) {
-    mh::json::Json call = object();
+                      const HookScope& scope, void* self, std::int64_t duration_ns) {    mh::json::Json call = object();
     call.set("call_id", mh::json::Json::string(scope.call_id));
     call.set("depth", mh::json::Json::integer(scope.depth));
     call.set("parent_call_id", scope.parent.empty() ? mh::json::Json::null()
@@ -353,14 +421,23 @@ void emit_hook_locked(Session& session, const char* phase, const HookSpec& spec,
     body.set("hook", build_hook_object(spec));
     body.set("call", std::move(call));
 
+    // Two mods hooking the same function makes `hook.target` a guess, so it is left null and the
+    // ambiguity is reported once instead of being resolved by iteration order.
+    if (!session.multi_target_reported &&
+        target_hook_for(image_base() + spec.rva).owners > 1) {
+        session.multi_target_reported = true;
+        emit_error_locked(session, "multiple_targets_loaded",
+                          "more than one mod hooks this function; hook.target is null", true,
+                          spec.key);
+    }
+
     mh::EventContext context;
     context.t_ns = steady_ns();
     context.frame = current_frame();
     context.thread = current_thread(session);
     context.capture.status = mh::CaptureStatus::complete;
 
-    session.writer->write_event(body, context);
-    session.sink.flush();
+    write_event(session, body, context);
 }
 
 // notes/runtime-validation.md "milestone": kind, name, and data as a value object. The pilot
@@ -377,8 +454,7 @@ void emit_milestone_locked(Session& session, const char* name) {
     context.thread = current_thread(session);
     context.capture.status = mh::CaptureStatus::complete;
 
-    session.writer->write_event(body, context);
-    session.sink.flush();
+    write_event(session, body, context);
 }
 
 // `save` is "an observed file state or write; not inferred from a hook" (notes/runtime-validation.md),
@@ -423,8 +499,7 @@ void emit_save_locked(Session& session, const char* phase) {
     context.thread = current_thread(session);
     context.capture.status = mh::CaptureStatus::complete;
 
-    session.writer->write_event(save_snapshot_object(phase), context);
-    session.sink.flush();
+    write_event(session, save_snapshot_object(phase), context);
 }
 
 void emit_save(const char* phase) {
@@ -433,6 +508,71 @@ void emit_save(const char* phase) {
         return;
     }
     emit_save_locked(*g_session, phase);
+}
+
+// One `error` record, per the contract's error kind: code, message, fatal, hook_key.
+void emit_error_locked(Session& session, const char* code, const char* message, bool fatal,
+                       const char* hook_key) {
+    mh::json::Json body = object();
+    body.set("kind", mh::json::Json::string("error"));
+    body.set("code", mh::json::Json::string(code));
+    body.set("message", mh::json::Json::string(message));
+    body.set("fatal", mh::json::Json::boolean(fatal));
+    body.set("hook_key",
+             hook_key ? mh::json::Json::string(hook_key) : mh::json::Json::null());
+
+    mh::EventContext context;
+    context.t_ns = steady_ns();
+    context.frame = current_frame();
+    context.thread = current_thread(session);
+    context.capture.status = mh::CaptureStatus::complete;
+
+    write_event(session, body, context);
+    session.sink.flush();
+}
+
+// Checks that can only fail silently, so they are asserted at startup: the runtime must be the
+// one the run context names, every site the observer relies on must actually be hooked, and no
+// second mod may be hooking the same functions (that would make `hook.target` ambiguous).
+void verify_session(Session& session, const mh::json::Json& body) {
+    const std::string game_version = Loader::get()->getGameVersion();
+    const std::string geode_version = Loader::get()->getVersion().toNonVString();
+
+    if (const mh::json::Json* environment = find_member(body, "environment")) {
+        if (const mh::json::Json* gd = find_member(*environment, "gd")) {
+            if (const mh::json::Json* declared = find_member(*gd, "version")) {
+                if (declared->string_value() != game_version) {
+                    emit_error_locked(session, "scenario_mismatch",
+                                      "the running GD build is not the one the run names", true,
+                                      nullptr);
+                }
+            }
+        }
+        if (const mh::json::Json* geode = find_member(*environment, "geode")) {
+            if (const mh::json::Json* declared = find_member(*geode, "version")) {
+                if (declared->string_value() != geode_version) {
+                    emit_error_locked(session, "scenario_mismatch",
+                                      "the running Geode build is not the one the run names", true,
+                                      nullptr);
+                }
+            }
+        }
+    }
+
+    std::vector<std::uintptr_t> installed;
+    for (Hook* hook : Mod::get()->getHooks()) {
+        if (hook) {
+            installed.push_back(hook->getAddress());
+        }
+    }
+    for (const HookSpec& spec : kRequiredSites) {
+        const std::uintptr_t address = image_base() + spec.rva;
+        const bool present = std::find(installed.begin(), installed.end(), address) != installed.end();
+        if (!present) {
+            emit_error_locked(session, "hook_install_failed",
+                              "the hook is not present in this mod's hook list", true, spec.key);
+        }
+    }
 }
 
 void emit_milestone(const char* name) {
@@ -691,6 +831,17 @@ $on_mod(Loaded) {
         std::lock_guard<std::mutex> lock(g_mutex);
         g_session = std::move(session);
     }
+
+    // Two checks that would otherwise fail silently: a build that is not the one the run was
+    // planned against, and a hook Geode did not install. Both are reported as the contract's
+    // `error` records rather than left to be inferred from missing events.
+    {
+        std::lock_guard<std::mutex> lock(g_mutex);
+        if (g_session && g_session->writer) {
+            verify_session(*g_session, body);
+        }
+    }
+
     log::info("trace opened at {} (run {})", path.string(), run_id);
 }
 
