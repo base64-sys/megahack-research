@@ -22,7 +22,7 @@ evidence (test name, gate output, commit subject).
 | 8 | Comparator core: comparability gate, volatile-field normalisation, canonical event keys | done |
 | 9 | Per-key sequence alignment: min_count on both sides, LCS/Needleman-Wunsch with the documented tie-breaks, missing vs extra classification | done |
 | 10 | Ordering groups and value comparison: main-thread only, tolerance formula with a mandatory "why", result statuses | done |
-| 11 | Synthetic corpus: one pair per status (pass, pass_with_warnings, fail, blocked, unstable, invalid), including the seven-line example trace from notes/runtime-validation.md, which must validate and round-trip | pending |
+| 11 | Synthetic corpus: one pair per status (pass, pass_with_warnings, fail, blocked, unstable, invalid), including the seven-line example trace from notes/runtime-validation.md, which must validate and round-trip | done |
 | 12 | Docs: README harness section and notes/trace-harness.md test matrix | pending |
 
 ## Evidence log
@@ -370,6 +370,36 @@ evidence (test name, gate output, commit subject).
   hook-enter keys, non-main threads ineligible, a missing name, an empty group; statuses
   pass, warnings only, fail-beats-warning, invalid dominance, blocked, unstable.
 - Build: `154 test(s), 0 failed`, `ctest` `100% tests passed out of 1`.
+
+### Item 11 — synthetic corpus and the end-to-end comparison
+
+- Partly new code, because a corpus needs something to produce a status: `include/mh/compare.hpp`
+  and `src/compare.cpp` sequence the existing units into `compare_traces(manifest, release
+  runs, reconstruction runs)`. It checks §8 stability within each variant first, then §3
+  `min_count` on both sides, then per-key alignment (a difference on a required key is
+  `fail`, on anything else `pass_with_warnings`, per §6's "Optional event | Warning"), then
+  §4 ordered groups on main-thread evidence, then `finalize_status`.
+- `comparison_payload` = `normalize_event` minus per-file envelope keys (`schema`, `type`,
+  `run_id`, `run_fingerprint`, `seq`, `capture`). `seq` is a line counter and `run_id` is
+  deliberately random, so neither can be part of behavioural equality.
+- The corpus is generated through `TraceWriter` and read back through `read_trace`, so every
+  case exercises writer → reader → gate → comparison rather than hand-written expectations.
+  Pairs: pass (identical variants), pass_with_warnings (release calls the optional hook,
+  reconstruction does not), fail (same shape, different `feature.enabled`), blocked
+  (unavailable save observation, so the gate's Completeness row fails), unstable (release
+  runs disagree with each other), invalid (reconstruction target hash not the manifest's).
+- Tests (8): `corpus_pass_matches_identical_variants`,
+  `corpus_pass_with_warnings_for_an_optional_gap`,
+  `corpus_fail_on_a_changed_required_payload`,
+  `corpus_blocked_on_an_uncaptured_required_field`,
+  `corpus_unstable_when_a_variant_disagrees_with_itself`,
+  `corpus_invalid_on_a_target_hash_mismatch`, `corpus_example_trace_validates`,
+  `corpus_example_trace_round_trips_byte_for_byte`.
+- Build: `162 test(s), 0 failed`, `ctest` `100% tests passed out of 1`.
+- Two bugs the corpus caught in the harness itself: a milestone body that set `data` twice,
+  and — more usefully — an optional hook emitted without its exit, which made the trace
+  structurally invalid and turned the intended `pass_with_warnings` into `invalid`. The
+  corpus is doing its job.
 
 ## Open questions
 

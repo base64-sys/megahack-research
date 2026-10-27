@@ -29,6 +29,7 @@ add_library(mh_trace STATIC
   src/comparator.cpp
   src/sequence.cpp
   src/comparison.cpp
+  src/compare.cpp
 )
 
 target_include_directories(mh_trace PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
