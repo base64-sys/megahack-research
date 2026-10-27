@@ -23,7 +23,7 @@ evidence (test name, gate output, commit subject).
 | 9 | Per-key sequence alignment: min_count on both sides, LCS/Needleman-Wunsch with the documented tie-breaks, missing vs extra classification | done |
 | 10 | Ordering groups and value comparison: main-thread only, tolerance formula with a mandatory "why", result statuses | done |
 | 11 | Synthetic corpus: one pair per status (pass, pass_with_warnings, fail, blocked, unstable, invalid), including the seven-line example trace from notes/runtime-validation.md, which must validate and round-trip | done |
-| 12 | Docs: README harness section and notes/trace-harness.md test matrix | pending |
+| 12 | Docs: README harness section and notes/trace-harness.md test matrix | done |
 
 ## Evidence log
 
@@ -289,7 +289,7 @@ evidence (test name, gate output, commit subject).
 - `summarize_variant` reads the gate's fields out of a variant's traces; a run that is not
   structurally valid counts as crashed, since "each with an `end` record and no
   crash/timeout" is a precondition rather than a detail.
-- Tests (18): `comparator_canonical_key_for_a_hook_is_observer_key_phase_depth`,
+- Tests (23): `comparator_canonical_key_for_a_hook_is_observer_key_phase_depth`,
   `comparator_canonical_key_for_a_milestone_is_the_name`,
   `comparator_canonical_key_for_a_save_is_store_phase_source`,
   `comparator_canonical_key_for_an_error_is_the_code`,
@@ -400,6 +400,18 @@ evidence (test name, gate output, commit subject).
   and — more usefully — an optional hook emitted without its exit, which made the trace
   structurally invalid and turned the intended `pass_with_warnings` into `invalid`. The
   corpus is doing its job.
+
+### Item 12 — documentation
+
+- `notes/trace-harness.md`: question, method, the unit table, the evidence (162 tests, gate
+  output, the two independent-angle checks), the per-file test matrix, what the work does and
+  does not establish, and the open questions. The contract's own seven-line trace and example
+  manifest are described as fixtures, not reconstructions.
+- `README.md`: a "Trace harness" section with the build commands, the fixture policy, the
+  corpus, and an explicit statement that this proves the contract is executable rather than
+  that the reconstruction behaves like the release. The Notes map gained `trace-harness` and
+  the file count moved 79 → 80.
+- No roadmap criterion is marked complete.
 
 ## Open questions
 
