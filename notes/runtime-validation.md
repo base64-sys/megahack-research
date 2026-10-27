@@ -416,10 +416,28 @@ fires. A missing input hook is a scenario failure, not an invisible success.
 
 ### Timing and stopping
 
-`max_frames` is a hard bound; `timeout_ms` is a wall-clock bound. `fps_cap` is the
-requested cap, not a guarantee. `stop_on` may name milestones such as `level_completed`,
-`player_died`, or `save_requested`; the runner stops at the first one. Every stop reason
-must appear in `end.status` or a `milestone` record. A timeout is a failed run.
+`timing.window` is the enforced bound: `{"anchor": "level_started", "max_frames": N}`. The
+observer opens the window at that milestone, writes `N` frames, then stops writing and records
+`end.status = completed` with `end.frames = N`. The anchor is required because the engine's frame
+counter (`CCDirector::getTotalFrames`) is absolute since launch and the level starts at a different
+frame on every run — `level_started` was at frames 32460, 37963, 46872 and 11541 in the four
+captures of 2026-10-27 — so a bound counted from trace open would capture a different amount of
+level each time. Records before the anchor are dropped, which is also how pre-level menu
+navigation stops contributing variance. `level_started` is the only anchor the observer has a
+measured frame for. A window that never opens, or that opens without a frame to count from, is
+reported as an incomplete capture (`end.status = stopped`, and the observer logs
+`capture window did not close`) rather than being guessed at.
+
+`max_frames` alone is a declaration and nothing enforces it: it is kept because the manifest
+recorded before a window existed uses it, and the preflight warns when it is declared without a
+window. Declaring both is refused — the enforced bound is the window, and a second, unenforced one
+would only invite the two to drift.
+
+`stop_on` is refused inside a window: stopping on a milestone would make the window's length
+depend on the run, which is what the bound exists to remove. `timeout_ms` is a wall-clock bound
+and `fps_cap` is the requested cap, not a guarantee; both remain the operator's instruction
+rather than something the observer enforces. Every stop reason must appear in `end.status` or a
+`milestone` record. A timeout is a failed run.
 
 ### Expected milestones and hooks
 

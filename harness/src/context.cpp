@@ -44,6 +44,39 @@ std::string nested_hex(const json::Json& body, std::string_view object, std::str
     return hex64(member(*node, field));
 }
 
+// The runner's `timing` directive. Only a window is carried, and only in its enforceable
+// form: an anchor plus a positive frame count. A bare `max_frames` is refused rather than
+// ignored, because a bound nobody can evaluate is exactly the defect the anchor fixes
+// (notes/deterministic-capture.md). Returns an empty string on success.
+std::string read_timing(const json::Json& timing, RunContext& context) {
+    if (!timing.is_object()) {
+        return "run context member 'timing' is not an object";
+    }
+    const json::Json* window = member(timing, "window");
+    if (window == nullptr) {
+        return {};
+    }
+    if (!window->is_object()) {
+        return "run context member 'timing.window' is not an object";
+    }
+    const json::Json* anchor = member(*window, "anchor");
+    if (!anchor || anchor->kind() != json::Json::Kind::string) {
+        return "run context member 'timing.window.anchor' is missing or not a string";
+    }
+    if (anchor->string_value() != "level_started") {
+        return "run context member 'timing.window.anchor' is '" +
+               std::string(anchor->string_value()) +
+               "'; the only anchored capture this observer can take is 'level_started'";
+    }
+    const json::Json* frames = member(*window, "max_frames");
+    if (!frames || frames->kind() != json::Json::Kind::integer || frames->integer_value() <= 0) {
+        return "run context member 'timing.window.max_frames' is missing, not an integer, or "
+               "not positive";
+    }
+    context.window = CaptureWindow(std::string(anchor->string_value()), frames->integer_value());
+    return {};
+}
+
 } // namespace
 
 FingerprintInput RunContext::fingerprint_input() const {
@@ -104,7 +137,22 @@ ContextResult read_run_context(std::string_view text) {
     }
 
     RunContext context;
-    context.body = document;
+    // `timing` is a runner directive, not an observation: it is pulled out here so the meta
+    // record keeps the member set the contract describes. The rest of the document is the
+    // meta body, as before.
+    json::Json body = json::Json::object();
+    for (const auto& entry : document.members()) {
+        if (entry.first == "timing") {
+            const std::string error = read_timing(entry.second, context);
+            if (!error.empty()) {
+                result.error = error;
+                return result;
+            }
+            continue;
+        }
+        body.set(entry.first, entry.second);
+    }
+    context.body = std::move(body);
     context.repetition_index = repetition->integer_value();
 
     const FingerprintInput input = context.fingerprint_input();

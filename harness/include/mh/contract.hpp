@@ -21,7 +21,7 @@ inline constexpr std::string_view kScenarioSchema = "mh-scenario/1";
 // Observer identity: meta.environment.harness.{id,version}. The id is also the mod id
 // of the observer (notes/runtime-validation.md §meta record, §Scenario manifest).
 inline constexpr std::string_view kHarnessId = "megahack.trace";
-inline constexpr std::string_view kHarnessVersion = "0.1.1";
+inline constexpr std::string_view kHarnessVersion = "0.2.0";
 
 // Record types written to one trace file, in order (§Trace format, table of type).
 inline constexpr std::string_view kTypeMeta = "meta";

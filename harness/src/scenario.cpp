@@ -568,10 +568,23 @@ ScenarioDocument read_scenario(std::string_view json_text) {
   // -- timing --------------------------------------------------------------
   const json::Json* timing = member(root, "timing");
   if (is_object(timing)) {
+    // `window` is the enforceable half of `timing` (notes/deterministic-capture.md): the bound
+    // counts from a named milestone, because the engine's frame counter is absolute since
+    // launch and the level starts at a different frame on every run. A bare `max_frames` stays
+    // accepted for the scenario recorded before the window existed, but nothing enforces it, so
+    // declaring both is refused rather than letting the two numbers drift apart.
+    const json::Json* window = member(*timing, "window");
     const std::optional<std::int64_t> max_frames = integer_member(*timing, "max_frames");
-    if (!max_frames.has_value() || *max_frames <= 0) {
+    if (window == nullptr) {
+      if (!max_frames.has_value() || *max_frames <= 0) {
+        add_issue(document, ScenarioIssueSeverity::error, ScenarioIssueKind::bad_type,
+                  "timing.max_frames", "max_frames must be a positive integer");
+      }
+    } else if (max_frames.has_value() || member(*timing, "max_frames") != nullptr) {
       add_issue(document, ScenarioIssueSeverity::error, ScenarioIssueKind::bad_type,
-                "timing.max_frames", "max_frames must be a positive integer");
+                "timing.max_frames",
+                "max_frames is declared twice: the enforced bound is timing.window.max_frames, "
+                "so a second, unenforced one would only invite the two to drift");
     }
     const std::optional<std::int64_t> timeout = integer_member(*timing, "timeout_ms");
     if (!timeout.has_value() || *timeout <= 0) {
@@ -582,6 +595,32 @@ ScenarioDocument read_scenario(std::string_view json_text) {
     if (!fps.has_value() || *fps <= 0) {
       add_issue(document, ScenarioIssueSeverity::error, ScenarioIssueKind::bad_type,
                 "timing.fps_cap", "fps_cap must be a positive integer");
+    }
+    if (window != nullptr) {
+      if (!is_object(window)) {
+        add_issue(document, ScenarioIssueSeverity::error, ScenarioIssueKind::bad_type,
+                  "timing.window", "window must be an object");
+      } else {
+        const std::optional<std::string> anchor = string_member(*window, "anchor");
+        if (anchor != "level_started") {
+          add_issue(document, ScenarioIssueSeverity::error, ScenarioIssueKind::bad_type,
+                    "timing.window.anchor",
+                    "anchor must be level_started: it is the only anchored capture the "
+                    "observer can take");
+        }
+        const std::optional<std::int64_t> frames = integer_member(*window, "max_frames");
+        if (!frames.has_value() || *frames <= 0) {
+          add_issue(document, ScenarioIssueSeverity::error, ScenarioIssueKind::bad_type,
+                    "timing.window.max_frames", "max_frames must be a positive integer");
+        }
+      }
+      if (const json::Json* stop_on = member(*timing, "stop_on");
+          is_array(stop_on) && !stop_on->items().empty()) {
+        add_issue(document, ScenarioIssueSeverity::error, ScenarioIssueKind::bad_type,
+                  "timing.stop_on",
+                  "a windowed capture cannot stop on a milestone: the window's length would "
+                  "depend on the run, which is what the bound exists to remove");
+      }
     }
   }
 

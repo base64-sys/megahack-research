@@ -13,7 +13,8 @@ constexpr char kDigestC[] = "333333333333333333333333333333333333333333333333333
 constexpr char kDigestD[] = "4444444444444444444444444444444444444444444444444444444444444444";
 
 std::string context_text(std::string_view repetition = "0", std::string_view tags = "[]",
-                         std::string_view level_digest = kDigestD) {
+                         std::string_view level_digest = kDigestD,
+                         std::string_view timing = "") {
     std::string text = R"({"target":{"role":"release","artifact":"a.dll","sha256":")";
     text += kDigestA;
     text += R"(","size":1,"image_base":"0x180000000"},"scenario":{"id":"s","sha256":")";
@@ -28,8 +29,21 @@ std::string context_text(std::string_view repetition = "0", std::string_view tag
     text += level_digest;
     text += R"(","source":"generated"},"repetition_index":)";
     text += repetition;
+    if (!timing.empty()) {
+        text += ",\"timing\":";
+        text += timing;
+    }
     text += "}";
     return text;
+}
+
+bool has_member(const mh::json::Json& body, std::string_view key) {
+    for (const auto& entry : body.members()) {
+        if (entry.first == key) {
+            return true;
+        }
+    }
+    return false;
 }
 
 } // namespace
@@ -106,4 +120,54 @@ MH_TEST(context_fingerprint_changes_with_the_repetition_index) {
     MH_CHECK(first.ok() && second.ok());
     MH_CHECK(mh::run_fingerprint(first.context->fingerprint_input()) !=
              mh::run_fingerprint(second.context->fingerprint_input()));
+}
+
+MH_TEST(context_carries_a_declared_capture_window) {
+    const auto result = mh::read_run_context(context_text(
+        "0", "[]", kDigestD,
+        R"({"window":{"anchor":"level_started","max_frames":600},"stop_on":[]})"));
+    MH_CHECK(result.ok());
+    MH_CHECK(result.context->window.has_value());
+    MH_CHECK(result.context->window->declared());
+    MH_CHECK_EQ(result.context->window->anchor(), std::string("level_started"));
+    MH_CHECK_EQ(result.context->window->max_frames(), std::int64_t{600});
+
+    // A runner directive is not an observation: it must not reach the meta record.
+    MH_CHECK(!has_member(result.context->body, "timing"));
+    // The six fingerprint inputs are unchanged by it.
+    MH_CHECK(result.context->fingerprint_input().level_sha256 == std::string(kDigestD));
+}
+
+MH_TEST(context_without_timing_is_unbounded) {
+    const auto result = mh::read_run_context(context_text());
+    MH_CHECK(result.ok());
+    MH_CHECK(!result.context->window.has_value());
+}
+
+MH_TEST(context_ignores_a_frame_count_without_an_anchor) {
+    // `timing.max_frames` alone is the pre-existing, unenforceable spelling: nothing in the
+    // trace says which frame it counts from. It is dropped, not guessed at.
+    const auto result = mh::read_run_context(context_text(
+        "0", "[]", kDigestD, R"({"max_frames":240,"stop_on":["player_died"]})"));
+    MH_CHECK(result.ok());
+    MH_CHECK(!result.context->window.has_value());
+    MH_CHECK(!has_member(result.context->body, "timing"));
+}
+
+MH_TEST(context_rejects_a_malformed_capture_window) {
+    const std::string cases[] = {
+        R"("window")",
+        R"({"window":{"max_frames":600}})",
+        R"({"window":{"anchor":"attempt_started","max_frames":600}})",
+        R"({"window":{"anchor":1,"max_frames":600}})",
+        R"({"window":{"anchor":"level_started"}})",
+        R"({"window":{"anchor":"level_started","max_frames":0}})",
+        R"({"window":{"anchor":"level_started","max_frames":-5}})",
+        R"({"window":{"anchor":"level_started","max_frames":"600"}})",
+    };
+    for (const std::string& timing : cases) {
+        const auto result = mh::read_run_context(context_text("0", "[]", kDigestD, timing));
+        MH_CHECK(!result.ok());
+        MH_CHECK(result.error.find("timing") != std::string::npos);
+    }
 }

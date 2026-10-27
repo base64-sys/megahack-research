@@ -15,6 +15,7 @@ add_executable(mh_trace_tests
   test_comparison.cpp
   test_corpus.cpp
   test_context.cpp
+  test_window.cpp
   test_records.cpp
   test_compare.cpp
 )

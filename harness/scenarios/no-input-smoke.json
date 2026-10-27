@@ -1,0 +1,37 @@
+{
+  "schema": "mh-scenario/1",
+  "id": "no-input-smoke",
+  "status": "draft",
+  "description": "Bounded, input-free capture: the same local level as safe-mode-smoke, but nobody touches the keyboard, so the event sequence comes from the fixture and the physics rather than from a hand. The window opens at level_started and closes after timing.window.max_frames frames, which makes the per-frame hook counts equal by construction instead of by luck. Runs on Geode 5.11.2 per runtime_baseline; `baseline` names the static analysis reference (the release was analysed against 5.6.1 bindings) and is descriptive only - the gate never compares it. See notes/deterministic-capture.md.",
+  "baseline": {"mega_hack": "v9.1.3", "gd": "2.2081", "geode": "5.6.1", "arch": "x86_64"},
+  "runtime_baseline": {"geode": "5.11.2", "profile": "runtime511"},
+  "targets": {
+    "release": {"artifact": "absolllute.hackmega_original.dll", "sha256": "1635c3391e853d68eb718965a756fd411ec6a876c23c0b92db508366e1107a92"},
+    "reconstruction": {"artifact": "megahack.reconstruction.dll", "sha256": "5f214c5f086c6339300a9adfeec94376f8e7f33a119272fda28d879b6117ac1f"}
+  },
+  "harness": {"id": "megahack.trace", "version": "0.2.0", "sha256": "27fdc58a7eec72d2c07af3d57ed6c6eeeb4da1487f30de1e74b2f2343c5a3597"},
+  "mods": {"required": ["absolllute.hackmega", "megahack.trace"], "dependency_versions": {"geode.node-ids": ">=v1.22.0"}, "other_mods": "forbidden"},
+  "level": {"fixture": "fixtures/runtime/safe-mode-smoke.gmd", "sha256": "58d4b320fced5935ff298ae20feefb565de405f010cdfadd86efe6713fdc33fd", "source": "generated", "notes": "Same generated fixture as safe-mode-smoke; no user or online level. sha256 is the digest of the level string the observer records at level_started - observed on 2026-10-27 to be the encoded k4 text, not the decoded object string. It does not hash the .gmd file. See notes/gd-save-format.md."},
+  "profile": {"isolation": "disposable", "notes": "Use a disposable Windows profile or VM; restore from a snapshot. Do not run against a live player profile."},
+  "settings": {"reset": "defaults", "tags": [{"tag": "0x1E2", "label": "HACK_SAFE_MODE", "value": true}]},
+  "input": {"driver": "operator", "notes": "No input injection exists in this harness, and this scenario deliberately needs none: the operator launches the level, touches nothing, and quits when the capture window closes. `actions` is empty because the events of interest are the fixture's own - a run into the first block, a death, a restart.", "actions": []},
+  "timing": {"window": {"anchor": "level_started", "max_frames": 600}, "timeout_ms": 30000, "fps_cap": 60, "stop_on": [], "notes": "The observer enforces the window: it opens at level_started, writes 600 frames, then stops writing and records end.status=completed with end.frames=600. Records before level_started (menu navigation) are dropped, because the engine's frame counter is absolute since launch and the pre-level offset varies by tens of thousands of frames between runs. stop_on is refused inside a window: stopping on a milestone would make the window's length depend on the run. timeout_ms remains the operator's instruction."},
+  "milestones": {"required": ["level_started", "attempt_started"], "optional": ["player_died", "level_completed"]},
+  "hooks": {
+    "required": [
+      {"key": "GeometryDash.exe:rva:0x3b8eb0", "phases": ["enter", "exit"], "min_count": 1},
+      {"key": "GeometryDash.exe:rva:0x3b4ba0", "phases": ["enter", "exit"], "min_count": 1}
+    ],
+    "optional": [
+      {"key": "GeometryDash.exe:rva:0x397f40", "phases": ["enter", "exit"], "min_count": 1, "note": "pushButton: not required here. An in-level jump would need injected input, and the pre-level menu clicks are exactly the variance the window drops, so requiring it would make the scenario demand the thing it is designed to remove."},
+      {"key": "GeometryDash.exe:rva:0x3981d0", "phases": ["enter", "exit"], "min_count": 1, "note": "releaseButton: same reason as pushButton."},
+      {"key": "GeometryDash.exe:rva:0x16c8b0", "phases": ["enter", "exit"], "min_count": 1, "note": "savePercentage: the release vetoes this through Safe Mode and this fixture does not reach a completion, so it stays optional. See notes/safe-mode-feature.md."}
+    ]
+  },
+  "repetitions": 2,
+  "comparison": {
+    "order_groups": [["level_started", "attempt_started"]],
+    "tolerances": {},
+    "volatile": ["t_ns", "hook.va", "thread.id", "call.this.value", "call.duration_ns", "save.local_path"]
+  }
+}

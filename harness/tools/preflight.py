@@ -249,19 +249,62 @@ def check_input_driver(manifest: dict) -> None:
         )
 
 
+def resolve_window(manifest: dict) -> dict | None:
+    """The capture window the manifest declares, or None when it declares none.
+
+    A frame count without an anchor is *not* carried. The observer's `frame` is the engine's
+    counter, absolute since launch, and `level_started` lands at a different frame on every
+    launch (32,460 and 37,963 in two release runs; 11,541 and 46,872 in two reconstruction
+    runs), so "240 frames" only means something once the frame it counts from is named. A
+    manifest that declares one without the other is refused rather than quietly left
+    unenforced - that mismatch is what produced the `unstable` verdict in the first place
+    (notes/deterministic-capture.md).
+    """
+    timing = manifest.get("timing") or {}
+    window = timing.get("window")
+    if window is None:
+        return None
+    if not isinstance(window, dict):
+        raise PreflightError("timing.window must be an object")
+    anchor = window.get("anchor")
+    if anchor != "level_started":
+        raise PreflightError(
+            f"timing.window.anchor must be 'level_started', got {anchor!r}"
+        )
+    max_frames = window.get("max_frames")
+    if isinstance(max_frames, bool) or not isinstance(max_frames, int) or max_frames <= 0:
+        raise PreflightError("timing.window.max_frames must be a positive integer")
+    # A milestone stop makes the window's length depend on the run, which is the thing the
+    # bound exists to remove: the observer refuses to carry it, so preflight refuses it here.
+    if timing.get("stop_on"):
+        raise PreflightError(
+            "timing.stop_on is not supported in a windowed capture: stopping on a milestone "
+            "makes the window's length depend on the run"
+        )
+    return {"anchor": anchor, "max_frames": max_frames}
+
+
 def build_context(*, fragment: dict, scenario_bytes: bytes, repetition: int,
                   settings: dict | None = None, tag_keys: dict[str, str] | None = None,
                   settings_bytes: bytes | None = None) -> dict:
     """The run context the observer splices into meta (harness/include/mh/context.hpp).
 
     Not a new schema: the meta body's own members plus repetition_index, which is the sixth
-    fingerprint input and is never part of the meta record.
+    fingerprint input and is never part of the meta record. `timing` is the one runner
+    directive: the observer reads it and removes it before the body reaches the meta record.
     """
     manifest = json.loads(scenario_bytes.decode("utf-8"))
     check_input_driver(manifest)
     settings_block = manifest.get("settings") or {}
     level = manifest.get("level") or {}
     declared_tags = settings_block.get("tags") or []
+    window = resolve_window(manifest)
+    if window is None and (manifest.get("timing") or {}).get("max_frames"):
+        print(
+            "warning: timing.max_frames is declared without timing.window, so nothing "
+            "enforces it; the capture runs until the operator quits",
+            file=sys.stderr,
+        )
 
     tags: list[dict] = []
     snapshot = None
@@ -274,7 +317,7 @@ def build_context(*, fragment: dict, scenario_bytes: bytes, repetition: int,
         tags = resolve_tags(settings, declared_tags, tag_keys or {})
         snapshot = hashlib.sha256(settings_bytes).hexdigest()
 
-    return {
+    context = {
         "target": fragment["target"],
         "scenario": {
             "id": manifest.get("id"),
@@ -293,6 +336,9 @@ def build_context(*, fragment: dict, scenario_bytes: bytes, repetition: int,
         },
         "repetition_index": repetition,
     }
+    if window is not None:
+        context["timing"] = {"window": window}
+    return context
 
 
 def write_sidecar(trace: str | Path) -> Path:

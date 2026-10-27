@@ -59,6 +59,11 @@ std::string replaced(const std::string& text, std::string_view from, std::string
   return copy;
 }
 
+// The example's timing block verbatim, so the window tests below replace it rather than
+// depending on its formatting a second time (notes/deterministic-capture.md).
+constexpr std::string_view kExampleTiming =
+    R"("timing": {"max_frames": 240, "timeout_ms": 30000, "fps_cap": 60, "stop_on": ["save_requested", "player_died", "level_completed"]})";
+
 } // namespace
 
 MH_TEST(scenario_accepts_the_contract_example_manifest) {
@@ -229,6 +234,45 @@ MH_TEST(scenario_warns_when_a_single_run_is_requested) {
       mh::read_scenario(replaced(example(), R"("repetitions": 2)", R"("repetitions": 1)"));
   MH_CHECK(document.valid());
   MH_CHECK(has_warning(document, ScenarioIssueKind::too_few_repetitions));
+}
+
+MH_TEST(scenario_accepts_a_capture_window_instead_of_a_bare_max_frames) {
+  // notes/deterministic-capture.md: the window is the enforceable bound, and it replaces the
+  // unenforced `max_frames` rather than sitting beside it.
+  const std::string text = replaced(
+      example(), kExampleTiming,
+      R"("timing": {"window": {"anchor": "level_started", "max_frames": 600}, "timeout_ms": 30000, "fps_cap": 60, "stop_on": []})");
+  MH_CHECK(text.find("window") != std::string::npos);
+  const ScenarioDocument document = mh::read_scenario(text);
+  MH_CHECK(document.valid());
+  MH_CHECK(!document.has_errors());
+}
+
+MH_TEST(scenario_rejects_a_window_with_an_unmeasured_anchor) {
+  // Only level_started has a measured frame in the traces, so any other anchor would bound a
+  // window the observer cannot place.
+  const ScenarioDocument document = mh::read_scenario(replaced(
+      example(), kExampleTiming,
+      R"("timing": {"window": {"anchor": "attempt_started", "max_frames": 600}, "timeout_ms": 30000, "fps_cap": 60, "stop_on": []})"));
+  MH_CHECK(!document.valid());
+  MH_CHECK(has_path(document, "timing.window.anchor"));
+}
+
+MH_TEST(scenario_rejects_a_window_beside_a_bare_max_frames) {
+  const ScenarioDocument document = mh::read_scenario(replaced(
+      example(), kExampleTiming,
+      R"("timing": {"window": {"anchor": "level_started", "max_frames": 600}, "max_frames": 240, "timeout_ms": 30000, "fps_cap": 60, "stop_on": []})"));
+  MH_CHECK(!document.valid());
+  MH_CHECK(has_path(document, "timing.max_frames"));
+}
+
+MH_TEST(scenario_rejects_a_window_that_stops_on_a_milestone) {
+  // Stopping on a milestone would make the window's length depend on the run.
+  const ScenarioDocument document = mh::read_scenario(replaced(
+      example(), kExampleTiming,
+      R"("timing": {"window": {"anchor": "level_started", "max_frames": 600}, "timeout_ms": 30000, "fps_cap": 60, "stop_on": ["player_died"]})"));
+  MH_CHECK(!document.valid());
+  MH_CHECK(has_path(document, "timing.stop_on"));
 }
 
 MH_TEST(scenario_rejects_malformed_json) {

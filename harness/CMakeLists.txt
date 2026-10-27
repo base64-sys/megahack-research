@@ -31,6 +31,7 @@ add_library(mh_trace STATIC
   src/comparison.cpp
   src/compare.cpp
   src/context.cpp
+  src/window.cpp
   src/records.cpp
 )
 
@@ -74,6 +75,10 @@ endif()
 
 add_test(NAME scenario_check_example
          COMMAND mh_scenario_check ${CMAKE_CURRENT_SOURCE_DIR}/scenarios/safe-mode-smoke.json)
+# The bounded, input-free scenario: same validator, plus the timing.window rules the window
+# implementation added (notes/deterministic-capture.md).
+add_test(NAME scenario_check_no_input
+         COMMAND mh_scenario_check ${CMAKE_CURRENT_SOURCE_DIR}/scenarios/no-input-smoke.json)
 add_test(NAME scenario_check_usage COMMAND mh_scenario_check)
 set_tests_properties(scenario_check_usage PROPERTIES WILL_FAIL TRUE)
 

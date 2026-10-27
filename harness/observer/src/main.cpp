@@ -79,6 +79,14 @@ struct Session {
     std::vector<std::string> call_stack;
     std::int64_t next_call = 1;
     std::int64_t started_ns = 0;
+    // Which records this run may write, when the manifest declared a window. Absent (the
+    // default) means every record is in scope, which is how every capture before this one
+    // behaved.
+    mh::CaptureWindow window;
+    // The frame span actually written, for `end.frames`. The contract already has the field;
+    // it was always 0, so no run could say how much it had captured.
+    std::int64_t first_frame = -1;
+    std::int64_t last_frame = -1;
     // Writing is buffered and flushed every few events: flushing a JSONL line per hook event
     // cost a syscall per frame, which is why a ten-minute session produced 54k records slowly.
     // The trade is that a crash can lose the tail, which the missing `end` record already
@@ -185,7 +193,7 @@ std::string read_text_file(const std::filesystem::path& path) {
 // splices it instead of inventing nulls, computes the fingerprint from those members, and
 // renames the file to `*.consumed` so a stale context cannot apply to a second run.
 bool load_run_context(const std::string& path, mh::json::Json& body, std::string& fingerprint,
-                      mh::Capture& capture) {
+                      mh::Capture& capture, mh::CaptureWindow& window) {
     const std::string text = read_text_file(path);
     if (text.empty()) {
         log::error("run context is empty or unreadable: {}", path);
@@ -198,6 +206,9 @@ bool load_run_context(const std::string& path, mh::json::Json& body, std::string
     }
 
     body = result.context->body;
+    if (result.context->window) {
+        window = *result.context->window;
+    }
     fingerprint = mh::run_fingerprint(result.context->fingerprint_input());
     capture.status = mh::CaptureStatus::complete;
     capture.missing.clear();
@@ -344,11 +355,26 @@ mh::records::HookIdentity identity_for(const HookSpec& spec) {
                                      image_base() + spec.rva};
 }
 
-// Every record goes through here: it enforces the event cap and the flush batching, so no
-// emit site can forget either.
-void write_event(Session& session, const mh::json::Json& body, const mh::EventContext& context) {
+// Every record goes through here: it enforces the capture window and the event cap and the
+// flush batching, so no emit site can forget any of them.
+//
+// `opens_window` marks the record that starts the capture (the manifest's anchor milestone).
+// Records outside the window are not written at all: a windowed trace begins at the anchor
+// and stops when the bound is reached, which is what makes two runs of one variant comparable
+// frame for frame (notes/deterministic-capture.md).
+void write_event(Session& session, const mh::json::Json& body, const mh::EventContext& context,
+                 bool opens_window = false) {
     if (!session.writer) {
         return;
+    }
+    if (!session.window.admit(opens_window, context.frame)) {
+        return;
+    }
+    if (context.frame.has_value()) {
+        if (session.first_frame < 0) {
+            session.first_frame = *context.frame;
+        }
+        session.last_frame = *context.frame;
     }
     if (session.writer->counts().attempted >= kMaxEvents) {
         if (!session.overflow_reported) {
@@ -409,7 +435,8 @@ void emit_hook_locked(Session& session, const char* phase, const HookSpec& spec,
 // level's own name: that is the one field which makes the trace say *which* level ran, instead
 // of repeating what the run context asserted. A null pointer keeps the record at the model's
 // null value, which is what every other milestone still writes.
-void emit_milestone_locked(Session& session, const char* name, const mh::Value* data) {
+void emit_milestone_locked(Session& session, const char* name, const mh::Value* data,
+                           bool opens_window = false) {
     mh::json::Json body = data != nullptr ? mh::records::milestone_event(name, *data)
                                           : mh::records::milestone_event(name);
 
@@ -419,7 +446,7 @@ void emit_milestone_locked(Session& session, const char* name, const mh::Value* 
     context.thread = current_thread(session);
     context.capture.status = mh::CaptureStatus::complete;
 
-    write_event(session, body, context);
+    write_event(session, body, context, opens_window);
 }
 
 // `save` is "an observed file state or write; not inferred from a hook" (notes/runtime-validation.md),
@@ -521,12 +548,13 @@ void verify_session(Session& session, const mh::json::Json& body) {
     }
 }
 
-void emit_milestone(const char* name, const mh::Value* data = nullptr) {
+void emit_milestone(const char* name, const mh::Value* data = nullptr,
+                    bool opens_window = false) {
     std::lock_guard<std::mutex> lock(g_mutex);
     if (!g_session || !g_session->writer) {
         return;
     }
-    emit_milestone_locked(*g_session, name, data);
+    emit_milestone_locked(*g_session, name, data, opens_window);
 }
 
 HookScope begin_hook(const HookSpec& spec, void* self) {
@@ -599,7 +627,7 @@ class $modify(TracePlayLayer, PlayLayer) {
                            ? mh::Value::unavailable("the level string was empty at PlayLayer::init")
                            : mh::Value::observed_str(mh::sha256_hex(level_string));
         }
-        emit_milestone("level_started", &observed);
+        emit_milestone("level_started", &observed, /*opens_window=*/true);
         return PlayLayer::init(level, useReplay, dontCreateObjects);
     }
 
@@ -693,12 +721,13 @@ $on_mod(Loaded) {
 
     bool loaded = false;
     for (const std::string& candidate : candidates) {
-        if (load_run_context(candidate, body, fingerprint, capture)) {
+        if (load_run_context(candidate, body, fingerprint, capture, session->window)) {
             loaded = true;
             break;
         }
         body = object();
         capture = mh::Capture();
+        session->window = mh::CaptureWindow();
     }
     if (!loaded && !candidates.empty()) {
         capture.status = mh::CaptureStatus::partial;
@@ -794,6 +823,10 @@ $on_mod(Loaded) {
 
     session->writer->write_meta(body, capture);
     session->sink.flush();
+    if (session->window.declared()) {
+        log::info("capture window: {} frames from `{}`", session->window.max_frames(),
+                  session->window.anchor());
+    }
 
     {
         std::lock_guard<std::mutex> lock(g_mutex);
@@ -816,20 +849,42 @@ $on_mod(Loaded) {
 // The SDK documents GameEventType::Exiting as the safe place for global cleanup. A crash
 // never reaches it, so the trace stays without an end record - incomplete, not truncated.
 $on_game(Exiting) {
-    std::lock_guard<std::mutex> lock(g_mutex);
-    if (!g_session || !g_session->writer) {
-        return;
+    std::int64_t frames = 0;
+    std::int64_t expected = 0;
+    bool window_incomplete = false;
+    {
+        std::lock_guard<std::mutex> lock(g_mutex);
+        if (!g_session || !g_session->writer) {
+            return;
+        }
+        mh::EndInfo end;
+        // A windowed capture that reached its bound is complete by construction: it stopped
+        // where the manifest said to stop, not because the process left. One that did not
+        // reach it is a short run, and `stopped` says so without pretending the capture is
+        // whole.
+        const bool bounded = g_session->window.declared();
+        const bool closed = bounded && g_session->window.closed();
+        end.status = closed ? mh::EndStatus::completed : mh::EndStatus::stopped;
+        end.t_ns = steady_ns() - g_session->started_ns;
+        end.duration_ns = end.t_ns;
+        end.unclosed = static_cast<std::int64_t>(g_session->call_stack.size());
+        // The contract already has `frames`; it was always 0, so no run could say how much it
+        // had captured. This is the written span, anchor frame included.
+        end.frames = g_session->first_frame >= 0 && g_session->last_frame >= g_session->first_frame
+                         ? g_session->last_frame - g_session->first_frame + 1
+                         : 0;
+        end.capture.status = mh::CaptureStatus::partial;
+        end.capture.missing = {"artifacts.stdout_sha256"};
+        end.capture.reasons.emplace_back("artifacts.stdout_sha256",
+                                         "the observer does not capture output");
+        frames = end.frames;
+        expected = bounded ? g_session->window.max_frames() : 0;
+        window_incomplete = bounded && !closed;
+        g_session->writer->write_end(end);
+        g_session->sink.flush();
+        g_session.reset();
     }
-    mh::EndInfo end;
-    end.status = mh::EndStatus::stopped;
-    end.t_ns = steady_ns() - g_session->started_ns;
-    end.duration_ns = end.t_ns;
-    end.unclosed = static_cast<std::int64_t>(g_session->call_stack.size());
-    end.capture.status = mh::CaptureStatus::partial;
-    end.capture.missing = {"artifacts.stdout_sha256"};
-    end.capture.reasons.emplace_back("artifacts.stdout_sha256",
-                                     "the observer does not capture output");
-    g_session->writer->write_end(end);
-    g_session->sink.flush();
-    g_session.reset();
+    if (window_incomplete) {
+        log::warn("capture window did not close: {} of {} frames written", frames, expected);
+    }
 }

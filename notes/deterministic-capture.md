@@ -65,40 +65,57 @@ reproduce. It is not something frame-bounding can grant.
 
 ## Plan
 
-1. **Context plumbing** — `preflight.py` copies `timing.max_frames` (and the scenario's `stop_on`
-   names) into `pending-context.json`; the observer parses it with the same defensive reading as
-   the other context fields, and a missing value means "no bound" with `capture.reasons` naming
-   it, never a silent default.
-2. **Enforcement** — in the single write path, once `frame > max_frames`, stop emitting events and
-   record the reason. `end.counts` must keep distinguishing "stopped at the manifest's bound" from
-   "dropped because the writer failed"; a bounded run is `capture: complete` with a named stop
-   reason, not `partial`.
-3. **Scenario** — `harness/scenarios/no-input-smoke.json`, `input.driver: none`, no actions,
-   `timing.max_frames` chosen from the fixture (the first block is ~4.8 s in, so 600 frames at
-   60 fps covers a death and one restart), same four required hooks, `0x16c8b0` optional.
-4. **Captures** — two per variant, same four-step cycle as before (preflight → install → launch →
-   restore/grade), with the operator told to touch nothing.
-5. **Acceptance** — within a variant, the two traces have equal event counts for the per-frame
-   hooks and no `unstable` row; across variants, no `fail` row; the level observation still equals
-   the pin. If a within-variant pair still differs, the difference is diagnosed from the trace
-   rather than absorbed into a tolerance.
+Implemented as harness **0.2.0** (observer `megahack.trace.geode`
+`27fdc58a…`), with three deviations from the sketch above, each forced by the code:
+
+1. **Context plumbing** — `harness/tools/preflight.py` gained `resolve_window(manifest)`: it
+   returns `None` when `timing.window` is absent, refuses an anchor other than `level_started`, a
+   non-positive or non-integer `max_frames`, and any non-empty `timing.stop_on`. The window is
+   written to the context as `timing` — a **runner directive**, not a meta member: `read_run_context`
+   pulls it out and only splices the rest into `body`, so the recorded meta member set does not
+   change. A scenario that declares `max_frames` without a window gets a stderr warning.
+2. **Enforcement** — `mh::CaptureWindow` (`harness/include/mh/window.hpp`, `src/window.cpp`) is
+   consulted in the observer's single write path. It opens on the record whose `opens_window` flag
+   is set (`level_started`), admits records up to `max_frames` frames later, and then closes: the
+   first record past the bound is dropped and everything after it, including frame-less records.
+   On exit the observer writes `end.status = completed` and `end.frames = <last - first + 1>` when
+   the window closed, `stopped` when it never did, and logs `capture window did not close` rather
+   than guessing a bound. `end.capture` keeps its own, separate meaning (a missing stdout digest),
+   so "stopped at the bound" and "the writer dropped records" stay distinguishable.
+3. **Scenario** — `harness/scenarios/no-input-smoke.json`: `input.driver` stays `"operator"` with
+   `"actions": []`, because the vocabulary has no `"none"` and a human still launches and quits;
+   `timing.window = {"anchor": "level_started", "max_frames": 600}` (10 s at 60 fps, past the
+   fixture's first block); `hooks.required` is `0x3b8eb0` + `0x3b4ba0` only, with
+   `0x397f40`/`0x3981d0`/`0x16c8b0` optional — an input-free run never fires
+   `pushButton`/`releaseButton`, so requiring them would make the scenario demand what it removes.
+4. **Captures** — two per variant, same cycle as before (preflight → install → launch →
+   restore/grade), operator touching nothing after the level starts.
+5. **Acceptance** — unchanged: within a variant, equal per-frame hook counts and no `unstable`
+   row; across variants, no `fail` row; the level observation still equals the pin; a residual
+   difference is diagnosed from the trace, never absorbed into a tolerance.
 
 ## What this deliberately does not do
 
 - It does not add a tolerance, a volatility entry, or a "counts may differ" rule. The comparator's
   complaint is correct; the fix belongs in the capture.
-- It does not change `safe-mode-smoke` or its recorded evidence.
+- It does not change `safe-mode-smoke` or its recorded evidence: that manifest still pins harness
+  `0.1.1`/`4b70fdec…`, and the new observer does not retro-fit it.
 - It does not reproduce Safe Mode inside the reconstruction; that stays out of scope as recorded
   in [safe-mode-feature.md](safe-mode-feature.md).
 
 ## Open questions
 
-- **Where does the frame counter come from** in the observer today, and is it monotonic across
-  `PlayLayer` restarts? If it resets per attempt, a `max_frames` bound must be defined against
-  the trace, not the attempt.
-- **Should the bound be `max_frames` or wall-clock?** Wall-clock is what a human can follow, but
-  only frames are comparable across runs, so the bound should be frames and the operator
-  instruction derived from it.
-- **Does a no-input run reach any target-dependent site at all?** If it does not, no scenario
-  shape can make the claim `behavioural` without input injection, and D3 moves from "deferred" to
-  "required" — which is worth knowing before building the injector.
+- **Answered: where the frame counter comes from.** `CCDirector::getTotalFrames()`, absolute since
+  launch and monotonic across `PlayLayer` restarts, which is why the bound has to be anchored at a
+  milestone rather than counted from trace open (`level_started` was at 32460, 37963, 46872 and
+  11541 in the four captures of 2026-10-27).
+- **Answered: frames, not wall-clock.** The window counts frames; `timeout_ms` stays an operator
+  instruction because a wall-clock stop is not comparable across runs.
+- **Still open: does a no-input run reach any target-dependent site at all?** If it does not, no
+  scenario shape can make the claim `behavioural` without input injection, and D3 moves from
+  "deferred" to "required". The captures are the measurement that answers this.
+- **Observed while implementing, deliberately not fixed:** `repetition_index` is written into
+  `meta` (`TraceWriter::write_meta` merges `body` verbatim, and the context builder used to copy the
+  whole document), even though the contract says it is never part of the meta record. It is
+  harmless today — both variants leak the same field — but it is a contract/implementation
+  mismatch worth its own change rather than a silent edit here.

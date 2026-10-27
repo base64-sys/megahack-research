@@ -298,6 +298,65 @@ def test_context_reads_a_map_b_flag_from_the_profile_list() -> None:
         raise AssertionError("an unknown profile should be refused")
 
 
+def test_context_carries_a_declared_capture_window() -> None:
+    """A window is the only form of `timing` the observer can enforce, so it is the only one sent."""
+    fragment = {"target": {"role": "release"}, "environment": {}}
+    manifest = json.dumps({
+        "id": "no-input-smoke",
+        "settings": {"reset": "defaults", "tags": []},
+        "level": {"fixture": "f.gmd", "sha256": "5" * 64, "source": "generated"},
+        "input": {"driver": "operator", "actions": []},
+        "timing": {"window": {"anchor": "level_started", "max_frames": 600}, "stop_on": []},
+    }).encode("utf-8")
+    context = preflight.build_context(fragment=fragment, scenario_bytes=manifest, repetition=0)
+    assert context["timing"] == {"window": {"anchor": "level_started", "max_frames": 600}}
+
+
+def test_a_frame_count_without_an_anchor_is_not_carried() -> None:
+    """`timing.max_frames` alone has no frame to count from: it is dropped, with a warning."""
+    fragment = {"target": {"role": "release"}, "environment": {}}
+    manifest = json.dumps({
+        "id": "safe-mode-smoke",
+        "settings": {"reset": "defaults", "tags": []},
+        "level": {"fixture": "f.gmd", "sha256": "5" * 64, "source": "generated"},
+        "timing": {"max_frames": 240, "stop_on": ["player_died"]},
+    }).encode("utf-8")
+    captured = io.StringIO()
+    with contextlib.redirect_stderr(captured):
+        context = preflight.build_context(fragment=fragment, scenario_bytes=manifest, repetition=0)
+    assert "timing" not in context
+    assert "nothing enforces it" in captured.getvalue()
+
+
+def test_a_malformed_window_is_refused() -> None:
+    fragment = {"target": {"role": "release"}, "environment": {}}
+    cases = [
+        ({"window": "level_started"}, "must be an object"),
+        ({"window": {"max_frames": 600}}, "anchor must be 'level_started'"),
+        ({"window": {"anchor": "attempt_started", "max_frames": 600}}, "anchor must be"),
+        ({"window": {"anchor": "level_started"}}, "positive integer"),
+        ({"window": {"anchor": "level_started", "max_frames": 0}}, "positive integer"),
+        ({"window": {"anchor": "level_started", "max_frames": "600"}}, "positive integer"),
+        ({"window": {"anchor": "level_started", "max_frames": True}}, "positive integer"),
+        ({"window": {"anchor": "level_started", "max_frames": 600}, "stop_on": ["player_died"]},
+         "stop_on is not supported"),
+    ]
+    for timing, message in cases:
+        manifest = json.dumps({
+            "id": "no-input-smoke",
+            "settings": {"reset": "defaults", "tags": []},
+            "level": {"fixture": "f.gmd", "sha256": "5" * 64, "source": "generated"},
+            "timing": timing,
+        }).encode("utf-8")
+        try:
+            with contextlib.redirect_stderr(io.StringIO()):
+                preflight.build_context(fragment=fragment, scenario_bytes=manifest, repetition=0)
+        except preflight.PreflightError as error:
+            assert message in str(error), (message, error)
+        else:
+            raise AssertionError(f"{timing!r} should be refused")
+
+
 def test_context_refuses_a_tag_that_disagrees_with_the_file() -> None:
     fragment = {"target": {}, "environment": {}}
     manifest = json.dumps({
@@ -403,9 +462,17 @@ if __name__ == "__main__":
     test_fragment_uses_the_contract_field_names()
     test_context_carries_the_manifest_and_repetition()
     test_context_refuses_declared_tags_without_a_settings_file()
+    test_context_refuses_the_unimplemented_harness_input_driver()
+    test_context_accepts_the_operator_input_driver()
+    test_context_warns_about_the_os_input_driver()
     test_context_reads_tag_values_from_the_settings_file()
+    test_context_reads_a_map_b_flag_from_the_profile_list()
+    test_context_carries_a_declared_capture_window()
+    test_a_frame_count_without_an_anchor_is_not_carried()
+    test_a_malformed_window_is_refused()
     test_context_refuses_a_tag_that_disagrees_with_the_file()
     test_settings_key_in_two_groups_is_refused()
+    test_target_role_and_digest_pin()
     test_cli_refuses_a_live_profile_and_writes_a_fragment()
     print("all preflight tests passed")
 

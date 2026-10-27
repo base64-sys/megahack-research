@@ -486,6 +486,31 @@ evidence (test name, gate output, commit subject).
   [safe-mode-feature.md](../notes/safe-mode-feature.md), "What the reconstruction does not
   reproduce".
 
+### Item 17 — a capture window the observer actually enforces
+
+- Contract-visible change: `timing.window = {"anchor": "level_started", "max_frames": N}`. The
+  observer opens the window at `level_started`, writes `N` frames, then closes; `end.status` is
+  `completed` and `end.frames` is the written span when it closed, `stopped` when it never did.
+  `end.frames` had been 0 in every earlier trace, so this is also the first time that field
+  carries information.
+- Why the anchor: `CCDirector::getTotalFrames()` is absolute since launch and monotonic across
+  `PlayLayer` restarts, and `level_started` was at frames 32460, 37963, 46872 and 11541 in the
+  four captures of 2026-10-27. A bound counted from trace open would capture a different amount
+  of level every run.
+- `timing` is a **runner directive, not a meta member**: `read_run_context` strips it before
+  splicing `body` into `meta`, so the recorded member set is unchanged. A bare `max_frames` is
+  still accepted for the manifest recorded before the window existed, with a preflight warning;
+  declaring both is refused, and so is `stop_on` inside a window.
+- New `harness/scenarios/no-input-smoke.json`: `input.driver` stays `"operator"` with no actions
+  (the vocabulary has no `"none"`; a human still launches and quits), window 600 frames, and
+  `hooks.required` reduced to `0x3b8eb0`/`0x3b4ba0` because an input-free run never fires
+  `pushButton`/`releaseButton`. `safe-mode-smoke.json` and its pinned evidence are untouched.
+- Observer version `0.2.0`; packaged `megahack.trace.geode` `27fdc58a…`. Tests: `test_window.cpp`
+  (6), four context cases, four scenario cases; `210 test(s), 0 failed`, and
+  `scenario_check_no_input` added to ctest.
+- **Not yet done:** the four captures that would show whether two runs now agree. The acceptance
+  criteria are in [deterministic-capture.md](../notes/deterministic-capture.md).
+
 ## Open questions
 
 - **Tie-break reading.** "preferring an exact payload match, then the earlier release
