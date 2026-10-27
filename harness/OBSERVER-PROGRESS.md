@@ -18,7 +18,7 @@ Status vocabulary: `pending`, `in progress`, `done`, `blocked`.
 | O4b | Run-context handshake: the runner writes a context file before launch, the observer fills meta (target, environment, scenario, level, settings) and the real `run_fingerprint` from it at load, then marks it consumed | done (build only - the load path is unproven until a run) |
 | O4c | Validator CLI: a host command that runs `read_trace` over a captured JSONL and prints its issues, so a capture can be graded without a test build | done |
 | O6 | Milestones and frames: `level_started`/`attempt_started` milestone records and a real `frame` on every event, which the pilot manifest requires | done (build only) |
-| O7 | Settings snapshot at the first hook: read the target's `settings.tags` for the scenario's required tags and record them in meta (currently `null` + `capture.missing`) | pending |
+| O7 | Settings snapshot: `snapshot_sha256` from the settings file, and `settings.tags` read from it (never copied from the manifest), with a tag-to-key mapping the operator supplies and the runner verifies | done (mechanism; the safe-mode key itself is unknown - see the note) |
 | O5 | Pilot capture in runtime511 and a real `read_trace` pass, plus the proofs only a run can give (hooks fire; the load thread is the main thread) - needs the user to launch | pending |
 
 ## Evidence log
@@ -186,3 +186,23 @@ Status vocabulary: `pending`, `in progress`, `done`, `blocked`.
   and that frames are non-zero.
 - Commit: `feat(observer): emit level_started and attempt_started milestones with real frames`.
 - Next: O7, the settings snapshot.
+
+### Iteration 10 — O7: settings are read, never copied from the manifest
+
+- `settings.snapshot_sha256` is now the digest of the settings file; `settings.tags` is written
+  only from a value **read out of that file**, never from the manifest. The manifest's declared
+  value is checked against the file and a mismatch refuses the run.
+- The mapping problem is real and was recorded rather than papered over: `hackpro.json` stores
+  **names**, and the number↔name join happens at runtime (`tagFor` `0x180072DF0` via `intern`
+  `0x18007C700`, `notes/settings-contents.md:309-318`). So the operator supplies
+  `--tag-key 0x1E2=<key>` and the runner verifies the observed value.
+- 4 new tests (12 total): declared tags without a settings file are refused; values are read
+  and the snapshot hashed; a disagreeing value, an absent key and a missing mapping each
+  refuse; a key in two value groups is refused.
+- **Negative result, bounded**: the only settings file here (`.oc/hackpro.json`, user data,
+  read-only) has no key for `HACK_SAFE_MODE` - the single `SAFE_MODE` substring hit is
+  `LEVEL/NOCLIP/DROPDOWN/SAFE_MODE`, a different feature. Verified by running the real
+  command against the real sample: `tag 0X1E2: key 'SAFETY/HACK_SAFE_MODE' is not present`.
+  The key name is UNVERIFIED; closing it needs a current `hackpro.json` or a runtime dump.
+- Commit: `feat(runner): read settings tags from the settings file instead of the manifest`.
+- Next: no unblocked items remain except documentation polish; O5 needs the user.

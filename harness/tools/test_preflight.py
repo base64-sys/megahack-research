@@ -159,7 +159,7 @@ def test_context_carries_the_manifest_and_repetition() -> None:
     manifest = json.dumps({
         "schema": "mh-scenario/1",
         "id": "safe-mode-smoke",
-        "settings": {"reset": "defaults", "tags": [{"tag": "0x1E2", "value": True}]},
+        "settings": {"reset": "defaults", "tags": []},
         "level": {"fixture": "f.gmd", "sha256": "5" * 64, "source": "generated"},
     }).encode("utf-8")
 
@@ -167,10 +167,87 @@ def test_context_carries_the_manifest_and_repetition() -> None:
     assert context["scenario"]["id"] == "safe-mode-smoke"
     assert context["scenario"]["sha256"] == hashlib.sha256(manifest).hexdigest()
     assert context["repetition_index"] == 1
-    assert context["settings"]["tags"] == [{"tag": "0x1E2", "value": True}]
+    assert context["settings"]["tags"] == []
+    assert context["settings"]["snapshot_sha256"] is None
     assert context["level"] == {"fixture": "f.gmd", "sha256": "5" * 64, "source": "generated"}
     assert context["target"] == fragment["target"]
     assert context["environment"] == fragment["environment"]
+
+
+def test_context_refuses_declared_tags_without_a_settings_file() -> None:
+    """Declared tags must be observed, never copied from the manifest into the record."""
+    fragment = {"target": {"role": "release"}, "environment": {}}
+    manifest = json.dumps({
+        "id": "safe-mode-smoke",
+        "settings": {"reset": "defaults", "tags": [{"tag": "0x1E2", "label": "HACK_SAFE_MODE", "value": True}]},
+        "level": {"fixture": "f.gmd", "sha256": "5" * 64, "source": "generated"},
+    }).encode("utf-8")
+    try:
+        preflight.build_context(fragment=fragment, scenario_bytes=manifest, repetition=0)
+    except preflight.PreflightError as error:
+        assert "no --settings file" in str(error), error
+    else:
+        raise AssertionError("declared tags without a settings file should be refused")
+
+
+def test_context_reads_tag_values_from_the_settings_file() -> None:
+    fragment = {"target": {"role": "release"}, "environment": {}}
+    manifest = json.dumps({
+        "id": "safe-mode-smoke",
+        "settings": {"reset": "defaults", "tags": [{"tag": "0x1E2", "label": "HACK_SAFE_MODE", "value": True}]},
+        "level": {"fixture": "f.gmd", "sha256": "5" * 64, "source": "generated"},
+    }).encode("utf-8")
+    settings_bytes = json.dumps({
+        "PROFILE": "DEFAULT",
+        "PROFILES": {"DEFAULT": []},
+        "V_BOOL": {"SAFETY/HACK_SAFE_MODE": True},
+    }).encode("utf-8")
+    settings = json.loads(settings_bytes)
+
+    context = preflight.build_context(
+        fragment=fragment, scenario_bytes=manifest, repetition=0,
+        settings=settings, settings_bytes=settings_bytes,
+        tag_keys={"0X1E2": "SAFETY/HACK_SAFE_MODE"},
+    )
+    assert context["settings"]["tags"] == [{
+        "tag": "0X1E2", "label": "HACK_SAFE_MODE", "value": True, "source": "settings",
+    }]
+    assert context["settings"]["snapshot_sha256"] == hashlib.sha256(settings_bytes).hexdigest()
+
+
+def test_context_refuses_a_tag_that_disagrees_with_the_file() -> None:
+    fragment = {"target": {}, "environment": {}}
+    manifest = json.dumps({
+        "id": "s",
+        "settings": {"tags": [{"tag": "0x1E2", "label": "HACK_SAFE_MODE", "value": True}]},
+        "level": {"sha256": "5" * 64},
+    }).encode("utf-8")
+    settings = {"V_BOOL": {"SAFETY/HACK_SAFE_MODE": False}}
+
+    for tag_keys, message in [
+        ({"0X1E2": "SAFETY/HACK_SAFE_MODE"}, "declares"),
+        ({"0X1E2": "SAFETY/MISSING"}, "not present"),
+        ({}, "no stored key"),
+    ]:
+        try:
+            preflight.build_context(
+                fragment=fragment, scenario_bytes=manifest, repetition=0,
+                settings=settings, settings_bytes=b"{}", tag_keys=tag_keys,
+            )
+        except preflight.PreflightError as error:
+            assert message in str(error), (message, error)
+        else:
+            raise AssertionError(f"{message!r} case should be refused")
+
+
+def test_settings_key_in_two_groups_is_refused() -> None:
+    settings = {"V_BOOL": {"K": True}, "V_INT": {"K": 1}}
+    try:
+        preflight.settings_value(settings, "K")
+    except preflight.PreflightError as error:
+        assert "more than one value group" in str(error)
+    else:
+        raise AssertionError("a key in two groups should be refused")
 
 
 def test_cli_refuses_a_live_profile_and_writes_a_fragment() -> None:
@@ -208,6 +285,10 @@ if __name__ == "__main__":
     test_one_target_rule()
     test_fragment_uses_the_contract_field_names()
     test_context_carries_the_manifest_and_repetition()
+    test_context_refuses_declared_tags_without_a_settings_file()
+    test_context_reads_tag_values_from_the_settings_file()
+    test_context_refuses_a_tag_that_disagrees_with_the_file()
+    test_settings_key_in_two_groups_is_refused()
     test_cli_refuses_a_live_profile_and_writes_a_fragment()
     print("all preflight tests passed")
 

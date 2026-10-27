@@ -112,15 +112,105 @@ def build_fragment(
     }
 
 
-def build_context(*, fragment: dict, scenario_bytes: bytes, repetition: int) -> dict:
+SETTINGS_VALUE_GROUPS = ("V_BOOL", "V_INT", "V_DECIMAL", "V_STRING", "V_BYTES")
+
+_MISSING = object()
+
+
+def read_settings(path: str | Path) -> dict:
+    """`hackpro.json`: PROFILE, PROFILES, and one map per value type (notes/settings-contents.md)."""
+    document = json.loads(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(document, dict):
+        raise PreflightError(f"{path} is not a settings document")
+    return document
+
+
+def parse_tag_keys(pairs: list[str]) -> dict[str, str]:
+    mapping: dict[str, str] = {}
+    for pair in pairs:
+        tag, separator, key = pair.partition("=")
+        if not separator or not tag.strip() or not key.strip():
+            raise PreflightError(f"--tag-key expects <tag hex>=<stored key>, got {pair!r}")
+        mapping[tag.strip().upper()] = key.strip()
+    return mapping
+
+
+def settings_value(settings: dict, key: str):
+    """The observed value for one stored key, or _MISSING.
+
+    The file groups values by type (`V_BOOL`, `V_INT`, ...), and the same key must not appear
+    in two groups: a key with two values has no single interpretation.
+    """
+    found = _MISSING
+    for group in SETTINGS_VALUE_GROUPS:
+        values = settings.get(group)
+        if not isinstance(values, dict) or key not in values:
+            continue
+        if found is not _MISSING:
+            raise PreflightError(f"settings key {key!r} appears in more than one value group")
+        found = values[key]
+    return found
+
+
+def resolve_tags(settings: dict, declared_tags: list[dict], tag_keys: dict[str, str]) -> list[dict]:
+    """The semantic `settings.tags` list, with the value **observed** in the file.
+
+    The manifest declares what the tag must be; the file says what it is. A mismatch refuses
+    the run instead of writing the declared value into a record that claims to be an
+    observation. `tag_keys` maps the tag hex to the stored key, because the file stores names
+    and the tag number is only joined to a name at runtime (notes/settings-contents.md).
+    """
+    resolved = []
+    for entry in declared_tags:
+        tag = str(entry.get("tag", "")).upper()
+        if not tag:
+            raise PreflightError("a declared settings tag has no tag number")
+        key = tag_keys.get(tag)
+        if not key:
+            raise PreflightError(
+                f"tag {tag} has no stored key; pass --tag-key {tag}=<hackpro key> so the value "
+                f"can be read instead of assumed"
+            )
+        value = settings_value(settings, key)
+        if value is _MISSING:
+            raise PreflightError(f"tag {tag}: key {key!r} is not present in the settings file")
+        if "value" in entry and entry["value"] != value:
+            raise PreflightError(
+                f"tag {tag}: the file has {value!r} but the scenario declares {entry['value']!r}"
+            )
+        resolved.append({
+            "tag": tag,
+            "label": entry.get("label"),
+            "value": value,
+            "source": "settings",
+        })
+    return resolved
+
+
+def build_context(*, fragment: dict, scenario_bytes: bytes, repetition: int,
+                  settings: dict | None = None, tag_keys: dict[str, str] | None = None,
+                  settings_bytes: bytes | None = None) -> dict:
     """The run context the observer splices into meta (harness/include/mh/context.hpp).
 
     Not a new schema: the meta body's own members plus repetition_index, which is the sixth
     fingerprint input and is never part of the meta record.
     """
     manifest = json.loads(scenario_bytes.decode("utf-8"))
-    settings = manifest.get("settings") or {}
+    settings_block = manifest.get("settings") or {}
     level = manifest.get("level") or {}
+    declared_tags = settings_block.get("tags") or []
+
+    tags: list[dict] = []
+    snapshot = None
+    if declared_tags:
+        if settings is None:
+            raise PreflightError(
+                "the scenario declares settings tags but no --settings file was given; the "
+                "tags would be a claim, not an observation"
+            )
+        tags = resolve_tags(settings, declared_tags, tag_keys or {})
+        snapshot = hashlib.sha256(settings_bytes).hexdigest()
+
     return {
         "target": fragment["target"],
         "scenario": {
@@ -129,9 +219,9 @@ def build_context(*, fragment: dict, scenario_bytes: bytes, repetition: int) -> 
         },
         "environment": fragment["environment"],
         "settings": {
-            "reset": settings.get("reset"),
-            "tags": settings.get("tags") or [],
-            "snapshot_sha256": None,
+            "reset": settings_block.get("reset"),
+            "tags": tags,
+            "snapshot_sha256": snapshot,
         },
         "level": {
             "fixture": level.get("fixture"),
@@ -164,6 +254,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out", help="write the fragment here instead of stdout")
     parser.add_argument("--scenario", help="scenario manifest; with --context, supplies its fields")
     parser.add_argument("--repetition", type=int, default=0, help="repetition_index for the context")
+    parser.add_argument("--settings", help="hackpro.json to read the declared tags from")
+    parser.add_argument("--tag-key", action="append", default=[],
+                        help="<tag hex>=<stored key>, e.g. 0x1E2=SAFETY/HACK_SAFE_MODE")
     parser.add_argument("--context", help="write the run context for this run here")
     parser.add_argument("--sidecar", help="write <trace>.sha256 for this trace file")
     args = parser.parse_args(argv)
@@ -197,6 +290,9 @@ def main(argv: list[str] | None = None) -> int:
                 fragment=fragment,
                 scenario_bytes=scenario_path.read_bytes(),
                 repetition=args.repetition,
+                settings=read_settings(args.settings) if args.settings else None,
+                settings_bytes=Path(args.settings).read_bytes() if args.settings else None,
+                tag_keys=parse_tag_keys(args.tag_key),
             )
             Path(args.context).write_text(
                 json.dumps(context, indent=2, sort_keys=True) + "\n", encoding="utf-8"

@@ -196,6 +196,42 @@ call `resetLevel` itself and the manifest's order group requires `level_started`
 cost is that a failing `init` still records the attempt; that is the honest reading of "a
 level was started", and the trace shows no later events for it.
 
+## Settings snapshot (O7)
+
+`settings.snapshot_sha256` is a file hash, so the runner can always produce it. `settings.tags`
+is a claim about state, so it is only written when it was **read**, never copied from the
+manifest:
+
+```
+python harness/tools/preflight.py ... --scenario <manifest> --settings <hackpro.json>
+    --tag-key 0x1E2=<stored key> --context <path>
+```
+
+- The manifest says what a tag must be; the file says what it is. A mismatch refuses the run.
+- `tag_keys` exists because the file stores **names** and the number↔name join happens at
+  runtime: `hackpro::extensions::tagFor` (`0x180072DF0`) resolves a name through the map built
+  by `intern` (`0x18007C700`) from the file itself (`notes/settings-contents.md`, lines
+  309-318). Static analysis cannot supply the mapping, so the operator supplies it and the
+  runner verifies the value.
+- A key present in two value groups (e.g. `V_BOOL` and `V_INT`) is refused: two values for one
+  key has no single interpretation.
+
+**Negative result, with its boundary.** The only settings file this repository holds is the
+user's sample at `.oc/hackpro.json` (gitignored, read-only here). It has 7 top-level members
+(`PROFILE`, `PROFILES`, `V_BOOL`, `V_INT`, `V_DECIMAL`, `V_STRING`, `V_BYTES`); searching every
+value group for the substring `SAFE_MODE` returns exactly one key,
+`LEVEL/NOCLIP/DROPDOWN/SAFE_MODE`, which belongs to noclip, not to tag `0x1E2`. So the stored
+key for `HACK_SAFE_MODE` is **not in this sample**, and the runner refuses the pilot context
+until it is known:
+
+```
+preflight refused: tag 0X1E2: key 'SAFETY/HACK_SAFE_MODE' is not present in the settings file
+```
+
+UNVERIFIED: the real key name. Closing it needs either a current `hackpro.json` from the
+`runtime511` profile or a runtime dump of the intern map. Neither is available to this loop,
+and guessing a key would be exactly the kind of laundering `AGENTS.md` forbids.
+
 ## Runbook for the first capture (needs the user)
 
 Nothing below has been executed; installing a mod into a profile and launching a game are
@@ -204,7 +240,9 @@ user actions.
 1. Copy `harness/observer/build/megahack.trace.geode` into the `runtime511` profile's mods
    directory (`geode profile` reports the profile; the default `a` profile is off limits).
 2. Write the context:
-   `python harness/tools/preflight.py --target samples/absolllute.hackmega/absolllute.hackmega_original.dll --gd <runtime511>/GeometryDash.exe --geode <runtime511>/Geode.dll --harness <installed>/megahack.trace.geode --profile runtime511 --gd-version 2.2081 --geode-version 5.11.2 --scenario <manifest> --repetition 0 --context <path>`
+   `python harness/tools/preflight.py --target samples/absolllute.hackmega/absolllute.hackmega_original.dll --gd <runtime511>/GeometryDash.exe --geode <runtime511>/Geode.dll --harness <installed>/megahack.trace.geode --profile runtime511 --gd-version 2.2081 --geode-version 5.11.2 --scenario <manifest> --settings <runtime511>/hackpro.json --tag-key 0x1E2=<stored key> --repetition 0 --context <path>`
+   The `--tag-key` value is the one unknown (`notes/trace-observer.md` §Settings snapshot); the
+   runner refuses rather than writing a declared value into a record that claims to observe it.
 3. Launch with `MH_TRACE_CONTEXT=<path>` in the environment, load one level, quit.
 4. The trace appears as `<mod save dir>/traces/<run_id>.jsonl`; grade it with
    `harness/build/mh_trace_check <trace>` (exit 0 means structurally valid, and it prints
