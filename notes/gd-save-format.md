@@ -249,4 +249,21 @@ Still missing before an M3 run:
   whose meaning is unknown (a 39-character list of twenty small integers); the fixture repeats
   the shape with zeros and says so.
 
-  Still unproven: that the client **lists and plays** this shape. That needs one run.
+  **It still did not list — and that was the last missing piece.** After the client refused a
+  file whose root held only `LLM_01`, it rewrote `CCLocalLevels.dat` itself at quit. The file it
+  wrote is the specification:
+
+  ```xml
+  <k>LLM_01</k><d><k>_isArr</k><t /></d>   <!-- levels, empty -->
+  <k>LLM_02</k><i>47</i>                   <!-- format version -->
+  <k>LLM_03</k><d><k>_isArr</k><t /></d>   <!-- second array -->
+  ```
+
+  A played save has the same three keys, with the levels under `LLM_01`. A fixture with only
+  `LLM_01` is parsed and then discarded: the client wrote a 160-byte empty save over a 958-byte
+  file that contained two levels, which is the proof that it read the file and rejected its
+  contents, not that it failed to find it.
+
+  With `LLM_02 = 47` and an empty `LLM_03` added, the fixture **works**: on 2026-10-27 the
+  operator saw `safe-mode-smoke fixture` in the levels list and the three blocks in the level.
+  That closes "GD loads the generated file".

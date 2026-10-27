@@ -55,6 +55,16 @@ class FixtureTest(unittest.TestCase):
         self.assertEqual(xml.count("<k>LLM_01</k>"), 1)
         self.assertEqual(xml.count("<k>k_0</k>"), 1)
 
+    def test_root_has_the_three_keys_the_client_writes(self) -> None:
+        # Evidence: the save the client rewrote after refusing a file that had only LLM_01.
+        # Its own output was LLM_01 (array) + LLM_02 = 47 + LLM_03 (array), and a played save
+        # has the same three. A fixture without LLM_02/LLM_03 was discarded on load.
+        xml = render().decode("utf-8")
+        self.assertIn("<k>LLM_01</k><d><k>_isArr</k><t />", xml)
+        self.assertIn("<k>LLM_02</k><i>47</i>", xml)
+        self.assertIn("<k>LLM_03</k><d><k>_isArr</k><t /></d>", xml)
+        self.assertEqual(fixture.FORMAT_VERSION, 47)
+
     def test_carries_the_keys_a_working_local_level_has(self) -> None:
         # Source: a level the editor created on 2026-10-27, read back through gd_save.decode.
         # Regression: emitting all 43 observed keys with invented zeros, and an empty `<d></d>`

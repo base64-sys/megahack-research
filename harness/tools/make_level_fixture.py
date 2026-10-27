@@ -54,6 +54,10 @@ save_sandbox = _load("save_sandbox")
 PLIST_OPEN = '<?xml version="1.0"?><plist version="1.0" gjver="2.0">'
 PLIST_CLOSE = "</plist>"
 
+# The format version the client itself writes as `LLM_02` (observed in the save it rewrote when
+# it found no usable levels, and in a played save). Not a choice - copied from the client.
+FORMAT_VERSION = 47
+
 # One colour channel, in the form GD writes at the head of a level's object string. Without it
 # a level has no colour definition for its objects; it is structural, not decorative.
 COLOUR_CHANNELS = (
@@ -141,12 +145,24 @@ def level_dict(name: str, author: str, objects: Iterable[tuple[int, int, int]]) 
 
 
 def render_level(name: str, author: str, objects: Iterable[tuple[int, int, int]]) -> bytes:
-    """The fixture XML: GD's `LLM_01` wrapper around exactly one level."""
+    """The fixture XML: the three keys the client writes, around exactly one level.
+
+    Evidence for the root shape (notes/gd-save-format.md): after the client refused a save that
+    had only `LLM_01`, it rewrote `CCLocalLevels.dat` itself, and the file it wrote is
+
+        <k>LLM_01</k><d><k>_isArr</k><t /></d><k>LLM_02</k><i>47</i>
+        <k>LLM_03</k><d><k>_isArr</k><t /></d>
+
+    A save the user has played holds the same three keys: `LLM_01` with the levels, `LLM_02` 47,
+    `LLM_03` empty. So the fixture emits all three: levels, format version, and the second array.
+    """
     body = ["<k>LLM_01</k><d><k>_isArr</k><t />", "<k>k_0</k><d>"]
     for key, kind, value in level_dict(name, author, objects):
         body.append(f"<k>{escape(key)}</k>")
         body.append(_value(kind, value))
     body.append("</d></d>")
+    body.append(f"<k>LLM_02</k><i>{FORMAT_VERSION}</i>")
+    body.append("<k>LLM_03</k><d><k>_isArr</k><t /></d>")
     return (PLIST_OPEN + "<dict>" + "".join(body) + "</dict>" + PLIST_CLOSE).encode("utf-8")
 
 
