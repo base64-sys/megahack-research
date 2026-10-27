@@ -263,6 +263,33 @@ That answers two things the build could not: the hooks fire, and the thread runn
 `$on_mod(Loaded)` is the thread that runs gameplay. It does not yet answer whether
 `level_started` precedes `attempt_started`, because no level was loaded.
 
+## Second captured run: gameplay (2026-10-27, `runtime511`)
+
+Run `a8c8814b-13b4-4cfa-8834-bc1a4588f1bd`, 13.4 MB of JSONL, graded by `mh_trace_check`:
+`valid, 17097 event(s), 0 error(s), 0 warning(s), meta present, end present`.
+`end.counts`: `events 17097, attempted 17097, dropped 0, unclosed 0, hook_enter 8541,
+hook_exit 8541, errors 0`.
+
+| Observation | Value |
+| --- | --- |
+| target mod loaded | `meta.mods` = `[megahack.trace, absolllute.hackmega]` |
+| required hook keys, all four | `0x3b8eb0` 13/13, `0x3b4ba0` 8306/8306, `0x397f40` 75/75, `0x3981d0` 147/147 (enter/exit) |
+| milestones | 2 × `level_started`, 13 × `attempt_started` |
+| order group | `level_started` (frame 5275) precedes the first `attempt_started` (frame 5293) |
+| thread | `main` for all 17097 events, one thread id |
+| frames | 5275 .. 24497 |
+| call depth | 1 for 16978 events, 2 for 104 - real nesting, not a flat log |
+
+This is the evidence the build could not produce on its own. It confirms that the four hook
+keys the pilot marks required do fire, that `level_started` really does precede
+`attempt_started` in a run, that the observer's thread role is the gameplay thread, and that
+enter/exit pairing holds with `unclosed: 0` across 8,541 pairs.
+
+What it still is not: **evidence-grade**. `meta.capture.status` is `partial` with 14 missing
+fields, because the run had no `MH_TRACE_CONTEXT` - no target hash, no scenario, no settings,
+and an all-zero `run_fingerprint`. A comparison also needs two variants (release and
+reconstruction) and the manifest's two repetitions per variant.
+
 ## Runbook for the first capture (needs the user)
 
 Nothing below has been executed; installing a mod into a profile and launching a game are

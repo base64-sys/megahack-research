@@ -19,7 +19,8 @@ Status vocabulary: `pending`, `in progress`, `done`, `blocked`.
 | O4c | Validator CLI: a host command that runs `read_trace` over a captured JSONL and prints its issues, so a capture can be graded without a test build | done |
 | O6 | Milestones and frames: `level_started`/`attempt_started` milestone records and a real `frame` on every event, which the pilot manifest requires | done (build only) |
 | O7 | Settings snapshot: `snapshot_sha256` from the settings file, and `settings.tags` read from it (never copied from the manifest), with a tag-to-key mapping the operator supplies and the runner verifies | done (mechanism; the safe-mode key itself is unknown - see the note) |
-| O5 | Pilot capture in runtime511 and a real `read_trace` pass, plus the proofs only a run can give (hooks fire; the load thread is the main thread) - needs the user to launch | pending |
+| O5a | First capture in runtime511 and a real `read_trace` pass: hooks fire, main-thread role, milestone order, enter/exit balance | done (2026-10-27, 17097 events, 0 errors) |
+| O5b | Evidence-grade run: `MH_TRACE_CONTEXT` with hashes/scenario/settings, two repetitions per variant, then the release-vs-reconstruction comparison | blocked on the settings tag key and a reconstruction variant |
 
 ## Evidence log
 
