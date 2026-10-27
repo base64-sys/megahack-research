@@ -209,3 +209,19 @@ Status vocabulary: `pending`, `in progress`, `done`, `blocked`.
   The key name is UNVERIFIED; closing it needs a current `hackpro.json` or a runtime dump.
 - Commit: `feat(runner): read settings tags from the settings file instead of the manifest`.
 - Next: no unblocked items remain except documentation polish; O5 needs the user.
+
+### Iteration 11 — O10: `level_started` now says which level ran
+
+- `milestone.data` was already a value object, so the observation needed no schema member:
+  `mh::records::milestone_event(name, Value)` is a new overload, and the one-argument form
+  still writes `{"state":"null"}`, so every captured record keeps its bytes.
+- `PlayLayer::init` receives the `GJGameLevel*`, so the name is read from its own argument
+  (`m_levelName`; binding `harness/observer/build/bindings/…/binding/GJGameLevel.hpp:485`)
+  rather than from a global or an offset guessed here. A null level records
+  `{"state":"unavailable","reason":…}` instead of an empty string.
+- 3 record tests: the null form is unchanged, an observed string survives, an unavailable
+  value carries its reason.
+- Rebuilt and re-pinned: `megahack.trace.geode` `f3ab5f60…`, manifest `f499f219…`.
+- Known gap, deliberate: `mh::compare` reads a milestone's `name` for ordering and ignores
+  `data`, so the level row is still the manifest compared with itself. Making the observed
+  name a gate row is a comparator-semantics change and is left to the user.
