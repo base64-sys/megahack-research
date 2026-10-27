@@ -211,6 +211,10 @@ class RehearsalTest(unittest.TestCase):
         self.assertIn("status: unstable", result.stdout)
         self.assertIn("unstable: yes", result.stdout)
         self.assertNotIn("status: pass", result.stdout)
+        # The verdict alone leaves the operator guessing; the diagnostic names the key and run.
+        self.assertIn("unstable reconstruction variant:", result.stdout)
+        self.assertIn("0x397f40", result.stdout)
+        self.assertIn("present in run 1, absent here", result.stdout)
 
     def test_a_hook_missing_from_a_whole_variant_is_a_named_failure(self) -> None:
         level_sha = hashlib.sha256(b"rehearsal fixture").hexdigest()

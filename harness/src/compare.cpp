@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <map>
+#include <set>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -64,6 +65,44 @@ bool payloads_differ(const std::map<std::string, std::vector<std::string>>& lhs,
   return false;
 }
 
+// The event keys that disagree between a variant's first run and its other runs, newest last.
+// Pure and bounded: this feeds a diagnostic message, not a verdict.
+std::vector<std::pair<std::string, std::string>> variant_differences(
+    const std::vector<TraceDocument>& runs, std::size_t limit = 8) {
+  std::vector<std::pair<std::string, std::string>> differences;
+  if (runs.size() < 2) {
+    return differences;
+  }
+  const auto baseline = payloads_by_key(runs.front());
+  for (std::size_t index = 1; index < runs.size(); ++index) {
+    const auto other = payloads_by_key(runs[index]);
+    const std::string run = "run " + std::to_string(index + 1) + " vs run 1";
+    // Stable order: every key either side, so the first reported difference is reproducible.
+    std::set<std::string> keys;
+    for (const auto& entry : baseline) {
+      keys.insert(entry.first);
+    }
+    for (const auto& entry : other) {
+      keys.insert(entry.first);
+    }
+    for (const std::string& key : keys) {
+      if (differences.size() >= limit) {
+        return differences;
+      }
+      const auto left = baseline.find(key);
+      const auto right = other.find(key);
+      if (left == baseline.end()) {
+        differences.emplace_back(key, run + ": absent from run 1");
+      } else if (right == other.end()) {
+        differences.emplace_back(key, run + ": present in run 1, absent here");
+      } else if (left->second != right->second) {
+        differences.emplace_back(key, run + ": payload differs");
+      }
+    }
+  }
+  return differences;
+}
+
 // §8: "compare each variant's repeated runs with the same rules. If a required event,
 // payload, or order differs within a variant, the scenario is `unstable`".
 bool variant_is_unstable(const std::vector<TraceDocument>& runs) {
@@ -79,8 +118,7 @@ bool variant_is_unstable(const std::vector<TraceDocument>& runs) {
   return false;
 }
 
-bool is_required_key(const Scenario& scenario, const std::string& key) {
-  for (const HookSpec& hook : scenario.required_hooks) {
+bool is_required_key(const Scenario& scenario, const std::string& key) {  for (const HookSpec& hook : scenario.required_hooks) {
     // hook keys are embedded in the canonical key: observer|key|phase|depth
     if (key.find("|" + hook.key + "|") != std::string::npos) {
       return true;
@@ -138,6 +176,24 @@ std::vector<OrderEvent> order_events(const TraceDocument& trace) {
 void add_finding(ComparisonReport& report, ComparisonStatus severity, std::string check,
                  std::string detail) {
   report.findings.push_back(Finding{severity, std::move(check), std::move(detail)});
+}
+
+// Diagnostic only: `finalize_status` ignores `unstable` findings, so this cannot change a
+// verdict. It answers the question the bare `unstable: yes` leaves open - which keys disagreed.
+void note_variant_drift(ComparisonReport& report, const char* variant,
+                        const std::vector<TraceDocument>& runs) {
+  const auto differences = variant_differences(runs);
+  if (differences.empty()) {
+    return;
+  }
+  for (const auto& [key, detail] : differences) {
+    add_finding(report, ComparisonStatus::unstable,
+                std::string(variant) + " variant", key + " - " + detail);
+  }
+  if (differences.size() == 8) {
+    add_finding(report, ComparisonStatus::unstable, std::string(variant) + " variant",
+                "further differences not listed (capped at 8)");
+  }
 }
 
 // The sites whose records only the target can produce. One entry today, and it is a registry
@@ -255,6 +311,11 @@ ComparisonReport compare_traces(const ScenarioDocument& manifest,
 
   // -- §8 stability, within each variant, before any cross-variant claim ------
   report.unstable = variant_is_unstable(release_runs) || variant_is_unstable(reconstruction_runs);
+  // `unstable` is a verdict, and on its own it does not say what disagreed. These findings are
+  // diagnostics: `finalize_status` ignores this severity, so the verdict is unchanged and the
+  // operator learns which event keys differ between two runs of the same variant.
+  note_variant_drift(report, "release", release_runs);
+  note_variant_drift(report, "reconstruction", reconstruction_runs);
 
   // -- §3 min_count on both sides, before any alignment is trusted -----------
   std::vector<RequiredKeyCount> required;
