@@ -196,6 +196,13 @@ call `resetLevel` itself and the manifest's order group requires `level_started`
 cost is that a failing `init` still records the attempt; that is the honest reading of "a
 level was started", and the trace shows no later events for it.
 
+Its `data` is the SHA-256 of the level's object string (`GJGameLevel::m_levelString`, the
+2.2081 binding field at `GJGameLevel.hpp:487`), as lower-case hex so it is comparable with
+the manifest's spelling: `{"state":"observed","type":"str","value":"<64 hex>"}`. Two other
+states are recorded and mean different things: `unavailable` when no level was passed to
+`init`, and `unavailable` when the string was empty. The level's **name** is never read -
+not even to hash it, since a digest of a low-entropy name is still the name.
+
 ## Settings snapshot (O7)
 
 `settings.snapshot_sha256` is a file hash, so the runner can always produce it. `settings.tags`

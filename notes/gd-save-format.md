@@ -136,14 +136,13 @@ Every step above refuses while the game is running, so quit it first — includi
 before the restore. If `--status` or `--restore` reports an `extra:` file, do not relaunch: the
 file appeared after the backup and the tool leaves it in place rather than guessing whose it is.
 
-`--status` between install and restore answers "has the game rewritten the save since?" — which
-is also the moment the level's own `<k>k2</k>` name can be read back out of `CCLocalLevels.dat`
-with `gd_save.py --check`. If the fixture did not load, the restore is still correct and the
-run simply produced no `level_started` with that name.
+`--status` between install and restore answers "has the game rewritten the save since?". If
+the fixture did not load, the restore is still correct and the run simply produced no
+`level_started` with the fixture's digest (the trace never records the level's name).
 
 Three things this does **not** do: isolate the save (see above), prove GD loaded the fixture
-(a run does), or make `level.sha256` safe to fill (the gate still does not compare the observed
-name).
+(a run does — `level_started` records the digest of the level's object string, which
+`level.sha256` must equal), or protect the user's level from being edited by the game.
 
 ## What this unblocks, and what is still missing
 
@@ -153,7 +152,7 @@ implemented and tested.
 
 ### The generator, and the fixture it writes
 
-`harness/tools/make_level_fixture.py` (+ `test_make_level_fixture.py`, 12 cases) emits one
+`harness/tools/make_level_fixture.py` (+ `test_make_level_fixture.py`, 20 cases) emits one
 level from a declarative spec: three blocks in the player's path at x = 50, 100 and 150 grid
 units — roughly 4.8 s, 9.6 s and 14.5 s of running at ~10 units/s — the last one also setting
 the level's length. Coordinates are 30 px per unit, and the first version of this fixture used
@@ -163,45 +162,66 @@ thing a "the run passed" claim hides.
 
 | Artifact | Detail |
 | --- | --- |
-| `harness/fixtures/runtime/safe-mode-smoke.gmd` | 1,029 bytes of GD plist XML |
-| SHA-256 | `b931a31d5cb3fc87ff38075dd76582061c76af298b62c9ff58fa07ac91c97661` |
+| `harness/fixtures/runtime/safe-mode-smoke.gmd` | 947 bytes of GD plist XML |
+| file SHA-256 | `810e276e96e988d6f3e8c82ba08563d4cca43f8de84de232844e07995ee2b5e4` |
+| level-string SHA-256, decoded object string (126 bytes) | `0ecf8fd6ae443b1f51b542198f64a73bb80dc4f60deb842de9a2c550af8d6e0a` (not what the trace shows) |
+| level-string SHA-256, encoded `k4` text | `58d4b320fced5935ff298ae20feefb565de405f010cdfadd86efe6713fdc33fd` ← `level.sha256` |
 | level dict | the 18 keys a working local level has, in the editor's order |
 | `k4` | `base64url(gzip("kS38,…;1,1,2,50,3,15;…"))`, deterministic |
 
-The `.gmd` is the canonical text form and the file whose digest the manifest will pin; it is
-*our* interchange artifact, and `gd_save.py --check` correctly refuses it, because a `.gmd` is
-not a container. `--backup-dir` is required to install: the tool converts this XML into
-`CCLocalLevels.dat` **and** `CCLocalLevels2.dat` through `gd_save.encode`, and refuses to write
-either without a digest-verified backup (see the isolation section below).
+`make_level_fixture.py --digests` prints the last two digests plus the file digest as JSON;
+generation is deterministic, so the file digest is the regeneration identity check, not a gate
+input.
+
+The `.gmd` is the canonical text form and *our* interchange artifact, and `gd_save.py --check`
+correctly refuses it, because a `.gmd` is not a container. `--backup-dir` is required to
+install: the tool converts this XML into `CCLocalLevels.dat` **and** `CCLocalLevels2.dat`
+through `gd_save.encode`, and refuses to write either without a digest-verified backup (see the
+isolation section below).
 
 Session state (`k18` attempts, `k36` jumps, `k80` edit seconds) and the editor camera
 (`kI1`–`kI3`) are zero, which is what a level that has never been played looks like. `k101` is
 the only field whose meaning is unknown; its *shape* is copied, its value is zeros.
 
-### The `level` row is an assertion, not an observation
+### The `level` row is an observation (2026-10-27)
 
-`meta.level` reaches the trace from the run context, which the runner copies from the manifest.
-So the gate's level row compares the manifest's hash with itself: it can show `pass` without
-anything having observed which level the game loaded.
+The weaker version of this row compared the manifest's hash with a copy of itself: `meta.level`
+reaches the trace from the run context, which the runner copies from the manifest, so it could
+show `pass` without anything having observed which level loaded. Recording a **digest** instead
+of comparing the context is what closes that, and the digest is not player data.
 
-`level_started` does carry a `data` value, but it is `{"state":"redacted","reason":"level name
-is player data"}` — the level's name may not be recorded at all (notes/runtime-validation.md,
-"Value objects": a string containing a level name is redacted), and a null level records
-`unavailable`. So the record distinguishes "a level started" from "no level was passed", and
-deliberately carries no identity. The row is therefore still an assertion.
+`level_started` now records the SHA-256 of the level's object string
+(`GJGameLevel::m_levelString`, the 2.2081 binding field at `GJGameLevel.hpp:487`) as
+`{"state":"observed","type":"str","value":"<64 lower-case hex>"}`. Hex rather than base64
+because the manifest spells digests in hex, so the comparator compares two strings with no
+encoding step. `unavailable` when no level was passed or its string was empty; the level's
+**name** is still never read, not even to hash it.
 
-What would make it an observation is a **content digest**: SHA-256 of the level's object string,
-recorded as `observed_bytes`, which the contract permits because a digest is derived data rather
-than player data. That is not implemented, and it needs one fact nobody has established:
-whether the in-memory level string is the encoded `k4` form or the decoded object string, i.e.
-which digest the fixture's `k4` should produce. A digest of the *name* is not an acceptable
-substitute — level names are low-entropy and guessable, so hashing one is still recording it.
+`harness/scenarios/safe-mode-smoke.json` therefore now pins `level.sha256` =
+`58d4b320…`, the digest of the **encoded `k4` text**. That was not a guess kept in place: the
+two candidate forms were pre-registered above, and the first observation (run `65d0bde5`,
+release, repetition 0, 2026-10-27) recorded exactly `58d4b320…` at `level_started`. So in 2.2081
+`m_levelString` holds `base64url(gzip(object string))` - the same bytes the save stores - and
+not the decoded object string, whose digest `0ecf8fd6…` stays in the table above as the
+candidate that lost. Two things follow, and both are deliberate:
 
-`mh::compare` reads a milestone's `name` for ordering and never looks at `data`, so nothing
-compares the record today. Making it a row would be a change to comparator semantics, which this
-task was told not to make — so the decision is open, and until it is made `level.sha256`
-**stays zero** in `harness/scenarios/safe-mode-smoke.json`. Filling it now would make a row pass
-that proves nothing.
+- `level.sha256` **no longer means the `.gmd` file hash**. It means "the digest every run must
+  observe at `level_started`". The file hash stays in this note and in the generator's
+  `--digests` report, where it belongs.
+- The pin records what the game *does*, not what would have been convenient: had the observation
+  disagreed with either candidate, the pin would not have been moved to meet it without a
+  finding explaining why.
+
+The comparator's row (`harness/src/comparator.cpp`, `check_comparability`) has two outcomes,
+both new:
+
+| Observation | Result |
+| --- | --- |
+| any run recorded no digest (or no `level_started`) | `blocked` — "a run did not record the digest of the level it started"; absence is not agreement |
+| any run's digest differs from the manifest | `invalid` — "a run started a level whose digest is not the manifest's fixture" |
+
+The earlier `level` row (run-context hash and source must match the manifest) is unchanged and
+still catches a runner that copied a different manifest; it is just no longer the only row.
 
 Still missing before an M3 run:
 

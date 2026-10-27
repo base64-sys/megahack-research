@@ -216,10 +216,13 @@ Proving the contract is executable is not runtime validation. The Geode observer
 (`megahack.trace`) and the second comparison target (`megahack.reconstruction`) both build and
 package. The level fixture exists and is generated, not hand-made:
 `harness/tools/make_level_fixture.py` writes `harness/fixtures/runtime/safe-mode-smoke.gmd`
-(1,031 bytes, `edcfd088…`) from a declarative spec, and installs it only through the sandbox.
-What is still missing for a comparison is four captures, and the manifest's `level.sha256` is
-deliberately still a placeholder because nothing observes the loaded level yet. Method,
-evidence and open questions: [trace-harness.md](notes/trace-harness.md),
+(947 bytes, `810e276e…`) from a declarative spec, and installs it only through the sandbox. The
+manifest's `level.sha256` is no longer a placeholder: the observer records the SHA-256 of the
+level string at `level_started` (`58d4b320…` for the fixture, the encoded `k4` form the game
+holds) and the gate compares each run's observation with it — `blocked` when a run recorded
+none, `invalid` when a run started a different level. Four captures (two per variant) are what
+the comparison still needs.
+Method, evidence and open questions: [trace-harness.md](notes/trace-harness.md),
 [trace-observer.md](notes/trace-observer.md), [reconstruction-variant.md](notes/reconstruction-variant.md),
 [gd-save-format.md](notes/gd-save-format.md); running logs:
 [harness/PROGRESS.md](harness/PROGRESS.md), [harness/OBSERVER-PROGRESS.md](harness/OBSERVER-PROGRESS.md).

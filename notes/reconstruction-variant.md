@@ -24,7 +24,7 @@ So:
 
 | Role | Mod | Writes a trace? |
 | --- | --- | --- |
-| observer / harness | `megahack.trace` v0.1.0 | yes, for both variants |
+| observer / harness | `megahack.trace` v0.1.1 | yes, for both variants |
 | release target | `absolllute.hackmega` v9.1.3 | no |
 | reconstruction target | `megahack.reconstruction` v0.0.1 | **no** |
 
@@ -88,10 +88,13 @@ placeholder is now `blocked` with its own finding naming the field, not `invalid
 (`harness/src/comparator.cpp`). §9 reserves `invalid` for evidence that contradicts itself;
 a zeroed digest contradicts nothing.
 
-The level row is the reason this had to be explicit: the trace's `level.sha256` comes from the
-manifest through the run context, so both sides are the *same zeros* and the equality test
-would have passed having compared nothing at all. `comparator_gate_blocks_a_level_row_where_both_sides_are_placeholders`
-pins it.
+The level row is the reason this had to be explicit: before 2026-10-27 the trace's `level.sha256`
+came from the manifest through the run context, so both sides were the *same zeros* and the
+equality test would have passed having compared nothing at all.
+`comparator_gate_blocks_a_level_row_where_both_sides_are_placeholders` pins it. The row is now
+backed by an observation instead — the digest the run recorded at `level_started` — and joins the
+placeholder rule as a second, stricter row (notes/gd-save-format.md, "The `level` row is an
+observation").
 
 One consequence worth naming: a single run per variant used to report `invalid`, because any
 gate issue set that status. Too few runs is missing evidence, so the runs row is now `blocked`
@@ -147,8 +150,10 @@ context rebuilt, because the manifest's own digest is part of the context.
 `harness/scenarios/safe-mode-smoke.json`:
 
 - `targets.reconstruction.sha256` and `harness.sha256` filled from the built artifacts above.
-- `level.sha256` **left at zero**: `harness/fixtures/runtime/safe-mode-smoke.gmd` does not
-  exist, and the gate now reports that row as `blocked` instead of letting it pass vacuously.
+- `level.sha256` pinned on 2026-10-27 to `58d4b320…`, the digest of the fixture's **encoded
+  `k4` text** - the form `m_levelString` actually holds, established by observation (run
+  `65d0bde5`, `level_started`) after both candidate forms were pre-registered in
+  notes/gd-save-format.md. It is not the `.gmd` file digest.
 - `baseline.geode` stays `5.6.1` and the description now says why: it is the *static analysis*
   reference (the release was read against 5.6.1 bindings), while `runtime_baseline.geode` is
   `5.11.2`, which is what every trace runs on. Neither is an identity input - the gate compares
@@ -219,11 +224,14 @@ State left behind on 2026-10-27, all verified:
    `meta.mods` names `megahack.reconstruction`.
 7. `harness\build\mh_trace_compare.exe harness\scenarios\safe-mode-smoke.json --release <a> --release <b> --reconstruction <c> --reconstruction <d>`.
 
-What to expect, so a surprise is visible: the gate will stop at the **level** row, `blocked`,
-because `level.sha256` is still a placeholder and there is no fixture. If two runs per variant
-are in place and everything else matches, the finder will name exactly that row; any other
-`blocked` or `invalid` row is a real problem. Because the gate stops, **no `claim:` line is
-printed** - which is the intended behaviour, not a missing feature.
+What to expect, so a surprise is visible: the gate should reach a verdict, because
+`level.sha256` is pinned and the observer records an observation to compare it with. The traces
+must show `58d4b320…`, the encoded `k4` form the first observation established (run `65d0bde5`);
+then the level row matches and any `blocked`/`invalid` row left is a real problem. If a run
+records no digest at all, the row is `blocked`, and absence of an observation is not agreement.
+If a run shows the other pre-registered digest (`0ecf8fd6…`, the decoded object string), the
+game has started decoding on load differently from 2.2081 and that is a finding, not a pin to
+quietly update.
 
 ## Open questions
 
@@ -259,6 +267,14 @@ So the gate accepts everything it can check — two runs per variant, target and
 consistent, scenario identical — and stops on the one row that has never been checkable. That is
 the whole result: the pipeline works, and the level row is now the single thing standing between
 it and a verdict.
+
+**Superseded on the same day.** Rather than leave that row blocked, the observer now records the
+digest of the level's object string at `level_started` and `level.sha256` pins it
+(`58d4b320…`, the encoded `k4` form, confirmed by observation), so the row became an observation
+(notes/gd-save-format.md, "The `level` row is an observation"). These four traces predate that
+change — harness `0.1.0`, `level_started` redacted — so they cannot satisfy the new row and were
+replaced by fresh runs against harness `0.1.1` (`4b70fdec…`). The numbers above remain as
+the record of the pipeline working before the row was strengthened.
 
 Two observations to carry forward:
 

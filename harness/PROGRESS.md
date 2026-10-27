@@ -27,6 +27,7 @@ evidence (test name, gate output, commit subject).
 | 13 | Record builders in the core (`mh/records.hpp`): hook/call/milestone/save/error objects as pure functions, pinned byte-for-byte against a captured trace | done |
 | 14 | Claim class on the comparison report: `surface` vs `behavioural`, derived from the manifest's *required* observations and printed only when a pass exists | done |
 | 15 | Placeholder digests are `blocked`, not `invalid`; a gate row satisfied only because both sides are zeros does not pass | done |
+| 16 | `level_started` observes the level content digest (SHA-256 of `m_levelString`, lower-case hex); the gate compares each run's observation with `level.sha256` (`blocked` when absent, `invalid` when different) | done |
 
 ## Evidence log
 
@@ -444,6 +445,28 @@ evidence (test name, gate output, commit subject).
 - Not done: nothing claims `behavioural` yet (the save site never fired), and the manifest's
   `level.sha256` stays a placeholder until a level fixture exists.
 - Commit: `feat(compare): derive the claim a pass can support`.
+
+### Item 16 — the level row becomes an observation
+
+- Observer (`harness/observer/src/main.cpp`, `TracePlayLayer::init`): `level_started` records
+  `sha256_hex(level->m_levelString)` as `observed_str` instead of `redacted`. Hex because the
+  manifest spells digests in hex. `unavailable` when no level was passed or the string was
+  empty; the level's *name* is still never read.
+- Comparator (`harness/src/comparator.cpp`): `VariantSummary::level_observed` collects each
+  run's digest; a new `level_observed` row is `blocked` when a run recorded none and `invalid`
+  when a run's digest differs from `level.sha256`. The older `level` row is unchanged.
+- Fixture: `make_level_fixture.py --digests` pre-registered both candidate forms, because which
+  one `m_levelString` holds was not established: decoded object string `0ecf8fd6…` (126 bytes)
+  and encoded `k4` `58d4b320…`. The first observation (run `65d0bde5`) recorded `58d4b320…`, so
+  the encoded `k4` text is what the game holds and the manifest pins that. The decoded-form
+  digest is still printed and still correct - it is simply not what the trace shows.
+- Tests: two new comparator cases, `test_corpus`/`test_compare` milestone payloads now carry a
+  digest, `test_make_level_fixture.py` grew `DigestReportTest` (20 cases), the rehearsal grew
+  `test_a_run_that_did_not_record_its_level_blocks` and
+  `test_an_observation_of_another_level_is_invalid` (7 cases). `196 test(s), 0 failed`.
+- Also rewritten: `gen_scenario_manifest.py` now checks the committed manifest by default and
+  only rewrites with `--write`, so a pinned digest cannot be clobbered by re-running it.
+- Supersedes the "Not done" line above: the fixture exists, so the placeholder is gone.
 
 ## Open questions
 

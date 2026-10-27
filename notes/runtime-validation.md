@@ -168,7 +168,7 @@ Common event fields are `schema`, `type`, `run_id`, `run_fingerprint`, `seq`, `t
 | `kind` | Payload | Purpose |
 | --- | --- | --- |
 | `hook` | `phase`, `hook`, `call`, `feature` | A GD method or target callback was entered or exited |
-| `milestone` | `name`, `data` | A scenario boundary such as level start, death, completion, save request. `data` is a value object: it holds what was observed at the site, or the model's null value when nothing was. A level name is player data, so `level_started` records it as `redacted` (or `unavailable` when no level was passed), never as a value |
+| `milestone` | `name`, `data` | A scenario boundary such as level start, death, completion, save request. `data` is a value object: it holds what was observed at the site, or the model's null value when nothing was. `level_started` observes the SHA-256 of the level's object string (`m_levelString`) as lower-case hex, or `unavailable` when no level was passed or its string was empty. It never records the level's name: a name is player data, and a digest *of* a name would still be a name, because names are low-entropy |
 | `save` | `store`, `phase`, `source`, `path_template`, `exists`, `size`, `sha256`, `keys` | An observed file state or write; not inferred from a hook |
 | `error` | `code`, `message`, `fatal`, `hook_key` | Harness, hook-install, scenario, or target error |
 
@@ -381,6 +381,14 @@ M3 evidence. `draft` scenarios have unresolved trigger or fixture questions.
 The scenario must use a local level fixture with a stable hash. A generated fixture is
 preferred because it is original work and can be regenerated. A user-created level is
 not allowed, even if hashed. A downloaded level is not allowed.
+
+`level.sha256` is the **observed** digest, not a file hash: every run must record it at
+`level_started` (SHA-256 of the level's object string, lower-case hex) and the gate fails
+when a run records a different one, or blocks when a run records none. Filling it from the
+run context alone would compare the manifest with itself (notes/gd-save-format.md, "The
+`level` row is an observation"); `make_level_fixture.py --digests` prints the candidates,
+including the encoded `k4` form, because which form `m_levelString` holds was not
+established before the first observation.
 
 GD and Mega Hack write into the user's local app-data. No Geode API for redirecting
 GD's save directory has been verified. The safe default is a disposable Windows

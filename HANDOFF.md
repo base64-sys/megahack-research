@@ -27,9 +27,9 @@ The runtime-validation harness is **built and working end to end on the release 
 1. **Trace core** (`harness/`): dependency-free C++20 static library `mh_trace` plus its own
    test runner - contract, value model, canonical JSON, SHA-256, fingerprint, trace writer,
    call-stack validation, strict JSON parser, trace reader, scenario manifest parser,
-   comparator, sequence alignment, comparison and statuses. **170 test cases, 6 ctest entries,
+   comparator, sequence alignment, comparison and statuses. **196 test cases, 6 ctest entries,
    all green.** Design notes: `notes/trace-harness.md`.
-2. **Observer** (`harness/observer/`): Geode mod `megahack.trace` v0.1.0 that records real
+2. **Observer** (`harness/observer/`): Geode mod `megahack.trace` v0.1.1 that records real
    traces. Notes: `notes/trace-observer.md`.
 3. **Runner** (`harness/tools/`): `preflight.py` (hashes, one-target rule, profile guard, run
    context, settings tags), `grade_trace.py` (grade the newest capture), `mh_scenario_check`,
