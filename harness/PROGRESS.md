@@ -19,7 +19,7 @@ evidence (test name, gate output, commit subject).
 | 6a | Strict JSON parser (RFC 8259) for the trace reader: no BOM, no duplicate keys, order preserved | done |
 | 6b | Trace reader/validator: required keys present, seq gaps, end record required, capture gate | done |
 | 7 | Scenario manifest parser and validator (mh-scenario/1): required fields, status vocabulary, level/profile/settings rules | done |
-| 8 | Comparator core: comparability gate, volatile-field normalisation, canonical event keys | pending |
+| 8 | Comparator core: comparability gate, volatile-field normalisation, canonical event keys | done |
 | 9 | Per-key sequence alignment: min_count on both sides, LCS/Needleman-Wunsch with the documented tie-breaks, missing vs extra classification | pending |
 | 10 | Ordering groups and value comparison: main-thread only, tolerance formula with a mandatory "why", result statuses | pending |
 | 11 | Synthetic corpus: one pair per status (pass, pass_with_warnings, fail, blocked, unstable, invalid), including the seven-line example trace from notes/runtime-validation.md, which must validate and round-trip | pending |
@@ -267,8 +267,67 @@ evidence (test name, gate output, commit subject).
   `scenario_warns_when_a_single_run_is_requested`, `scenario_rejects_malformed_json`.
 - Build: `96 test(s), 0 failed`, `ctest` `100% tests passed out of 1`.
 
+### Item 8 — comparator core
+
+- Files: `include/mh/comparator.hpp`, `src/comparator.cpp`, `tests/test_comparator.cpp`.
+- `canonical_event_key` implements the §Comparison rules 1 table exactly
+  (`observer|key|phase|depth`, `milestone|<name>`, `save|<store>|phase|source`,
+  `error|<code>`) and returns `nullopt` when the payload cannot produce a key, because
+  "Do not use a runtime VA, timestamp, or thread id in a key" and an incomplete payload has
+  no identity to group on.
+- `normalize_event` removes §1's list (`t_ns`, `hook.va`, `thread.id`, `call.this.value`,
+  `call.duration_ns`, `save.local_path`) plus the variant's own callback addresses
+  (`hook.target`). Two implementation notes worth the ink: a parent object left empty is
+  dropped, and `save.local_path` is a *semantic* path (the event's `kind` is `save`), not a
+  container path — treating it literally silently removed nothing, which the tests caught.
+- `check_comparability` walks the gate table row by row and returns `pass`, `invalid`
+  (identity: scenario, target, harness, runtime, level, settings, runs) or `blocked`
+  (completeness: dropped events, unclosed calls, uncaptured required fields), matching §9:
+  "invalid | Comparability gate failed (hash, version, scenario, observer, level,
+  settings)" and "blocked | A required field or hook cannot be captured". Identity is
+  checked before completeness so `invalid` dominates.
+- `summarize_variant` reads the gate's fields out of a variant's traces; a run that is not
+  structurally valid counts as crashed, since "each with an `end` record and no
+  crash/timeout" is a precondition rather than a detail.
+- Tests (18): `comparator_canonical_key_for_a_hook_is_observer_key_phase_depth`,
+  `comparator_canonical_key_for_a_milestone_is_the_name`,
+  `comparator_canonical_key_for_a_save_is_store_phase_source`,
+  `comparator_canonical_key_for_an_error_is_the_code`,
+  `comparator_canonical_key_is_null_when_the_payload_is_incomplete`,
+  `comparator_normalisation_removes_the_documented_volatile_fields`,
+  `comparator_normalisation_removes_call_duration_and_save_local_path`,
+  `comparator_normalisation_applies_the_manifest_volatile_list`,
+  `comparator_normalisation_ignores_paths_that_do_not_exist`,
+  `comparator_gate_passes_when_every_row_matches`,
+  `comparator_gate_invalidates_a_different_scenario`,
+  `comparator_gate_invalidates_a_different_harness`,
+  `comparator_gate_invalidates_a_different_runtime`,
+  `comparator_gate_invalidates_a_different_level`,
+  `comparator_gate_invalidates_different_settings_tags`,
+  `comparator_gate_accepts_reordered_settings_tags`,
+  `comparator_gate_invalidates_a_single_run`,
+  `comparator_gate_invalidates_a_crashed_run`,
+  `comparator_gate_blocks_on_dropped_events`,
+  `comparator_gate_blocks_on_an_unclosed_call`,
+  `comparator_gate_blocks_on_an_uncaptured_required_field`,
+  `comparator_gate_summarises_a_variant_from_traces`,
+  `comparator_gate_summary_counts_an_incomplete_trace_as_crashed`.
+- Build: `119 test(s), 0 failed`, `ctest` `100% tests passed out of 1`.
+
 ## Open questions
 
+- **What is a "canonical payload"?** §Comparison rules 3 compares "ordered payload
+  sequences" without defining the payload subset. `normalize_event` implements §1's list
+  and additionally drops the whole `hook.target` block (the registering mod's addresses and
+  tag are variant identity; the observed GD method in `hook.key`/`hook.rva` is the
+  behaviour). UNVERIFIED: whether the release-vs-reconstruction comparison should compare
+  `hook.target.tag`/`tag_label`; if it should, then a cross-variant payload will also need
+  the callback RVA excluded, and this decision moves into item 10.
+- **Settings tag order.** The gate compares `settings.tags` as a list sorted by tag, so two
+  files listing the same tags in a different order are the same settings. §Comparability
+  gate says "same semantic `settings.tags` list" while item 3's fingerprint treats order as
+  significant; that difference is deliberate (identity vs semantics) but is a judgement, not
+  a quotation.
 - **Pattern of `mh-scenario/1` facts.** The example manifest is `draft`, so the validator
   proves shape, not usefulness: nothing in this tree can yet tell whether a scenario's
   `hooks.required` matches a real cluster. UNVERIFIED until a captured trace exists.
