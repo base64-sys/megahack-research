@@ -21,7 +21,7 @@ evidence (test name, gate output, commit subject).
 | 7 | Scenario manifest parser and validator (mh-scenario/1): required fields, status vocabulary, level/profile/settings rules | done |
 | 8 | Comparator core: comparability gate, volatile-field normalisation, canonical event keys | done |
 | 9 | Per-key sequence alignment: min_count on both sides, LCS/Needleman-Wunsch with the documented tie-breaks, missing vs extra classification | done |
-| 10 | Ordering groups and value comparison: main-thread only, tolerance formula with a mandatory "why", result statuses | pending |
+| 10 | Ordering groups and value comparison: main-thread only, tolerance formula with a mandatory "why", result statuses | done |
 | 11 | Synthetic corpus: one pair per status (pass, pass_with_warnings, fail, blocked, unstable, invalid), including the seven-line example trace from notes/runtime-validation.md, which must validate and round-trip | pending |
 | 12 | Docs: README harness section and notes/trace-harness.md test matrix | pending |
 
@@ -345,6 +345,31 @@ evidence (test name, gate output, commit subject).
   `align_by_key_covers_keys_present_on_only_one_side`,
   `align_by_key_gives_an_alignment_for_a_key_only_on_the_reconstruction_side`.
 - Build: `133 test(s), 0 failed`, `ctest` `100% tests passed out of 1`.
+
+### Item 10 — ordering, values and result statuses
+
+- Files: `include/mh/comparison.hpp`, `src/comparison.cpp`, `tests/test_comparison.cpp`.
+- `value_from_json` turns a trace value object back into the item-2 `Value`, so the model's
+  equality rules (bits-exact floats, pointer excluded, null only null) are applied rather
+  than re-invented; a malformed value object is `blocked`, because the trace cannot
+  establish either side of the claim.
+- `compare_value_json` applies a tolerance only to floats and only when the `why` is
+  non-empty — "A tolerance without a `why` is invalid" — and it compares the *decoded*
+  values with `abs(a-b) <= abs_tol + rel_tol * max(abs(a), abs(b))`, not the bits. Counts,
+  booleans and hashes never take a tolerance here.
+- `check_order_group` filters to `thread.role == "main"` inside the checker, because §4
+  makes eligibility a property of the evidence ("its events are not eligible to satisfy an
+  ordered group"), not of the caller.
+- `finalize_status` orders the outcomes the way §9 defines them: `invalid`/`blocked` from
+  the gate dominate, `unstable` stops the claim, a `fail` finding beats a warning, warnings
+  alone give `pass_with_warnings`.
+- Tests (21): the ten §Value spellings through `value_from_json` → `to_json`,
+  malformed objects, exact-by-default (including `+0.0` vs `-0.0`), tolerance within and
+  outside, tolerance without a `why`, tolerance not applied to counts, unavailable/redacted
+  blocked, pointers excluded, null only equal to null; ordering in order, out of order,
+  hook-enter keys, non-main threads ineligible, a missing name, an empty group; statuses
+  pass, warnings only, fail-beats-warning, invalid dominance, blocked, unstable.
+- Build: `154 test(s), 0 failed`, `ctest` `100% tests passed out of 1`.
 
 ## Open questions
 
