@@ -77,9 +77,20 @@ enum class GateStatus { pass, invalid, blocked };
 std::string_view to_string(GateStatus status) noexcept;
 std::ostream& operator<<(std::ostream& out, GateStatus status);
 
+// §9 splits a failed gate in two: `invalid` when the evidence contradicts itself (a hash, a
+// version, a scenario that is not the one declared), and `blocked` when the evidence that
+// the row needs is simply not there yet. A declared digest of all zeros is the second kind -
+// the manifest has not been enrolled against a real artifact - and saying `invalid` for it
+// accuses the run of a mismatch it did not commit.
+enum class GateIssueSeverity { invalid, blocked };
+
+// 64 hex characters, all `0`: the manifest's placeholder, never a real SHA-256.
+bool is_placeholder_digest(std::string_view digest);
+
 struct GateIssue {
   std::string check;  // the §Comparability gate row, e.g. "harness"
   std::string detail;
+  GateIssueSeverity severity = GateIssueSeverity::invalid;
 };
 
 struct GateResult {

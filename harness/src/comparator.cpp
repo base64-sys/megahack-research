@@ -126,8 +126,9 @@ json::Json sorted_tags(const json::Json& tags) {
   return sorted;
 }
 
-void add_gate_issue(GateResult& result, std::string check, std::string detail) {
-  result.issues.push_back(GateIssue{std::move(check), std::move(detail)});
+void add_gate_issue(GateResult& result, std::string check, std::string detail,
+                    GateIssueSeverity severity = GateIssueSeverity::invalid) {
+  result.issues.push_back(GateIssue{std::move(check), std::move(detail), severity});
 }
 
 } // namespace
@@ -297,7 +298,8 @@ GateResult check_comparability(const ScenarioDocument& scenario_document,
   // A run with no reconstruction at all used to come back as ten identity failures and
   // `invalid`, instead of one `blocked` row saying the evidence is not there yet.
   if (release.runs < 2 || reconstruction.runs < 2) {
-    add_gate_issue(result, "runs", "at least two runs per variant are required");
+    add_gate_issue(result, "runs", "at least two runs per variant are required",
+                   GateIssueSeverity::blocked);
   }
   if (release.crashed_runs != 0 || reconstruction.crashed_runs != 0) {
     add_gate_issue(result, "runs", "a variant has a crashed, timed-out or incomplete run");
@@ -306,6 +308,19 @@ GateResult check_comparability(const ScenarioDocument& scenario_document,
     result.status = GateStatus::blocked;
     return result;
   }
+
+  // -- Digest rows: a placeholder is missing evidence, not a mismatch ------
+  // §9 reserves `invalid` for evidence that contradicts itself. A declared digest of all
+  // zeros contradicts nothing: the manifest simply has not been enrolled against a real
+  // artifact yet, and calling that `invalid` accuses the run of a mismatch it never made.
+  // Two placeholders that "match" are worse - the row would pass having compared nothing.
+  const auto placeholder_row = [&result](std::string_view check, std::string_view side,
+                                         std::string_view declared) {
+    add_gate_issue(result, std::string{check},
+                   std::string{side} + " digest is the manifest's placeholder (" +
+                       std::string{declared} + "); the evidence is not there yet",
+                   GateIssueSeverity::blocked);
+  };
 
   // -- Scenario: same scenario.sha256, same scenario.id --------------------
   if (release.scenario_sha256 != scenario_document.sha256 ||
@@ -321,22 +336,32 @@ GateResult check_comparability(const ScenarioDocument& scenario_document,
   if (release.role != "release" || reconstruction.role != "reconstruction") {
     add_gate_issue(result, "target", "variants must be labeled release and reconstruction");
   }
-  if (release.target_sha256 != scenario.release_sha256) {
+  if (is_placeholder_digest(scenario.release_sha256) ||
+      is_placeholder_digest(release.target_sha256)) {
+    placeholder_row("target", "release", "targets.release.sha256");
+  } else if (release.target_sha256 != scenario.release_sha256) {
     add_gate_issue(result, "target", "release target hash does not match the manifest");
   }
-  if (reconstruction.target_sha256 != scenario.reconstruction_sha256) {
+  if (is_placeholder_digest(scenario.reconstruction_sha256) ||
+      is_placeholder_digest(reconstruction.target_sha256)) {
+    placeholder_row("target", "reconstruction", "targets.reconstruction.sha256");
+  } else if (reconstruction.target_sha256 != scenario.reconstruction_sha256) {
     add_gate_issue(result, "target", "reconstruction target hash does not match the manifest");
   }
 
   // -- Harness: same id, version and SHA-256 -------------------------------
-  if (release.harness_id != scenario.harness_id ||
-      release.harness_version != scenario.harness_version ||
-      release.harness_sha256 != scenario.harness_sha256 ||
-      reconstruction.harness_id != release.harness_id ||
-      reconstruction.harness_version != release.harness_version ||
-      reconstruction.harness_sha256 != release.harness_sha256) {
+  if (release.harness_sha256 != reconstruction.harness_sha256 ||
+      release.harness_id != reconstruction.harness_id ||
+      release.harness_version != reconstruction.harness_version) {
+    add_gate_issue(result, "harness", "harness id/version/sha256 differ between variants");
+  }
+  if (is_placeholder_digest(scenario.harness_sha256)) {
+    placeholder_row("harness", "observer", "harness.sha256");
+  } else if (release.harness_id != scenario.harness_id ||
+             release.harness_version != scenario.harness_version ||
+             release.harness_sha256 != scenario.harness_sha256) {
     add_gate_issue(result, "harness",
-                   "harness id/version/sha256 differ between variants or from the manifest");
+                   "harness id/version/sha256 differ from the manifest");
   }
 
   // -- Runtime: same GD and runtime Geode --------------------------------
@@ -348,8 +373,15 @@ GateResult check_comparability(const ScenarioDocument& scenario_document,
   }
 
   // -- Level: same fixture SHA-256 and source ----------------------------
-  if (release.level_sha256 != scenario.level_sha256 ||
-      reconstruction.level_sha256 != scenario.level_sha256) {
+  if (is_placeholder_digest(scenario.level_sha256) ||
+      is_placeholder_digest(release.level_sha256) ||
+      is_placeholder_digest(reconstruction.level_sha256)) {
+    // Both sides usually carry the same zeros, so the equality below would "pass" having
+    // compared nothing. That is the one gate row where a placeholder cannot be caught by an
+    // inequality, which is why it is tested for explicitly.
+    placeholder_row("level", "level fixture", "level.sha256");
+  } else if (release.level_sha256 != scenario.level_sha256 ||
+             reconstruction.level_sha256 != scenario.level_sha256) {
     add_gate_issue(result, "level", "level hash does not match the manifest fixture");
   }
   if (release.level_source != scenario.level_source ||
@@ -366,10 +398,17 @@ GateResult check_comparability(const ScenarioDocument& scenario_document,
   // -- Runs: at least two per variant, no crash or timeout ---------------
   // (checked before the identity rows; see the top of this function)
 
-  // Identity failures are `invalid`; a missing required observation is `blocked`.
-  const bool identity_failed = !result.issues.empty();
-  if (identity_failed) {
+  // A contradiction is `invalid` and dominates; evidence that is merely absent is `blocked`.
+  const bool contradicts = std::any_of(result.issues.begin(), result.issues.end(),
+                                       [](const GateIssue& issue) {
+                                         return issue.severity == GateIssueSeverity::invalid;
+                                       });
+  if (contradicts) {
     result.status = GateStatus::invalid;
+    return result;
+  }
+  if (!result.issues.empty()) {
+    result.status = GateStatus::blocked;
     return result;
   }
 
@@ -387,6 +426,18 @@ GateResult check_comparability(const ScenarioDocument& scenario_document,
 
   result.status = result.issues.empty() ? GateStatus::pass : GateStatus::blocked;
   return result;
+}
+
+bool is_placeholder_digest(std::string_view digest) {
+  if (digest.size() != 64) {
+    return false;
+  }
+  for (const char digit : digest) {
+    if (digit != '0') {
+      return false;
+    }
+  }
+  return true;
 }
 
 } // namespace mh

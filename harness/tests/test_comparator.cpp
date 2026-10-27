@@ -30,8 +30,26 @@ mh::json::Json parse_one(const std::string& text) {
 }
 
 // The manifest is `draft` but structurally valid, which is what the gate consumes.
+//
+// The contract's example manifest ships placeholder (all-zero) digests, and the gate now calls
+// a placeholder *missing evidence* rather than a mismatch. The identity rows under test here
+// are about comparing hashes, so a placeholder is replaced with a stable real-looking digest;
+// the placeholder rule itself has its own tests below.
 mh::ScenarioDocument example_scenario() {
-  return mh::read_scenario(std::string{mh_test_fixtures::kExampleScenario});
+  mh::ScenarioDocument document =
+      mh::read_scenario(std::string{mh_test_fixtures::kExampleScenario});
+  if (document.scenario.has_value()) {
+    const auto fill = [](std::string& digest, char digit) {
+      if (mh::is_placeholder_digest(digest)) {
+        digest = std::string(64, digit);
+      }
+    };
+    fill(document.scenario->release_sha256, 'a');
+    fill(document.scenario->reconstruction_sha256, 'b');
+    fill(document.scenario->harness_sha256, 'c');
+    fill(document.scenario->level_sha256, 'd');
+  }
+  return document;
 }
 
 VariantSummary variant(std::string role, std::string target_sha256,
@@ -283,7 +301,10 @@ MH_TEST(comparator_gate_accepts_reordered_settings_tags) {
               GateStatus::pass);
 }
 
-MH_TEST(comparator_gate_invalidates_a_single_run) {
+MH_TEST(comparator_gate_blocks_a_single_run) {
+  // One run per variant is missing evidence, not contradicting evidence: §9's `invalid` is for
+  // a hash or version that disagrees, and `blocked` is for a required observation that is not
+  // there. This used to report `invalid`, which read as "the run was wrong".
   const mh::ScenarioDocument manifest = example_scenario();
   VariantSummary release = variant("release", manifest.scenario->release_sha256, manifest);
   const VariantSummary reconstruction =
@@ -291,7 +312,7 @@ MH_TEST(comparator_gate_invalidates_a_single_run) {
   release.runs = 1;
 
   const GateResult result = mh::check_comparability(manifest, release, reconstruction);
-  MH_CHECK_EQ(result.status, GateStatus::invalid);
+  MH_CHECK_EQ(result.status, GateStatus::blocked);
   MH_CHECK(has_check(result, "runs"));
 }
 
@@ -358,6 +379,77 @@ MH_TEST(comparator_gate_blocks_on_an_uncaptured_required_field) {
 
   MH_CHECK_EQ(mh::check_comparability(manifest, release, reconstruction).status,
               GateStatus::blocked);
+}
+
+// --- Placeholder digests: missing evidence, not a contradiction ---------------------
+
+MH_TEST(comparator_placeholder_digest_is_64_zeros_and_nothing_else) {
+  MH_CHECK(mh::is_placeholder_digest(std::string(64, '0')));
+  MH_CHECK(!mh::is_placeholder_digest(std::string(64, 'a')));
+  MH_CHECK(!mh::is_placeholder_digest(std::string(63, '0')));
+  MH_CHECK(!mh::is_placeholder_digest(""));
+  MH_CHECK(!mh::is_placeholder_digest("0000000000000000000000000000000000000000000000000000000000000001"));
+}
+
+MH_TEST(comparator_gate_blocks_a_placeholder_reconstruction_digest) {
+  // The allocation the manifest ships: a real release hash, a zeroed reconstruction hash. The
+  // run is not wrong, the manifest is simply not enrolled against the built artifact.
+  mh::ScenarioDocument manifest = example_scenario();
+  manifest.scenario->reconstruction_sha256 = std::string(64, '0');
+  const VariantSummary release = variant("release", manifest.scenario->release_sha256, manifest);
+  const VariantSummary reconstruction =
+      variant("reconstruction", std::string(64, '0'), manifest);
+
+  const GateResult result = mh::check_comparability(manifest, release, reconstruction);
+  MH_CHECK_EQ(result.status, GateStatus::blocked);
+  MH_CHECK(!has_check(result, "scenario"));
+  bool named = false;
+  for (const mh::GateIssue& issue : result.issues) {
+    if (issue.check == "target" && issue.detail.find("placeholder") != std::string::npos) {
+      named = true;
+    }
+  }
+  MH_CHECK(named);
+}
+
+MH_TEST(comparator_gate_blocks_a_placeholder_harness_digest) {
+  mh::ScenarioDocument manifest = example_scenario();
+  manifest.scenario->harness_sha256 = std::string(64, '0');
+  const VariantSummary release = variant("release", manifest.scenario->release_sha256, manifest);
+  const VariantSummary reconstruction =
+      variant("reconstruction", manifest.scenario->reconstruction_sha256, manifest);
+
+  const GateResult result = mh::check_comparability(manifest, release, reconstruction);
+  MH_CHECK_EQ(result.status, GateStatus::blocked);
+  MH_CHECK(has_check(result, "harness"));
+}
+
+MH_TEST(comparator_gate_blocks_a_level_row_where_both_sides_are_placeholders) {
+  // The one row an inequality cannot catch: zeros equal zeros, so without this rule the row
+  // would "pass" having compared nothing at all.
+  mh::ScenarioDocument manifest = example_scenario();
+  manifest.scenario->level_sha256 = std::string(64, '0');
+  VariantSummary release = variant("release", manifest.scenario->release_sha256, manifest);
+  VariantSummary reconstruction =
+      variant("reconstruction", manifest.scenario->reconstruction_sha256, manifest);
+  release.level_sha256 = std::string(64, '0');
+  reconstruction.level_sha256 = std::string(64, '0');
+
+  const GateResult result = mh::check_comparability(manifest, release, reconstruction);
+  MH_CHECK_EQ(result.status, GateStatus::blocked);
+  MH_CHECK(has_check(result, "level"));
+}
+
+MH_TEST(comparator_gate_still_invalidates_two_real_digests_that_differ) {
+  // The placeholder rule must not launder a genuine mismatch.
+  const mh::ScenarioDocument manifest = example_scenario();
+  const VariantSummary release = variant("release", manifest.scenario->release_sha256, manifest);
+  VariantSummary reconstruction =
+      variant("reconstruction", manifest.scenario->reconstruction_sha256, manifest);
+  reconstruction.target_sha256 = std::string(64, '9');
+
+  const GateResult result = mh::check_comparability(manifest, release, reconstruction);
+  MH_CHECK_EQ(result.status, GateStatus::invalid);
 }
 
 MH_TEST(comparator_gate_summarises_a_variant_from_traces) {
