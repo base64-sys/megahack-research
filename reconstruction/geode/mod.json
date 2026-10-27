@@ -1,0 +1,11 @@
+{
+    "geode": "5.11.2",
+    "gd": {
+        "win": "2.2081"
+    },
+    "id": "megahack.reconstruction",
+    "name": "Mega Hack Reconstruction (target)",
+    "version": "v0.0.1",
+    "developer": "megahack-research",
+    "description": "Second comparison target: installs the observed hook surface and no behaviour. Writes no trace; megahack.trace is the only emitter."
+}

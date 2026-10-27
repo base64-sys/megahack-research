@@ -222,10 +222,16 @@ mh::json::Json build_mods_list() {
 
     mh::json::Json mods = mh::json::Json::array();
     mods.push(std::move(observer));
+    // Which target is loaded is a runtime fact, and both variants can be it: a trace from a
+    // reconstruction run must not claim the release was present.
     for (Mod* mod : Loader::get()->getAllMods()) {
-        if (mod && mod->getID() == "absolllute.hackmega") {
+        if (!mod) {
+            continue;
+        }
+        const std::string id = mod->getID();
+        if (id == "absolllute.hackmega" || id == "megahack.reconstruction") {
             mh::json::Json target_mod = object();
-            target_mod.set("id", mh::json::Json::string("absolllute.hackmega"));
+            target_mod.set("id", mh::json::Json::string(id));
             target_mod.set("role", mh::json::Json::string("target"));
             target_mod.set("version", mh::json::Json::string(mod->getVersion().toNonVString()));
             target_mod.set("sha256", mh::json::Json::null());

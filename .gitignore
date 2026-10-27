@@ -86,6 +86,7 @@ node_modules/
 # Out-of-source build output for harness/CMakeLists.txt. Regenerate; never commit.
 /harness/build/
 /harness/observer/build/
+/reconstruction/geode/build/
 
 # --- Long-run wrapper scratch --------------------------------------------------
 .oc/
