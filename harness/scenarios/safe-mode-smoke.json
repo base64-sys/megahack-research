@@ -9,7 +9,7 @@
     "release": {"artifact": "absolllute.hackmega_original.dll", "sha256": "1635c3391e853d68eb718965a756fd411ec6a876c23c0b92db508366e1107a92"},
     "reconstruction": {"artifact": "megahack.reconstruction.dll", "sha256": "5f214c5f086c6339300a9adfeec94376f8e7f33a119272fda28d879b6117ac1f"}
   },
-  "harness": {"id": "megahack.trace", "version": "0.1.0", "sha256": "f3ab5f6097b6675c49d005efac2efbbb44b2a27c30f5d2adebb7a3d7d1a4f726"},
+  "harness": {"id": "megahack.trace", "version": "0.1.0", "sha256": "6332e916b3374cd916681eabe59a8c606983cd8a110234a4c28144fb4101568f"},
   "mods": {"required": ["absolllute.hackmega", "megahack.trace"], "dependency_versions": {"geode.node-ids": ">=v1.22.0"}, "other_mods": "forbidden"},
   "level": {"fixture": "fixtures/runtime/safe-mode-smoke.gmd", "sha256": "0000000000000000000000000000000000000000000000000000000000000000", "source": "generated", "notes": "Local fixture only; no user or online level."},
   "profile": {"isolation": "disposable", "notes": "Use a disposable Windows profile or VM; restore from a snapshot. Do not run against a live player profile."},
