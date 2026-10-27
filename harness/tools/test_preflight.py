@@ -290,6 +290,40 @@ def test_settings_key_in_two_groups_is_refused() -> None:
         raise AssertionError("a key in two groups should be refused")
 
 
+def test_target_role_and_digest_pin() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        target = Path(tmp) / "target.dll"
+        make_pe(target)
+        digest = hashlib.sha256(target.read_bytes()).hexdigest()
+
+        fragment = preflight.build_fragment(
+            target=target, gd=target, geode=target, harness=target,
+            gd_version=None, geode_version=None, role="reconstruction",
+            expected_sha256=digest.upper(),
+        )
+        assert fragment["target"]["role"] == "reconstruction"
+
+        try:
+            preflight.build_fragment(
+                target=target, gd=target, geode=target, harness=target,
+                gd_version=None, geode_version=None, expected_sha256="0" * 64,
+            )
+        except preflight.PreflightError as error:
+            assert "pins" in str(error), error
+        else:
+            raise AssertionError("a digest that disagrees with the pin should be refused")
+
+        try:
+            preflight.build_fragment(
+                target=target, gd=target, geode=target, harness=target,
+                gd_version=None, geode_version=None, role="user-level",
+            )
+        except preflight.PreflightError as error:
+            assert "role" in str(error)
+        else:
+            raise AssertionError("an unknown role should be refused")
+
+
 def test_cli_refuses_a_live_profile_and_writes_a_fragment() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         target = Path(tmp) / "target.dll"
@@ -331,5 +365,6 @@ if __name__ == "__main__":
     test_settings_key_in_two_groups_is_refused()
     test_cli_refuses_a_live_profile_and_writes_a_fragment()
     print("all preflight tests passed")
+
 
 

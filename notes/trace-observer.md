@@ -244,11 +244,38 @@ preflight refused: tag 0X1E2: the file has False but the scenario declares True
 That refusal is the feature working: the record would otherwise claim an observation the
 profile contradicts.
 
-UNVERIFIED, and one UI toggle closes it: that 482's stored name is
-`CHEAT_SAFETY/HACK_SAFE_MODE` (same section as 483's observed entry, same `HACK_` label form)
-rather than some other section prefix. Enabling Safe Mode in the mod and re-reading the file
-either produces that exact name - confirming it - or produces the real one, which the runner
-then takes instead. Guessing it is not an option; observing it costs one toggle.
+**Observed, not inferred (2026-10-27).** Safe Mode was toggled on in the mod, the game was
+quit, and the enabled list went from 53 to 54 entries with `CHEAT_SAFETY/HACK_SAFE_MODE`
+present. That closes the mapping: tag 482 is stored as that profile-list entry, and the runner's
+`--tag-key 0x1E2=flag:CHEAT_SAFETY/HACK_SAFE_MODE` now reads it as `true`.
+
+## Target identity: the installed build is not the release (2026-10-27)
+
+The trace above was produced against a target whose DLL does not match the ground truth. Four
+distinct builds exist in `samples/absolllute.hackmega/`, all 8,697,056 bytes, so only a digest
+separates them:
+
+| File | SHA-256 |
+| --- | --- |
+| `absolllute.hackmega.dll` (what was installed) | `24CEBCAC…AA47996` |
+| `absolllute.hackmega_original.dll` (ground truth) | `1635C339…E1107A92` |
+| `absolllute.hackmega_pre_persistence.dll` | `3B116767…5FED0061` |
+| `absolllute.hackmega_working_aslr.dll` | `3B448741…A47996` |
+
+The installed copy
+(`GD-Runtime-511\geode\unzipped\absolllute.hackmega\absolllute.hackmega.dll`) hashes to
+`24CEBCAC…`, i.e. it is a fourth build, not the release and not either named experiment. No
+false claim was written: those traces carry no `target` at all (no run context), `capture` is
+`partial`, and the fingerprint is zeros.
+
+So a release trace needs the release installed, and `--target` must name the artifact the game
+actually loads - the unzipped copy under the profile - not the sample it was packaged from.
+A release package was built from `_original.dll` and verified to contain
+`1635C339…E1107A92`:
+
+```
+geode package new <temp copy with _original.dll as absolllute.hackmega.dll> -o <temp>.geode
+```
 
 ## First captured run (2026-10-27, `runtime511`)
 
@@ -308,6 +335,15 @@ fields, because the run had no `MH_TRACE_CONTEXT` - no target hash, no scenario,
 and an all-zero `run_fingerprint`. A comparison also needs two variants (release and
 reconstruction) and the manifest's two repetitions per variant.
 
+## Third captured run (2026-10-27, `runtime511`)
+
+Run `5da34cbb-820b-4727-ad15-fcbd55790235` with Safe Mode enabled:
+`valid, 16434 event(s), 0 error(s), 0 warning(s)`, `dropped 0`, `unclosed 0`, 8213 balanced
+hook pairs, 2 `level_started` and 6 `attempt_started`, order group correct, `main` on every
+event, frames 4700..23222, depths 1 and 2. The pipeline is now reproducible across runs.
+
+The target identity check below is the reason this run is still not evidence about the release.
+
 ## Runbook for the first capture (needs the user)
 
 Nothing below has been executed; installing a mod into a profile and launching a game are
@@ -322,9 +358,9 @@ user actions.
    `mods/` directory. Check the target's DLL hash first: all four sample DLLs are 8,697,056
    bytes, so only the digest distinguishes the release from the experiments.
 2. Write the context:
-   `python harness/tools/preflight.py --target samples/absolllute.hackmega/absolllute.hackmega_original.dll --gd <runtime511>/GeometryDash.exe --geode <runtime511>/Geode.dll --harness <installed>/megahack.trace.geode --profile runtime511 --gd-version 2.2081 --geode-version 5.11.2 --scenario <manifest> --settings <runtime511>/hackpro.json --tag-key 0x1E2=<stored key> --repetition 0 --context <path>`
-   The `--tag-key` value is the one unknown (`notes/trace-observer.md` §Settings snapshot); the
-   runner refuses rather than writing a declared value into a record that claims to observe it.
+   `python harness/tools/preflight.py --target <profile>\geode\unzipped\absolllute.hackmega\absolllute.hackmega.dll --gd <runtime511>/GeometryDash.exe --geode <runtime511>/Geode.dll --harness <installed>/megahack.trace.geode --profile runtime511 --gd-version 2.2081 --geode-version 5.11.2 --scenario <manifest> --settings <live hackpro.json> --tag-key 0x1E2=flag:CHEAT_SAFETY/HACK_SAFE_MODE --repetition 0 --context <path>`
+   `--target` is the **installed** DLL (what the game loads), not the sample it was packaged
+   from - the two can differ, and did (see §Target identity).
 3. Launch with `MH_TRACE_CONTEXT=<path>` in the environment, load one level, quit. Without a
    context the trace is still written, with `null` fields and `capture.status: partial`.
 4. The trace appears at `%LOCALAPPDATA%\GeometryDash\geode\mods\megahack.trace\traces\<run_id>.jsonl`

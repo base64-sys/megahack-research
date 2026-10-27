@@ -87,14 +87,28 @@ def build_fragment(
     geode_version: str | None,
     os_name: str = "Windows",
     arch: str = "x86_64",
+    role: str = "release",
+    expected_sha256: str | None = None,
 ) -> dict:
-    """The `target` and `environment` objects of a meta record, as the contract spells them."""
+    """The `target` and `environment` objects of a meta record, as the contract spells them.
+
+    `role` is the variant the caller says this is, and `expected_sha256` pins it: the contract
+    allows only `release` and `reconstruction`, and a role claimed for the wrong bytes would be
+    a false identity in an evidence record, so a mismatch refuses the run.
+    """
+    if role not in {"release", "reconstruction"}:
+        raise PreflightError(f"target.role must be release or reconstruction, got {role!r}")
     target_path = Path(target)
+    digest = sha256_file(target_path)
+    if expected_sha256 is not None and digest != expected_sha256.lower():
+        raise PreflightError(
+            f"target sha256 is {digest} but the run pins {expected_sha256.lower()}"
+        )
     return {
         "target": {
-            "role": "release",
+            "role": role,
             "artifact": target_path.name,
-            "sha256": sha256_file(target_path),
+            "sha256": digest,
             "size": target_path.stat().st_size,
             "image_base": image_base_hex(target_path),
         },
@@ -277,6 +291,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--gd-version", default=None, help="e.g. 2.2081; omitted means unknown")
     parser.add_argument("--geode-version", default=None, help="e.g. 5.11.2")
     parser.add_argument("--profile", default="", help="profile name; 'a' is refused")
+    parser.add_argument("--role", default="release", choices=("release", "reconstruction"),
+                        help="which variant this artifact is")
+    parser.add_argument("--expect-sha256", default=None,
+                        help="pin the target's digest; a mismatch refuses the run")
     parser.add_argument("--out", help="write the fragment here instead of stdout")
     parser.add_argument("--scenario", help="scenario manifest; with --context, supplies its fields")
     parser.add_argument("--repetition", type=int, default=0, help="repetition_index for the context")
@@ -305,6 +323,8 @@ def main(argv: list[str] | None = None) -> int:
             harness=args.harness,
             gd_version=args.gd_version,
             geode_version=args.geode_version,
+            role=args.role,
+            expected_sha256=args.expect_sha256,
         )
         if args.context:
             if not args.scenario:
