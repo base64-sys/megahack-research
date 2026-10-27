@@ -6,8 +6,9 @@ notes/runtime-validation.md forbids those, and a level nobody can regenerate is 
 Two artifacts come out of one declarative spec:
 
 * `<name>.gmd` - the canonical form: GD's own plist dialect, plain text, diffable, and the file
-  whose SHA-256 the scenario manifest pins. It is *our* interchange artifact; GD does not read
-  `.gmd` files.
+  a reader regenerates. It is *our* interchange artifact; GD does not read `.gmd` files. Its
+  SHA-256 is *not* what the scenario manifest pins: `level.sha256` names the level's content
+  digest, which the observer records at `level_started` (see `digest_report`).
 * `CCLocalLevels.dat` - the container GD actually loads, produced by
   `--install <save-dir> --backup-dir <dir>` from the same XML through `gd_save.encode`. The
   write goes through `save_sandbox`, so it is guarded, atomic, read back, and only happens
@@ -29,7 +30,9 @@ from __future__ import annotations
 
 import argparse
 import base64
+import hashlib
 import importlib.util
+import json
 import sys
 from pathlib import Path
 from typing import Iterable
@@ -85,6 +88,35 @@ def encode_level_string(text: str) -> str:
 def decode_level_string(value: str) -> str:
     padded = value.rstrip("=") + "=" * (-len(value.rstrip("=")) % 4)
     return gd_save.gunzip(base64.urlsafe_b64decode(padded)).decode("utf-8")
+
+
+def digest_report(xml: bytes, name: str, author: str,
+                  objects: Iterable[tuple[int, int, int]]) -> dict:
+    """Every digest a reader might need, from the same in-memory level.
+
+    The scenario manifest pins `level.sha256`, and since 2026-10-27 that field means *the digest
+    the observer must record at `level_started`* rather than a digest of the `.gmd` file. So it
+    has to name the level's content, and the two candidate forms are both printed here:
+
+    * `level_string_sha256` - SHA-256 of the decoded object string (`kS38,...;1,1,2,50,3,15;...`),
+      which is what `GJGameLevel::m_levelString` is expected to hold.
+    * `k4_sha256` - SHA-256 of the encoded `k4` text (base64url of gzip), i.e. the same level
+      before decoding. This is the alternative if the game stores the container form.
+
+    Printing both is deliberate: which form the game holds in memory was not established when
+    the manifest was filled, so both were pre-registered and the first observation picks one.
+    `file_sha256` stays as the identity of the `.gmd` interchange artifact, which the manifest
+    no longer pins but a reader still needs for regeneration.
+    """
+    object_string = level_string(objects)
+    body = object_string.encode("utf-8")
+    return {
+        "level_string_sha256": hashlib.sha256(body).hexdigest(),
+        "level_string_bytes": len(body),
+        "k4_sha256": hashlib.sha256(encode_level_string(object_string).encode("ascii")).hexdigest(),
+        "file_sha256": hashlib.sha256(xml).hexdigest(),
+        "file_bytes": len(xml),
+    }
 
 
 def _value(kind: str, value: object) -> str:
@@ -197,9 +229,12 @@ def main(argv: list[str]) -> int:
                         help="a verified save_sandbox backup that must exist before installing")
     parser.add_argument("--name", default="safe-mode-smoke fixture")
     parser.add_argument("--author", default="megahack-research")
+    parser.add_argument("--digests", action="store_true",
+                        help="print the level-string, k4 and file digests as JSON (see "
+                             "digest_report)")
     args = parser.parse_args(argv)
-    if not args.out and not args.install:
-        parser.error("nothing to do: pass --out and/or --install")
+    if not args.out and not args.install and not args.digests:
+        parser.error("nothing to do: pass --out, --install and/or --digests")
     if args.install and not args.backup_dir:
         parser.error(
             "--install needs --backup-dir: run save_sandbox.py --backup first, so the save is "
@@ -215,6 +250,8 @@ def main(argv: list[str]) -> int:
     if args.install:
         target = install(xml, Path(args.install), Path(args.backup_dir))
         print(f"installed {target} ({target.stat().st_size} bytes)")
+    if args.digests:
+        print(json.dumps(digest_report(xml, args.name, args.author, DEFAULT_OBJECTS), indent=2))
     return 0
 
 

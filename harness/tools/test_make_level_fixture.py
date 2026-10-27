@@ -6,6 +6,8 @@
 from __future__ import annotations
 
 import importlib.util
+import hashlib
+import json
 import re
 import sys
 import tempfile
@@ -44,10 +46,43 @@ class LevelStringTest(unittest.TestCase):
         self.assertNotIn("/", encoded)
 
 
+class DigestReportTest(unittest.TestCase):
+    """The manifest pins `level.sha256`; these tests keep the report it comes from honest."""
+
+    def test_matches_hashlib_over_the_same_bytes(self) -> None:
+        xml = render()
+        report = fixture.digest_report(xml, "fixture", "megahack-research", OBJECTS)
+        text = fixture.level_string(OBJECTS).encode("utf-8")
+        self.assertEqual(report["level_string_sha256"], hashlib.sha256(text).hexdigest())
+        self.assertEqual(report["level_string_bytes"], len(text))
+        self.assertEqual(report["file_sha256"], hashlib.sha256(xml).hexdigest())
+        self.assertEqual(report["file_bytes"], len(xml))
+        # The report is printable as-is: it is what fills the manifest.
+        self.assertEqual(json.loads(json.dumps(report)), report)
+
+    def test_k4_digest_names_the_encoded_form(self) -> None:
+        xml = render()
+        report = fixture.digest_report(xml, "fixture", "megahack-research", OBJECTS)
+        encoded = fixture.encode_level_string(fixture.level_string(OBJECTS))
+        self.assertEqual(report["k4_sha256"],
+                         hashlib.sha256(encoded.encode("ascii")).hexdigest())
+
+    def test_the_two_candidate_forms_have_different_digests(self) -> None:
+        # If these ever collided the manifest would not say which form it pins, and the
+        # observation would stop being a discriminator between them.
+        report = fixture.digest_report(render(), "fixture", "megahack-research", OBJECTS)
+        self.assertNotEqual(report["level_string_sha256"], report["k4_sha256"])
+
+    def test_report_is_deterministic(self) -> None:
+        xml = render()
+        first = fixture.digest_report(xml, "fixture", "megahack-research", OBJECTS)
+        second = fixture.digest_report(xml, "fixture", "megahack-research", OBJECTS)
+        self.assertEqual(first, second)
+
+
 class FixtureTest(unittest.TestCase):
     def test_deterministic(self) -> None:
         self.assertEqual(render(), render())
-
     def test_is_a_gd_plist_with_one_level(self) -> None:
         xml = render().decode("utf-8")
         self.assertTrue(xml.startswith(fixture.PLIST_OPEN))
