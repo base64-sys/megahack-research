@@ -83,6 +83,21 @@ MH_TEST(scenario_accepts_the_contract_example_manifest) {
   MH_CHECK(scenario.tolerances.empty());
 }
 
+MH_TEST(scenario_accepts_a_baseline_that_differs_from_the_runtime) {
+  // Two Geode versions in one file is not a contradiction: `baseline` is the static analysis
+  // reference (the release was read against 5.6.1 bindings) and `runtime_baseline` is what a
+  // trace runs on (5.11.2). Neither is an identity row - the gate compares the traces'
+  // `environment.geode.version` against each other - so editing `baseline` must not make a
+  // manifest invalid, and this pins that it stays descriptive.
+  const ScenarioDocument document = mh::read_scenario(example());
+  MH_CHECK(document.valid());
+
+  const ScenarioDocument edited = mh::read_scenario(
+      replaced(example(), R"("geode": "5.6.1")", R"("geode": "9.9.9")"));
+  MH_CHECK(edited.valid());
+  MH_CHECK_EQ(edited.scenario->id, std::string{"safe-mode-smoke"});
+}
+
 MH_TEST(scenario_sha256_is_the_hash_of_the_file_bytes) {
   const std::string text = example();
   const ScenarioDocument document = mh::read_scenario(text);
