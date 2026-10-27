@@ -414,8 +414,19 @@ Fields Geode 5.11.2 exposes are filled (`module`, `priority`); the rest of the c
 
 This is the difference that matters for a comparison: a release run and a reconstruction run
 over the same session produce the same keys and the same order, and differ in `hook.target`.
-Still UNVERIFIED until a run is made: whether the release's `$modify` hooks are visible through
-`Mod::getHooks()` at all (Geode tracks modify-generated hooks, but only a run proves it).
+**Verified in a run (2026-10-27).** Every hook event names the target's own hook module:
+
+```
+GeometryDash.exe:rva:0x397f40   76  absolllute.hackmega.dll priority=3032
+GeometryDash.exe:rva:0x3981d0  110  absolllute.hackmega.dll priority=-32
+GeometryDash.exe:rva:0x3b4ba0 6254  absolllute.hackmega.dll priority=3032
+GeometryDash.exe:rva:0x3b8eb0    6  absolllute.hackmega.dll priority=3032
+```
+
+So Geode 5.11.2 does expose modify-generated hooks through `Mod::getHooks()`, the release's own
+detour is visible at every site the observer hooks, and the two priorities (3032 for three
+sites, -32 for `releaseButton`) are real per-hook metadata rather than a constant. This is the
+second angle a comparison needs: same keys, same order, different owning module.
 
 ## The run-context handshake, and why the environment was the wrong place for it (2026-10-27)
 

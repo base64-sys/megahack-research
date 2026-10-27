@@ -490,30 +490,39 @@ $on_mod(Loaded) {
     mh::json::Json body = object();
     std::string fingerprint = kUnknownDigest;
 
-    // The runner normally names the context with MH_TRACE_CONTEXT, but the environment does not
-    // always survive however the game was started, so a file in the mod's own data directory is
-    // the reliable handshake: the runner drops it, the observer consumes it.
-    std::string context_path;
-    const char* from_environment = std::getenv("MH_TRACE_CONTEXT");
-    if (from_environment && *from_environment) {
-        context_path = from_environment;
+    // Two ways to hand over the run context: `MH_TRACE_CONTEXT` names a file explicitly, and a
+    // `pending-context.json` in the mod's own data directory covers every launch that does not
+    // inherit the environment. A path that fails to load must not disable the other one - a
+    // stale variable naming a consumed file silently cost a run once.
+    std::vector<std::string> candidates;
+    if (const char* from_environment = std::getenv("MH_TRACE_CONTEXT"); from_environment && *from_environment) {
+        candidates.emplace_back(from_environment);
     }
-    else {
+    {
         std::error_code error;
         const std::filesystem::path pending =
             Mod::get()->getSaveDir() / "pending-context.json";
         if (std::filesystem::exists(pending, error)) {
-            context_path = pending.string();
+            const std::string path = pending.string();
+            if (candidates.empty() || candidates.front() != path) {
+                candidates.push_back(path);
+            }
         }
     }
 
-    if (!context_path.empty()) {
-        if (!load_run_context(context_path, body, fingerprint, capture)) {
-            capture.status = mh::CaptureStatus::partial;
-            mark_unobserved(capture, "run_context",
-                            "the run context was rejected; the log names why");
-            body = object();
+    bool loaded = false;
+    for (const std::string& candidate : candidates) {
+        if (load_run_context(candidate, body, fingerprint, capture)) {
+            loaded = true;
+            break;
         }
+        body = object();
+        capture = mh::Capture();
+    }
+    if (!loaded && !candidates.empty()) {
+        capture.status = mh::CaptureStatus::partial;
+        mark_unobserved(capture, "run_context",
+                        "no run context loaded; the log names each path that was tried");
     }
 
     if (body.members().empty()) {
