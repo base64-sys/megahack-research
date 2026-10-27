@@ -344,6 +344,46 @@ event, frames 4700..23222, depths 1 and 2. The pipeline is now reproducible acro
 
 The target identity check below is the reason this run is still not evidence about the release.
 
+## Fourth captured run: evidence-grade (2026-10-27)
+
+Run `661c34c2-b35d-47c3-acac-c8b56463ab24`, with `MH_TRACE_CONTEXT` pointing at a context
+built against the release artifact:
+
+```
+valid, 8811 event(s), 0 error(s), 0 warning(s), meta present, end present
+capture: complete (no missing fields)
+run_fingerprint: 428e8e6e47d34355a6e81e8488c6b285d6448ba745008b46a59e4ea420ad6f76
+```
+
+| meta field | value |
+| --- | --- |
+| `target` | `absolllute.hackmega.dll`, `1635c339…e1107a92`, 8,697,056, `0x180000000`, role `release` |
+| `scenario` | `safe-mode-smoke`, `06b35d09…` |
+| `settings.tags` | `[{tag 0x1E2, HACK_SAFE_MODE, value true, source settings}]` |
+| `settings.snapshot_sha256` | `bc941968…` |
+| `mods` | observer `0.1.0` + target `9.1.3` (written by the observer from the live mod list) |
+| counts | 8,811 attempted, 0 dropped, 0 unclosed, 4,403 balanced pairs |
+| milestones | 1 `level_started`, 4 `attempt_started` |
+
+That is the first trace this project can call evidence: real hashes, real settings, a
+deterministic fingerprint, and nothing missing. Repetition 1 of the same context exists
+(`ctx-run1.json`, `repetition_index: 1`).
+
+## What still blocks a comparison
+
+Two things, neither of them in the observer:
+
+1. **The reconstruction cannot emit traces.** `reconstruction/` is a host-testable core plus a
+   `geode/entry.hpp` shim; it has no `$modify` hooks and produces no loadable mod, so there is
+   no second variant to compare against. It needs to become a Geode mod (own id, own package)
+   that installs the same four hooks and two milestones through this harness.
+2. **Nothing in a trace currently depends on the target.** The observer reports the hook it
+   installed, and `hook.target` is always `null` - so a release trace and a reconstruction trace
+   of the same GD session would align trivially. To make the comparison mean something, the
+   trace has to carry target-dependent evidence: the target's own detour identity
+   (`hook.target`: registration VA, callback VA, tag) and/or effect events such as `save`
+   records for the `savePercentage` veto. That is the next design question, not a coding gap.
+
 ## Runbook for the first capture (needs the user)
 
 Nothing below has been executed; installing a mod into a profile and launching a game are
