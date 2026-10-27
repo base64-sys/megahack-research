@@ -14,7 +14,7 @@ evidence (test name, gate output, commit subject).
 | 1 | harness skeleton: CMakeLists.txt, tests/ runner, PROGRESS.md | done |
 | 2 | Value model: observed(u64, i32, f32 with bits, bool, str, bytes, ptr), null, unavailable, redacted; equality rules; JSON serialisation | done |
 | 3 | Canonical JSON writer: sorted keys, no insignificant whitespace, UTF-8, plus run_fingerprint as SHA-256 over the canonical object (own SHA-256, no deps) | done |
-| 4 | Trace writer: meta/event/end, seq from 0, attempted/dropped counters, capture status, JSONL, no BOM | pending |
+| 4 | Trace writer: meta/event/end, seq from 0, attempted/dropped counters, capture status, JSONL, no BOM | done |
 | 5 | Call pairing and call-stack validation: unique call_id, depth/parent chain, unclosed enters, exit without enter, reused id | pending |
 | 6 | Trace reader/validator: required keys present, seq gaps, end record required, capture gate | pending |
 | 7 | Scenario manifest parser and validator (mh-scenario/1): required fields, status vocabulary, level/profile/settings rules | pending |
@@ -111,6 +111,37 @@ evidence (test name, gate output, commit subject).
   `fingerprint_is_stable_for_identical_input`,
   `fingerprint_changes_when_any_member_changes`, `fingerprint_tag_order_matters`.
 - Build: `34 test(s), 0 failed`, `ctest` `100% tests passed out of 1`.
+
+### Item 4 — trace writer
+
+- Files: `include/mh/trace_writer.hpp`, `src/trace_writer.cpp`,
+  `tests/test_trace_writer.cpp`; `json::Json` gained a narrow `string_value()` accessor so
+  the writer can read `kind`/`phase` without probing the tree.
+- Seam: the writer owns identity (`run_id`, `run_fingerprint`), ordering (`seq` assigned
+  before the write is attempted), counting and line format; the observer supplies the
+  payload. A payload that tries to set an envelope key is rejected with
+  `std::invalid_argument` — otherwise the file's own counters and its records could
+  disagree. An event without `kind` is likewise rejected.
+- Consequences of §Trace format written as code: `seq` is consumed even when the write
+  fails, `meta`/`end` are excluded from `attempted`, and `hook_enter`/`hook_exit`/`errors`
+  are derived from the payload rather than accepted from the caller. `counts.unclosed` is
+  an input, because only call-stack validation (item 5) can see an enter that never exits.
+- A lost `meta` does not close the writer: events stay attemptable so
+  `end.counts.dropped` can report the loss. `meta_written()` is false in that case;
+  the precondition for events is "meta attempted".
+- `open_trace_file()` opens binary/truncated so Windows cannot rewrite LF as CRLF. No BOM
+  is ever written.
+- Tests (10): `trace_writer_meta_is_seq_zero_and_first_line`,
+  `trace_writer_event_envelope_is_complete`,
+  `trace_writer_seq_increments_per_attempted_event`,
+  `trace_writer_counts_written_and_dropped_events`,
+  `trace_writer_derives_hook_and_error_counters`,
+  `trace_writer_end_carries_counts_and_null_artifacts`,
+  `trace_writer_capture_statuses_serialise_without_dangling_lists`,
+  `trace_writer_refuses_payload_envelope_keys`,
+  `trace_writer_requires_meta_first_and_closes_after_end`,
+  `trace_file_is_lf_terminated_utf8_without_bom`.
+- Build: `44 test(s), 0 failed`, `ctest` `100% tests passed out of 1`.
 
 ## Open questions
 

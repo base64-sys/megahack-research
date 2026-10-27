@@ -5,6 +5,7 @@ add_executable(mh_trace_tests
   test_json.cpp
   test_sha256.cpp
   test_fingerprint.cpp
+  test_trace_writer.cpp
 )
 
 target_link_libraries(mh_trace_tests PRIVATE mh_trace)

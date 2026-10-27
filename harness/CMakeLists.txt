@@ -21,6 +21,7 @@ add_library(mh_trace STATIC
   src/json.cpp
   src/sha256.cpp
   src/fingerprint.cpp
+  src/trace_writer.cpp
 )
 
 target_include_directories(mh_trace PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
