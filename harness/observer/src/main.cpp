@@ -187,6 +187,31 @@ bool load_run_context(const char* path, mh::json::Json& body, std::string& finge
     return true;
 }
 
+// The mods that are actually loaded, which only the runtime knows. Used for both the context
+// path and the fallback: the runner cannot know what happened to load.
+mh::json::Json build_mods_list() {
+    mh::json::Json observer = object();
+    observer.set("id", mh::json::Json::string(std::string(mh::contract::kHarnessId)));
+    observer.set("role", mh::json::Json::string("observer"));
+    observer.set("version", mh::json::Json::string(std::string(mh::contract::kHarnessVersion)));
+    observer.set("sha256", mh::json::Json::null());
+
+    mh::json::Json mods = mh::json::Json::array();
+    mods.push(std::move(observer));
+    for (Mod* mod : Loader::get()->getAllMods()) {
+        if (mod && mod->getID() == "absolllute.hackmega") {
+            mh::json::Json target_mod = object();
+            target_mod.set("id", mh::json::Json::string("absolllute.hackmega"));
+            target_mod.set("role", mh::json::Json::string("target"));
+            target_mod.set("version", mh::json::Json::string(mod->getVersion().toNonVString()));
+            target_mod.set("sha256", mh::json::Json::null());
+            mods.push(std::move(target_mod));
+            break;
+        }
+    }
+    return mods;
+}
+
 mh::ThreadInfo current_thread(const Session& session) {
     mh::ThreadInfo info;
     if (std::this_thread::get_id() == session.load_thread) {
@@ -467,25 +492,7 @@ $on_mod(Loaded) {
     body.set("environment", std::move(environment));
 
     mh::json::Json observer = object();
-    observer.set("id", mh::json::Json::string(std::string(mh::contract::kHarnessId)));
-    observer.set("role", mh::json::Json::string("observer"));
-    observer.set("version", mh::json::Json::string(std::string(mh::contract::kHarnessVersion)));
-    observer.set("sha256", mh::json::Json::null());
-
-    mh::json::Json mods = mh::json::Json::array();
-    mods.push(std::move(observer));
-    for (Mod* mod : Loader::get()->getAllMods()) {
-        if (mod && mod->getID() == "absolllute.hackmega") {
-            mh::json::Json target_mod = object();
-            target_mod.set("id", mh::json::Json::string("absolllute.hackmega"));
-            target_mod.set("role", mh::json::Json::string("target"));
-            target_mod.set("version", mh::json::Json::null());
-            target_mod.set("sha256", mh::json::Json::null());
-            mods.push(std::move(target_mod));
-            break;
-        }
-    }
-    body.set("mods", std::move(mods));
+    body.set("mods", build_mods_list());
 
     mh::json::Json settings = object();
     settings.set("reset", mh::json::Json::string("defaults"));
@@ -507,6 +514,11 @@ $on_mod(Loaded) {
 
     if (!has_member(body, "created_utc")) {
         body.set("created_utc", mh::json::Json::string(utc_now()));
+    }
+    // Loaded mods are a runtime fact, so the observer states them even when the runner supplied
+    // the rest of the meta.
+    if (!has_member(body, "mods")) {
+        body.set("mods", build_mods_list());
     }
 
     session->writer = std::make_unique<mh::TraceWriter>(
