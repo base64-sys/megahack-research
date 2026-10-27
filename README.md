@@ -200,7 +200,7 @@ fresh clone with CMake and a compiler.
 ```powershell
 cmake -S harness -B harness/build -G Ninja
 cmake --build harness/build
-ctest --test-dir harness/build --output-on-failure     # 162 tests
+ctest --test-dir harness/build --output-on-failure     # 6 entries, 189 cases
 ```
 
 The fixtures are the contract's own worked examples, extracted from the note by
@@ -208,16 +208,21 @@ The fixtures are the contract's own worked examples, extracted from the note by
 must validate and round-trip byte for byte, and the example manifest must validate while
 staying `draft` and therefore ineligible for evidence. The synthetic corpus produces one
 comparison pair per result status (`pass`, `pass_with_warnings`, `fail`, `blocked`,
-`unstable`, `invalid`).
+`unstable`, `invalid`). The record shapes the observer emits are built by
+`harness/include/mh/records.hpp` and pinned byte-for-byte against a captured trace, so a mod
+cannot drift from the contract without a test failing.
 
-This proves the contract is executable; it is **not** runtime validation. The Geode observer
-that emits traces does not exist yet, so M3's "validated against release behaviour" criterion
-still needs a captured release-versus-reconstruction pair. Method, evidence and open questions:
-[trace-harness.md](notes/trace-harness.md); running log: [harness/PROGRESS.md](harness/PROGRESS.md).
+Proving the contract is executable is not runtime validation. The Geode observer
+(`megahack.trace`) and the second comparison target (`megahack.reconstruction`) both build and
+package; a release-versus-reconstruction comparison still needs two captures per variant, and
+the level fixture the manifest names does not exist yet. Method, evidence and open questions:
+[trace-harness.md](notes/trace-harness.md), [trace-observer.md](notes/trace-observer.md),
+[reconstruction-variant.md](notes/reconstruction-variant.md); running logs:
+[harness/PROGRESS.md](harness/PROGRESS.md), [harness/OBSERVER-PROGRESS.md](harness/OBSERVER-PROGRESS.md).
 
 ## Notes map
 
-`notes/` holds 80 files and no index beyond this one. Start with the subsystem, not the
+`notes/` holds 82 files and no index beyond this one. Start with the subsystem, not the
 feature.
 
 | Theme | Notes |
@@ -230,7 +235,7 @@ feature.
 | Persistence | `persistence`, `save-lifecycle`, `import-dt` |
 | Features | one `<feature>-feature.md` per mapped feature, plus `unlock-bypasses` |
 | Android parity | `android-abi`, `android-symbol-parity`, `android-string-parity`, `android-input-parity` |
-| Validation and state | `feature-inventory`, `m3-validation`, `runtime-validation`, `runtime-validation-handoff`, `trace-harness`, `geode-skeleton`, `portable-build` |
+| Validation and state | `feature-inventory`, `m3-validation`, `runtime-validation`, `runtime-validation-handoff`, `trace-harness`, `trace-observer`, `reconstruction-variant`, `geode-skeleton`, `portable-build` |
 
 ## Sample tooling
 

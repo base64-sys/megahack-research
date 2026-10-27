@@ -24,6 +24,9 @@ evidence (test name, gate output, commit subject).
 | 10 | Ordering groups and value comparison: main-thread only, tolerance formula with a mandatory "why", result statuses | done |
 | 11 | Synthetic corpus: one pair per status (pass, pass_with_warnings, fail, blocked, unstable, invalid), including the seven-line example trace from notes/runtime-validation.md, which must validate and round-trip | done |
 | 12 | Docs: README harness section and notes/trace-harness.md test matrix | done |
+| 13 | Record builders in the core (`mh/records.hpp`): hook/call/milestone/save/error objects as pure functions, pinned byte-for-byte against a captured trace | done |
+| 14 | Claim class on the comparison report: `surface` vs `behavioural`, derived from the manifest's *required* observations and printed only when a pass exists | done |
+| 15 | Placeholder digests are `blocked`, not `invalid`; a gate row satisfied only because both sides are zeros does not pass | done |
 
 ## Evidence log
 
@@ -412,6 +415,35 @@ evidence (test name, gate output, commit subject).
   that the reconstruction behaves like the release. The Notes map gained `trace-harness` and
   the file count moved 79 → 80.
 - No roadmap criterion is marked complete.
+
+### Item 13–15 — the comparison can now say what a pass proves
+
+- Files: `harness/include/mh/records.hpp` + `harness/src/records.cpp`,
+  `harness/tests/test_records.cpp`, `harness/tests/fixtures/records_captured.jsonl`,
+  `harness/tools/verify_record_bytes.py` + `harness/tools/test_verify_record_bytes.py`;
+  `harness/include/mh/compare.hpp` + `harness/src/compare.cpp` + `harness/tests/test_compare.cpp`;
+  `harness/include/mh/comparator.hpp` + `harness/src/comparator.cpp`.
+- The record shapes moved out of the observer into the core, because a second emitter (or a
+  second mod) with one drifted key would make a comparison lie without failing anything. The
+  observer now contains no record-building code; `verify_record_bytes.py` fails if `"kind"`
+  reappears in its main.cpp.
+- Byte identity, two angles: the fixture is the payload of two records from run
+  `8a59be9e…`, and the same payloads re-derived from the live capture are `identical`. The
+  first attempt at the milestone builder used a JSON `null` for `data`; the capture has
+  `{"state":"null"}` and the byte test caught it, which is the whole reason for the exercise.
+- `ClaimClass` is derived, not declared: `behavioural` needs the manifest to *require* a
+  target-dependent observation (registry: `0x16c8b0` → `save`) **and** both variants to
+  contain it. `safe-mode-smoke` lists that site as optional, so it derives to `surface`.
+- Placeholders: `is_placeholder_digest` = 64 zeros. A digest row with a placeholder on either
+  side is `blocked` with a finding naming the field. The level row needed an explicit test
+  because the trace's `level.sha256` comes from the manifest, so both sides are the same zeros
+  and an equality test would pass having compared nothing.
+- Consequence worth naming: a single run per variant used to report `invalid`; it is missing
+  evidence, so the runs row is now `blocked`.
+- Build: `189 test(s), 0 failed`; ctest `100% tests passed out of 6`.
+- Not done: nothing claims `behavioural` yet (the save site never fired), and the manifest's
+  `level.sha256` stays a placeholder until a level fixture exists.
+- Commit: `feat(compare): derive the claim a pass can support`.
 
 ## Open questions
 

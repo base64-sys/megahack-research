@@ -20,7 +20,9 @@ Status vocabulary: `pending`, `in progress`, `done`, `blocked`.
 | O6 | Milestones and frames: `level_started`/`attempt_started` milestone records and a real `frame` on every event, which the pilot manifest requires | done (build only) |
 | O7 | Settings snapshot: `snapshot_sha256` from the settings file, and `settings.tags` read from it (never copied from the manifest), with a tag-to-key mapping the operator supplies and the runner verifies | done (mechanism; the safe-mode key itself is unknown - see the note) |
 | O5a | First capture in runtime511 and a real `read_trace` pass: hooks fire, main-thread role, milestone order, enter/exit balance | done (2026-10-27, 17097 events, 0 errors) |
-| O5b | Evidence-grade run: `MH_TRACE_CONTEXT` with hashes/scenario/settings, two repetitions per variant, then the release-vs-reconstruction comparison | blocked on the settings tag key and a reconstruction variant |
+| O5b | Evidence-grade run: `MH_TRACE_CONTEXT` with hashes/scenario/settings, two repetitions per variant, then the release-vs-reconstruction comparison | blocked: needs two captures per variant, and the manifest's level fixture does not exist yet |
+| O8 | Record shapes moved into the portable core (`mh/records.hpp`), observer refactored onto them, byte identity proven against a captured trace | done (2026-10-27, 189 cases; the changed path is unproven in a run until O5b captures again) |
+| O9 | Second comparison target `megahack.reconstruction`: own id, own package, the observed hook surface and no behaviour | done (build + package; no run yet) |
 
 ## Evidence log
 
