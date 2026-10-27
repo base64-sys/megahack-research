@@ -85,12 +85,19 @@ mh::EventContext context(std::int64_t t_ns, std::int64_t frame) {
   return ctx;
 }
 
-Json milestone_body(std::string_view name) {
+Json milestone_body(std::string_view name, std::string_view digest = {}) {
   Json body = Json::object();
   body.set("kind", Json::string("milestone"));
   body.set("name", Json::string(name));
   Json data = Json::object();
-  data.set("state", Json::string("null"));
+  if (digest.empty()) {
+    data.set("state", Json::string("null"));
+  } else {
+    // `level_started` carries the digest of the level's object string, lower-case hex.
+    data.set("state", Json::string("observed"));
+    data.set("type", Json::string("str"));
+    data.set("value", Json::string(digest));
+  }
   body.set("data", data);
   return body;
 }
@@ -231,7 +238,7 @@ std::string build_trace(const TraceOptions& options) {
                                               sha('0')});
   writer.write_meta(meta_body(resolved), mh::Capture{});
 
-  writer.write_event(milestone_body("level_started"), context(100, 0));
+  writer.write_event(milestone_body("level_started", sha('d')), context(100, 0));
   if (resolved.emit_hook) {
     writer.write_event(hook_body("enter", "c1", resolved.hook_feature_enabled),
                        context(150, 1));

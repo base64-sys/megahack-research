@@ -57,6 +57,10 @@ struct VariantSummary {
   std::string geode_version;
   std::string level_sha256;
   std::string level_source;
+  // What each run *observed*: the level digest recorded in `level_started`'s value object,
+  // lower-case hex like the manifest. Empty for a run that recorded none, so "not observed"
+  // stays distinguishable from "observed as empty".
+  std::vector<std::string> level_observed;
   std::string scenario_id;
   std::string scenario_sha256;
   json::Json settings_tags = json::Json::array();

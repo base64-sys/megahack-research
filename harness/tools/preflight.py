@@ -29,7 +29,7 @@ if str(_SCRIPTS) not in sys.path:
 import pe_rva  # noqa: E402
 
 HARNESS_ID = "megahack.trace"
-HARNESS_VERSION = "0.1.0"
+HARNESS_VERSION = "0.1.1"
 
 # The default profile is the live Steam install. A run against it can write a player's save,
 # so it is refused by name and, independently, by the path it points at.

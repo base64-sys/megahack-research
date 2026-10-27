@@ -154,7 +154,10 @@ std::string build_trace(const TraceOptions& options, bool save_site_required) {
                                               sha('0')});
   writer.write_meta(meta_body(options, manifest), mh::Capture{});
 
-  writer.write_event(mh::records::milestone_event("level_started"), context(100, 0));
+  writer.write_event(
+      mh::records::milestone_event("level_started",
+                                   mh::Value::observed_str(sha('d'))),
+      context(100, 0));
   writer.write_event(
       mh::records::hook_event("enter", reset_level(), Json::null(),
                               mh::records::call_object("c1", 1, std::nullopt, 0)),

@@ -578,15 +578,27 @@ class $modify(TracePlayLayer, PlayLayer) {
         // resetLevel itself, and the manifest's order group requires level_started first.
         // A failed init therefore still records the attempt, which is the honest reading.
         //
-        // The level's name is player data and notes/runtime-validation.md requires it to be
-        // redacted, so it is never read: the string does not enter this process' string
-        // handling at all, which is why an unusual name - non-UTF-8, embedded NUL, very long -
-        // cannot reach the writer. A null level is "unavailable", a different fact from
-        // "redacted", so the two states stay distinguishable.
-        const mh::Value observed =
-            level != nullptr
-                ? mh::Value::redacted("level name is player data")
-                : mh::Value::unavailable("no level was passed to PlayLayer::init");
+        // The level's *content* digest is observed; its name is not read at all. A digest is
+        // derived data (notes/runtime-validation.md, "Value objects"), while a name is player
+        // data that must be redacted - and a digest of a name would still be a name, because
+        // names are low-entropy and guessable.
+        //
+        // `m_levelString` is the binding's 2.2081 field (GJGameLevel.hpp:487). Whether it holds
+        // the encoded `k4` text or the decoded object string is not established here, and the
+        // gate does not need to know: the manifest pins whichever form the trace shows.
+        //
+        // The digest travels as a lower-case hex string, the same spelling the manifest uses, so
+        // the comparator compares two strings and cannot drift over an encoding.
+        //
+        // A null level is "unavailable", a different fact from "no digest", so the two states
+        // stay distinguishable.
+        mh::Value observed = mh::Value::unavailable("no level was passed to PlayLayer::init");
+        if (level != nullptr) {
+            const std::string level_string = level->m_levelString.c_str();
+            observed = level_string.empty()
+                           ? mh::Value::unavailable("the level string was empty at PlayLayer::init")
+                           : mh::Value::observed_str(mh::sha256_hex(level_string));
+        }
         emit_milestone("level_started", &observed);
         return PlayLayer::init(level, useReplay, dontCreateObjects);
     }

@@ -96,15 +96,18 @@ def digest_report(xml: bytes, name: str, author: str,
 
     The scenario manifest pins `level.sha256`, and since 2026-10-27 that field means *the digest
     the observer must record at `level_started`* rather than a digest of the `.gmd` file. So it
-    has to name the level's content, and the two candidate forms are both printed here:
+    has to name the level's content, and both candidate forms are printed here:
 
     * `level_string_sha256` - SHA-256 of the decoded object string (`kS38,...;1,1,2,50,3,15;...`),
-      which is what `GJGameLevel::m_levelString` is expected to hold.
+      the form `GJGameLevel::m_levelString` was *expected* to hold.
     * `k4_sha256` - SHA-256 of the encoded `k4` text (base64url of gzip), i.e. the same level
-      before decoding. This is the alternative if the game stores the container form.
+      before decoding, which is the alternative if the game stores the container form. **This is
+      the one the game holds**: run `65d0bde5` observed exactly this digest at `level_started`,
+      and the manifest pins it. `level_string_sha256` is kept because it is the digest of what
+      the level *means*, and a future build that decodes on load would show that instead.
 
-    Printing both is deliberate: which form the game holds in memory was not established when
-    the manifest was filled, so both were pre-registered and the first observation picks one.
+    The first observation is what resolved the two; it is recorded in notes/gd-save-format.md
+    rather than inferred here, because this tool cannot see the game.
     `file_sha256` stays as the identity of the `.gmd` interchange artifact, which the manifest
     no longer pins but a reader still needs for regeneration.
     """

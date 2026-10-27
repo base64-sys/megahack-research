@@ -69,6 +69,9 @@ VariantSummary variant(std::string role, std::string target_sha256,
   summary.scenario_sha256 = manifest.sha256;
   summary.settings_tags = scenario.settings_tags;
   summary.runs = 2;
+  // A run that observed the manifest's fixture. The observation row has its own tests below;
+  // this helper is the "everything matches" baseline the identity rows are tested against.
+  summary.level_observed = {scenario.level_sha256, scenario.level_sha256};
   return summary;
 }
 
@@ -252,6 +255,39 @@ MH_TEST(comparator_gate_invalidates_a_different_level) {
   const GateResult result = mh::check_comparability(manifest, release, reconstruction);
   MH_CHECK_EQ(result.status, GateStatus::invalid);
   MH_CHECK(has_check(result, "level"));
+}
+
+MH_TEST(comparator_gate_invalidates_a_level_observation_that_is_not_the_fixture) {
+  // The row that turns "the manifest agrees with itself" into evidence: every run must have
+  // started the level whose digest the manifest pins.
+  const mh::ScenarioDocument manifest = example_scenario();
+  const VariantSummary release = variant("release", manifest.scenario->release_sha256, manifest);
+  VariantSummary reconstruction =
+      variant("reconstruction", manifest.scenario->reconstruction_sha256, manifest);
+  reconstruction.level_observed[0] = std::string(64, 'e');
+
+  const GateResult result = mh::check_comparability(manifest, release, reconstruction);
+  MH_CHECK_EQ(result.status, GateStatus::invalid);
+  MH_CHECK(has_check(result, "level_observed"));
+}
+
+MH_TEST(comparator_gate_blocks_when_a_run_did_not_observe_the_level_digest) {
+  // Absence of an observation is not agreement, so it is `blocked`, not `invalid`.
+  const mh::ScenarioDocument manifest = example_scenario();
+  const VariantSummary release = variant("release", manifest.scenario->release_sha256, manifest);
+  VariantSummary reconstruction =
+      variant("reconstruction", manifest.scenario->reconstruction_sha256, manifest);
+  reconstruction.level_observed[1].clear();
+
+  const GateResult result = mh::check_comparability(manifest, release, reconstruction);
+  MH_CHECK_EQ(result.status, GateStatus::blocked);
+  MH_CHECK(has_check(result, "level_observed"));
+
+  // A variant with no runs at all is equally unobserved, not silently passing.
+  VariantSummary empty =
+      variant("reconstruction", manifest.scenario->reconstruction_sha256, manifest);
+  empty.level_observed.clear();
+  MH_CHECK(has_check(mh::check_comparability(manifest, release, empty), "level_observed"));
 }
 
 MH_TEST(comparator_gate_invalidates_different_settings_tags) {
@@ -467,6 +503,10 @@ MH_TEST(comparator_gate_summarises_a_variant_from_traces) {
   MH_CHECK_EQ(summary.scenario_id, std::string{"safe-mode-smoke"});
   MH_CHECK_EQ(summary.target_sha256,
               std::string{"1635c3391e853d68eb718965a756fd411ec6a876c23c0b92db508366e1107a92"});
+  // This fixture's `level_started` carries the model's null value, which is "nothing was
+  // observed" - not an observation of an empty level.
+  MH_CHECK_EQ(summary.level_observed.size(), std::size_t{1});
+  MH_CHECK(summary.level_observed.front().empty());
 }
 
 MH_TEST(comparator_gate_summary_counts_an_incomplete_trace_as_crashed) {

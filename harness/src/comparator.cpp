@@ -266,6 +266,24 @@ VariantSummary summarize_variant(std::string_view role,
     const std::int64_t unclosed = integer_at(end, {"counts", "unclosed"});
     summary.dropped_events += dropped;
     summary.unclosed_calls += unclosed;
+
+    // The level digest this run observed. `level_started` carries it as a hex string value; a
+    // run that recorded `unavailable` or `redacted` leaves an empty string here, which the gate
+    // treats as "not observed" rather than as a mismatch.
+    std::string observed;
+    for (const json::Json& event : run.events) {
+      if (string_at(event, {"kind"}) != "milestone" ||
+          string_at(event, {"name"}) != "level_started") {
+        continue;
+      }
+      const json::Json* data = node_at(event, {"data"});
+      if (data == nullptr || string_at(*data, {"state"}) != "observed") {
+        continue;
+      }
+      observed = string_at(*data, {"value"});
+      break;
+    }
+    summary.level_observed.push_back(observed);
   }
 
   // "no unavailable required fields" (§Comparability gate, Completeness).
@@ -372,7 +390,7 @@ GateResult check_comparability(const ScenarioDocument& scenario_document,
     add_gate_issue(result, "runtime", "runtime Geode version differs between variants");
   }
 
-  // -- Level: same fixture SHA-256 and source ----------------------------
+  // -- Level: the manifest names a fixture, and the traces must show it ran ----
   if (is_placeholder_digest(scenario.level_sha256) ||
       is_placeholder_digest(release.level_sha256) ||
       is_placeholder_digest(reconstruction.level_sha256)) {
@@ -387,6 +405,37 @@ GateResult check_comparability(const ScenarioDocument& scenario_document,
   if (release.level_source != scenario.level_source ||
       reconstruction.level_source != scenario.level_source) {
     add_gate_issue(result, "level", "level source does not match the manifest");
+  }
+
+  // The row above compares the run context (copied from the manifest) with the manifest, so on
+  // its own it proves nothing about which level the game loaded. This is the observation that
+  // does: every run must have recorded the digest of the level it started, and that digest must
+  // be the fixture's. A run that recorded nothing is `blocked`, because absence of an
+  // observation is not agreement.
+  if (!is_placeholder_digest(scenario.level_sha256)) {
+    const auto first_unobserved = [](const VariantSummary& variant) {
+      for (const std::string& digest : variant.level_observed) {
+        if (digest.empty()) {
+          return true;
+        }
+      }
+      return variant.level_observed.empty();
+    };
+    if (first_unobserved(release) || first_unobserved(reconstruction)) {
+      add_gate_issue(result, "level_observed",
+                     "a run did not record the digest of the level it started",
+                     GateIssueSeverity::blocked);
+    } else {
+      for (const VariantSummary* variant : {&release, &reconstruction}) {
+        for (const std::string& digest : variant->level_observed) {
+          if (digest != scenario.level_sha256) {
+            add_gate_issue(result, "level_observed",
+                           "a run started a level whose digest is not the manifest's fixture");
+            break;
+          }
+        }
+      }
+    }
   }
 
   // -- Settings: same semantic tags, file hashes may differ --------------

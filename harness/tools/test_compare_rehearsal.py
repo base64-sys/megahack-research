@@ -6,11 +6,15 @@ synthetic traces from `tests/fixtures/example_trace.jsonl` (already a known-vali
 rewrites the fields a run would differ in - target identity, harness and scenario digests, and
 the owning module in `hook.target`.
 
-Three cases, all with temporary files:
+Six cases, all with temporary files:
 
-* the committed manifest still blocks on its level placeholder, and prints no claim;
-* a manifest whose `level.sha256` is filled produces a `pass` and a `claim: surface` line;
-* one reconstruction run that is missing a required hook fails, so the pass above is not vacuous.
+* a manifest that still carries the all-zero level placeholder blocks, and prints no claim;
+* a run whose `level_started` recorded no digest blocks - absence is not agreement;
+* a run that observed a different level digest is `invalid`;
+* a manifest whose `level.sha256` is filled and observed produces a `pass` and
+  `claim: surface`;
+* one reconstruction run that is missing a required hook fails, so the pass above is not vacuous;
+* one hook missing from a whole variant is a named failure.
 
     python harness/tools/test_compare_rehearsal.py
 
@@ -45,14 +49,17 @@ def template() -> tuple[dict, dict]:
 
 
 def build_trace(*, run_id: str, role: str, artifact: str, target_sha256: str, module: str,
-                scenario_sha256: str, harness_sha256: str, level_sha256: str,
-                fingerprint: str, omit_keys: tuple[str, ...] = ()) -> str:
+                scenario_sha256: str, harness_sha256: str, harness_version: str,
+                level_sha256: str,
+                fingerprint: str, omit_keys: tuple[str, ...] = (),
+                level_data: dict | None = None) -> str:
     meta, end = template()
     meta = copy.deepcopy(meta)
     meta.update(run_id=run_id, run_fingerprint=fingerprint, seq=0, t_ns=0)
     meta["target"].update(role=role, artifact=artifact, sha256=target_sha256)
     meta["scenario"]["sha256"] = scenario_sha256
     meta["environment"]["harness"]["sha256"] = harness_sha256
+    meta["environment"]["harness"]["version"] = harness_version
     meta["environment"]["gd"]["sha256"] = HEX64
     meta["environment"]["geode"]["sha256"] = HEX64
     meta["settings"]["snapshot_sha256"] = HEX64
@@ -75,7 +82,9 @@ def build_trace(*, run_id: str, role: str, artifact: str, target_sha256: str, mo
         events.append(record)
 
     event("milestone", name="level_started",
-          data={"state": "redacted", "reason": "level name is player data"})
+          data=level_data if level_data is not None else {
+              # What the observer records: the digest of the level's object string, hex.
+              "state": "observed", "type": "str", "value": level_sha256})
     event("milestone", name="attempt_started", data={"state": "null"})
     call = 0
     for key in REQUIRED_KEYS:
@@ -132,9 +141,11 @@ class RehearsalTest(unittest.TestCase):
 
     def write_variant(self, manifest: Path, manifest_sha: str, level_sha: str,
                       *, omit_in_last_reconstruction: tuple[str, ...] = (),
-                      omit_in_every_reconstruction: tuple[str, ...] = ()) -> list[Path]:
+                      omit_in_every_reconstruction: tuple[str, ...] = (),
+                      level_data: dict | None = None) -> list[Path]:
         """Two runs per variant, against `manifest`, with that manifest's digests in the meta."""
-        harness_sha = json.loads(manifest.read_text(encoding="utf-8"))["harness"]["sha256"]
+        harness = json.loads(manifest.read_text(encoding="utf-8"))["harness"]
+        harness_sha = harness["sha256"]
         paths: list[Path] = []
         for index, (role, artifact, target_sha, module) in enumerate([
             ("release", "absolllute.hackmega_original.dll", self.release_sha,
@@ -154,7 +165,9 @@ class RehearsalTest(unittest.TestCase):
                 run_id=f"00000000-0000-4000-8000-00000000001{index}", role=role,
                 artifact=artifact, target_sha256=target_sha, module=module,
                 scenario_sha256=manifest_sha, harness_sha256=harness_sha,
+                harness_version=harness["version"],
                 level_sha256=level_sha, fingerprint=fingerprint, omit_keys=omit,
+                level_data=level_data,
             )
             path = self.directory / f"{role}-{index}.jsonl"
             path.write_text(text, encoding="utf-8")
@@ -169,14 +182,40 @@ class RehearsalTest(unittest.TestCase):
             command += ["--reconstruction", str(path)]
         return subprocess.run(command, capture_output=True, text=True)
 
-    def test_the_committed_manifest_blocks_on_its_level_placeholder(self) -> None:
-        paths = self.write_variant(MANIFEST, self.manifest_sha, "0" * 64)
-        result = self.compare(MANIFEST, paths)
+    def test_a_placeholder_level_digest_blocks(self) -> None:
+        # The committed manifest no longer carries the placeholder; a manifest that does is
+        # still refused, because that row would compare the manifest with itself.
+        placeholder = copy.deepcopy(self.manifest)
+        placeholder["level"]["sha256"] = "0" * 64
+        manifest = self.directory / "manifest-placeholder.json"
+        manifest.write_text(json.dumps(placeholder, indent=2), encoding="utf-8")
+        manifest_sha = hashlib.sha256(manifest.read_bytes()).hexdigest()
+
+        paths = self.write_variant(manifest, manifest_sha, "0" * 64)
+        result = self.compare(manifest, paths)
         self.assertEqual(result.returncode, 1)
         self.assertIn("status: blocked | gate: blocked", result.stdout)
         self.assertIn("blocked level:", result.stdout)
         self.assertIn("placeholder", result.stdout)
         self.assertNotIn("claim:", result.stdout)
+
+    def test_a_run_that_did_not_record_its_level_blocks(self) -> None:
+        paths = self.write_variant(
+            MANIFEST, self.manifest_sha, self.manifest["level"]["sha256"],
+            level_data={"state": "redacted", "reason": "older observer"})
+        result = self.compare(MANIFEST, paths)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("status: blocked", result.stdout)
+        self.assertIn("did not record the digest of the level it started", result.stdout)
+
+    def test_an_observation_of_another_level_is_invalid(self) -> None:
+        paths = self.write_variant(
+            MANIFEST, self.manifest_sha, self.manifest["level"]["sha256"],
+            level_data={"state": "observed", "type": "str", "value": "9" * 64})
+        result = self.compare(MANIFEST, paths)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("status: invalid", result.stdout)
+        self.assertIn("not the manifest's fixture", result.stdout)
 
     def test_a_filled_level_digest_produces_a_surface_pass(self) -> None:
         level_sha = hashlib.sha256(b"rehearsal fixture").hexdigest()

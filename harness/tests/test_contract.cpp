@@ -10,7 +10,7 @@ MH_TEST(schema_strings_match_contract) {
   MH_CHECK_EQ(mh::contract::kTraceSchema, std::string_view{"mh-trace/1"});
   MH_CHECK_EQ(mh::contract::kScenarioSchema, std::string_view{"mh-scenario/1"});
   MH_CHECK_EQ(mh::contract::kHarnessId, std::string_view{"megahack.trace"});
-  MH_CHECK_EQ(mh::contract::kHarnessVersion, std::string_view{"0.1.0"});
+  MH_CHECK_EQ(mh::contract::kHarnessVersion, std::string_view{"0.1.1"});
 }
 
 MH_TEST(record_type_round_trips) {
