@@ -92,11 +92,26 @@ Closing it therefore needs one of:
 - or a scripted backup/install/restore of `%LOCALAPPDATA%\GeometryDash\*.dat` around each run,
   which is *controlled mutation of the live save*, not isolation, and must be labelled as such.
 
-The third is implemented: `harness/tools/save_sandbox.py` (+ `test_save_sandbox.py`, 10 cases)
-with `--backup`, `--install`, `--status` and `--restore`. Its invariants are the point — it
-refuses to install unless a digest-verified backup exists, refuses to overwrite a save whose
-bytes have changed since that backup, refuses a second backup over an existing one, and verifies
-every restored file against its recorded digest. Its own docstring says it is not isolation.
+The third is implemented: `harness/tools/save_sandbox.py` (+ `test_save_sandbox.py`, 29 cases)
+with `--backup`, `--install`, `--status` and `--restore`. Its invariants are the point:
+
+- it refuses every operation while `GeometryDash.exe` is running (process-image check, once at
+  the start of the operation; a guard, not a lock);
+- it refuses to install unless a digest-verified backup exists, and refuses to overwrite a save
+  whose bytes have changed since that backup;
+- every write is atomic per file (temp file beside the target, fsync, rename), so a refusal or a
+  crash leaves the previous file intact;
+- an install reads back what it wrote and decodes it, and rolls back to the backed-up bytes if
+  the bytes do not verify;
+- a restore reports exactly which files were restored, which failed and which were never
+  touched, and re-running it after the cause is fixed finishes the job;
+- `--status` distinguishes `same`, `differs` and `missing`, and lists files that appeared after
+  the backup as *extras*.
+
+**Extras are reported, never deleted.** A file that was not in the backup is left in place: GD
+may have written it, and it may be the only copy of something. Identify it before relaunching.
+
+Its own docstring says it is not isolation.
 
 Until one is in place, a fixture must not be installed into the live save directory, and an M3
 run is not eligible on the isolation row regardless of how good the comparison is.
@@ -116,6 +131,10 @@ Then launch the profile, play the level named `safe-mode-smoke fixture`, quit, a
 ```
 python harness\tools\save_sandbox.py --restore --save-dir "%LOCALAPPDATA%\GeometryDash" --backup-dir <outside-the-repo>\gd-save-backup
 ```
+
+Every step above refuses while the game is running, so quit it first — including after the run,
+before the restore. If `--status` or `--restore` reports an `extra:` file, do not relaunch: the
+file appeared after the backup and the tool leaves it in place rather than guessing whose it is.
 
 `--status` between install and restore answers "has the game rewritten the save since?" — which
 is also the moment the level's own `<k>k2</k>` name can be read back out of `CCLocalLevels.dat`

@@ -8,8 +8,10 @@ Two artifacts come out of one declarative spec:
 * `<name>.gmd` - the canonical form: GD's own plist dialect, plain text, diffable, and the file
   whose SHA-256 the scenario manifest pins. It is *our* interchange artifact; GD does not read
   `.gmd` files.
-* `CCLocalLevels.dat` - the container GD actually loads, produced by `--install <save-dir>`
-  from the same XML through `gd_save.encode`.
+* `CCLocalLevels.dat` - the container GD actually loads, produced by
+  `--install <save-dir> --backup-dir <dir>` from the same XML through `gd_save.encode`. The
+  write goes through `save_sandbox`, so it is guarded, atomic, read back, and only happens
+  against a digest-verified backup.
 
 Both come from the same in-memory level, so the installed save and the hashed fixture cannot
 disagree.
@@ -20,7 +22,7 @@ can support. Values for keys whose meaning is unknown are ordinary defaults and 
 UNVERIFIED in notes/gd-save-format.md.
 
     python harness/tools/make_level_fixture.py --out harness/fixtures/runtime/safe-mode-smoke.gmd
-    python harness/tools/make_level_fixture.py --install <save-dir>
+    python harness/tools/make_level_fixture.py --install <save-dir> --backup-dir <dir>
 """
 
 from __future__ import annotations
@@ -28,17 +30,24 @@ from __future__ import annotations
 import argparse
 import base64
 import importlib.util
-import shutil
 import sys
 from pathlib import Path
 from typing import Iterable
 from xml.sax.saxutils import escape
 
 HERE = Path(__file__).resolve().parent
-_spec = importlib.util.spec_from_file_location("gd_save", HERE / "gd_save.py")
-gd_save = importlib.util.module_from_spec(_spec)
-assert _spec.loader is not None
-_spec.loader.exec_module(gd_save)
+
+
+def _load(name: str):
+    spec = importlib.util.spec_from_file_location(name, HERE / f"{name}.py")
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+gd_save = _load("gd_save")
+save_sandbox = _load("save_sandbox")
 
 # GD writes its own plist dialect: <k> for a key, <d> dict, <s> string, <i> int, <r> real,
 # <t /> the empty value. Confirmed against two decoded save files (notes/gd-save-format.md).
@@ -147,31 +156,33 @@ DEFAULT_OBJECTS: tuple[tuple[int, int, int], ...] = (
 )
 
 
-def install(xml: bytes, save_dir: Path, *, force: bool = False) -> Path:
-    """Write the container GD loads into `save_dir`, keeping a backup of what was there."""
-    target = save_dir / "CCLocalLevels.dat"
-    if target.exists() and not force:
-        raise SystemExit(
-            f"refusing to overwrite {target} without --force "
-            "(the existing file is somebody's levels, not ours)"
-        )
-    save_dir.mkdir(parents=True, exist_ok=True)
-    if target.exists():
-        shutil.copy2(target, target.with_suffix(".dat.bak"))
-    target.write_bytes(gd_save.encode(xml))
-    return target
+def install(xml: bytes, save_dir: Path, backup_dir: Path) -> Path:
+    """Install `xml` through `save_sandbox`, so a fixture install is never weaker than a backup.
+
+    This used to write `CCLocalLevels.dat` directly behind a `--force` flag and a `.dat.bak`
+    copy, which bypassed every invariant the sandbox enforces (process guard, digest-verified
+    backup, atomic write, read-back). There is now one implementation of "install a save".
+    """
+    return save_sandbox.install_xml(xml, save_dir, backup_dir)
 
 
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", metavar="GMD", help="write the canonical XML fixture here")
-    parser.add_argument("--install", metavar="SAVE_DIR", help="write CCLocalLevels.dat here")
+    parser.add_argument("--install", metavar="SAVE_DIR",
+                        help="write CCLocalLevels.dat here (needs --backup-dir)")
+    parser.add_argument("--backup-dir", metavar="DIR",
+                        help="a verified save_sandbox backup that must exist before installing")
     parser.add_argument("--name", default="safe-mode-smoke fixture")
     parser.add_argument("--author", default="megahack-research")
-    parser.add_argument("--force", action="store_true", help="allow replacing an existing save")
     args = parser.parse_args(argv)
     if not args.out and not args.install:
         parser.error("nothing to do: pass --out and/or --install")
+    if args.install and not args.backup_dir:
+        parser.error(
+            "--install needs --backup-dir: run save_sandbox.py --backup first, so the save is "
+            "recoverable"
+        )
 
     xml = render_level(args.name, args.author, DEFAULT_OBJECTS)
     if args.out:
@@ -180,7 +191,7 @@ def main(argv: list[str]) -> int:
         path.write_bytes(xml)
         print(f"wrote {path} ({len(xml)} bytes)")
     if args.install:
-        target = install(xml, Path(args.install), force=args.force)
+        target = install(xml, Path(args.install), Path(args.backup_dir))
         print(f"installed {target} ({target.stat().st_size} bytes)")
     return 0
 
