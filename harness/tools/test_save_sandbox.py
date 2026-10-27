@@ -37,6 +37,9 @@ def make_save(directory: Path) -> Path:
     save_dir = directory / "GeometryDash"
     save_dir.mkdir()
     (save_dir / "CCLocalLevels.dat").write_bytes(ORIGINAL_LEVELS)
+    # GD keeps the previous good levels save beside the primary and restores from it, so a
+    # realistic save directory has both.
+    (save_dir / "CCLocalLevels2.dat").write_bytes(ORIGINAL_LEVELS)
     (save_dir / "CCGameManager.dat").write_bytes(ORIGINAL_MANAGER)
     return save_dir
 
@@ -101,9 +104,39 @@ class SandboxTest(unittest.TestCase):
 
     def test_backup_records_digests_and_copies(self) -> None:
         files = sandbox.backup(self.save_dir, self.backup_dir)
-        self.assertEqual(set(files), {"CCLocalLevels.dat", "CCGameManager.dat"})
+        self.assertEqual(
+            set(files),
+            {"CCLocalLevels.dat", "CCLocalLevels2.dat", "CCGameManager.dat"},
+        )
         self.assertEqual((self.backup_dir / "CCLocalLevels.dat").read_bytes(), ORIGINAL_LEVELS)
         self.assertTrue((self.backup_dir / sandbox.RECORD).is_file())
+
+    def test_install_writes_both_levels_files(self) -> None:
+        # Regression: GD restores CCLocalLevels.dat from CCLocalLevels2.dat at startup, so an
+        # install that wrote only the primary was undone 1.3 s after the game launched.
+        sandbox.backup(self.save_dir, self.backup_dir)
+        sandbox.install(self.save_dir, self.backup_dir, self.fixture)
+        expected = sandbox.gd_save.encode(FIXTURE_XML)
+        for name in sandbox.LEVEL_FILES:
+            self.assertEqual((self.save_dir / name).read_bytes(), expected, name)
+
+    def test_install_is_a_no_op_only_when_both_files_already_match(self) -> None:
+        sandbox.backup(self.save_dir, self.backup_dir)
+        sandbox.install(self.save_dir, self.backup_dir, self.fixture)
+        # A retry needs no fresh backup once the pair is consistent...
+        sandbox.install(self.save_dir, self.backup_dir, self.fixture)
+        # ...but a half-installed pair (primary only) must not be mistaken for done.
+        (self.save_dir / "CCLocalLevels2.dat").write_bytes(ORIGINAL_LEVELS)
+        sandbox.install(self.save_dir, self.backup_dir, self.fixture)
+        expected = sandbox.gd_save.encode(FIXTURE_XML)
+        self.assertEqual((self.save_dir / "CCLocalLevels2.dat").read_bytes(), expected)
+
+    def test_restore_returns_both_levels_files(self) -> None:
+        sandbox.backup(self.save_dir, self.backup_dir)
+        sandbox.install(self.save_dir, self.backup_dir, self.fixture)
+        sandbox.restore(self.save_dir, self.backup_dir)
+        for name in sandbox.LEVEL_FILES:
+            self.assertEqual((self.save_dir / name).read_bytes(), ORIGINAL_LEVELS, name)
 
     def test_backup_verifies_its_own_copies(self) -> None:
         def truncating_copy(source: Path, target: Path) -> None:
@@ -216,7 +249,7 @@ class SandboxTest(unittest.TestCase):
         self.assertEqual([name for name, _ in report.failed], ["CCLocalLevels.dat"])
         self.assertIn("locked", report.failed[0][1])
         self.assertEqual(report.untouched, ["CCLocalLevels.dat"])
-        self.assertEqual(report.restored, ["CCGameManager.dat"])
+        self.assertEqual(sorted(report.restored), ["CCGameManager.dat", "CCLocalLevels2.dat"])
         # The failed file was never replaced, so its bytes are still the installed ones.
         self.assertEqual((self.save_dir / "CCLocalLevels.dat").read_bytes(), installed)
 
@@ -234,13 +267,16 @@ class SandboxTest(unittest.TestCase):
             with self.assertRaises(sandbox.RestoreError):
                 sandbox.restore(self.save_dir, self.backup_dir)
         restored = sandbox.restore(self.save_dir, self.backup_dir)
-        self.assertEqual(sorted(restored), ["CCGameManager.dat", "CCLocalLevels.dat"])
+        self.assertEqual(sorted(restored),
+                         ["CCGameManager.dat", "CCLocalLevels.dat", "CCLocalLevels2.dat"])
         self.assertEqual(sandbox.status(self.save_dir, self.backup_dir)["files"],
-                         {"CCLocalLevels.dat": "same", "CCGameManager.dat": "same"})
+                         {"CCLocalLevels.dat": "same",
+                          "CCLocalLevels2.dat": "same",
+                          "CCGameManager.dat": "same"})
 
     def test_restore_leaves_files_created_after_the_backup_in_place(self) -> None:
         sandbox.backup(self.save_dir, self.backup_dir)
-        late = self.save_dir / "CCLocalLevels2.dat"
+        late = self.save_dir / "CCGameManager2.dat"
         late.write_bytes(b"written by the game after the backup")
         sandbox.restore(self.save_dir, self.backup_dir)
         self.assertEqual(late.read_bytes(), b"written by the game after the backup")
@@ -253,21 +289,27 @@ class SandboxTest(unittest.TestCase):
         (self.save_dir / "CCGameManager.dat").write_bytes(b"changed")
         report = sandbox.status(self.save_dir, self.backup_dir)
         self.assertEqual(report["files"],
-                         {"CCLocalLevels.dat": "missing", "CCGameManager.dat": "differs"})
+                         {"CCLocalLevels.dat": "missing",
+                          "CCLocalLevels2.dat": "same",
+                          "CCGameManager.dat": "differs"})
 
     def test_status_reports_files_created_after_the_backup(self) -> None:
         sandbox.backup(self.save_dir, self.backup_dir)
-        (self.save_dir / "CCLocalLevels2.dat").write_bytes(b"late")
+        (self.save_dir / "CCGameManager2.dat").write_bytes(b"late")
         report = sandbox.status(self.save_dir, self.backup_dir)
-        self.assertEqual(report["extras"], ["CCLocalLevels2.dat"])
+        self.assertEqual(report["extras"], ["CCGameManager2.dat"])
         self.assertEqual(report["files"],
-                         {"CCLocalLevels.dat": "same", "CCGameManager.dat": "same"})
+                         {"CCLocalLevels.dat": "same",
+                          "CCLocalLevels2.dat": "same",
+                          "CCGameManager.dat": "same"})
 
     def test_status_after_install_shows_the_fixture_and_the_same_manager(self) -> None:
         sandbox.backup(self.save_dir, self.backup_dir)
         sandbox.install(self.save_dir, self.backup_dir, self.fixture)
         self.assertEqual(sandbox.status(self.save_dir, self.backup_dir)["files"],
-                         {"CCLocalLevels.dat": "differs", "CCGameManager.dat": "same"})
+                         {"CCLocalLevels.dat": "differs",
+                          "CCLocalLevels2.dat": "differs",
+                          "CCGameManager.dat": "same"})
 
     # --- records --------------------------------------------------------------------------
 
@@ -307,14 +349,14 @@ class SandboxTest(unittest.TestCase):
         with redirect_stdout(io.StringIO()):
             sandbox.main(["--backup", "--save-dir", str(self.save_dir),
                           "--backup-dir", str(self.backup_dir)])
-        (self.save_dir / "CCLocalLevels2.dat").write_bytes(b"late")
+        (self.save_dir / "CCGameManager2.dat").write_bytes(b"late")
         output = io.StringIO()
         with redirect_stdout(output):
             self.assertEqual(
                 sandbox.main(["--status", "--save-dir", str(self.save_dir),
                               "--backup-dir", str(self.backup_dir)]), 0)
         text = output.getvalue()
-        self.assertIn("extra: CCLocalLevels2.dat", text)
+        self.assertIn("extra: CCGameManager2.dat", text)
         self.assertIn("left in place", text)
 
     def test_cli_install_without_a_fixture_is_a_usage_error(self) -> None:

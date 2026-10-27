@@ -66,6 +66,9 @@ SAVE_FILES = (
 )
 
 RECORD = "backup.json"
+# GD restores CCLocalLevels.dat from CCLocalLevels2.dat when the primary does not satisfy it,
+# so an install has to write both or it is undone at the next launch (observed 2026-10-27).
+LEVEL_FILES = ("CCLocalLevels.dat", "CCLocalLevels2.dat")
 
 # The process image a save-writing session runs as. Compared case-insensitively.
 GAME_IMAGES = ("GeometryDash.exe",)
@@ -287,49 +290,74 @@ def backup(save_dir: Path, backup_dir: Path,
 
 def install_xml(xml: bytes, save_dir: Path, backup_dir: Path,
                 images: Iterable[str] | None = None) -> Path:
-    """Install `xml` as the levels save, against a verified backup. Atomic and read back."""
+    """Install `xml` as the levels save, against a verified backup. Atomic and read back.
+
+    Both `CCLocalLevels.dat` and `CCLocalLevels2.dat` receive the fixture. GD treats the
+    `2` file as the previous good save and, when the primary does not satisfy it, restores the
+    primary from it at startup - observed 2026-10-27: a fixture written only to the primary was
+    replaced by the 3 MB backup 1.3 s after the game started, so the operator saw their own
+    levels and no trace could explain why. Writing both makes the pair self-consistent and the
+    install survives launch.
+    """
     assert_game_not_running(images)
     if not xml.startswith(b"<?xml"):
         raise SandboxError("the fixture is not the plist XML form")
     payload = gd_save.encode(xml)
-    target = save_dir / "CCLocalLevels.dat"
+    targets = [save_dir / name for name in LEVEL_FILES]
     recorded = verify_backup(backup_dir)
     # Re-installing the same fixture is a no-op, so a retried install after a failure or an
     # interrupted session does not need a fresh backup.
-    if target.is_file() and target.read_bytes() == payload:
-        return target
-    verify_live_matches_backup(save_dir, backup_dir)
-    _write_atomic(target, payload)
+    current = {t.name: (t.read_bytes() if t.is_file() else None) for t in targets}
+    if all(value == payload for value in current.values()):
+        return targets[0]
+    # A *partial* install of this same fixture is recoverable: every file is then either the
+    # fixture or its backed-up bytes, and finishing the write cannot lose anything. Anything
+    # else means the game ran, and that needs a fresh backup rather than a guess.
+    backup_bytes = {name: (backup_dir / name).read_bytes() for name in recorded}
+    if not all(
+        value == payload or value == backup_bytes.get(name)
+        for name, value in current.items()
+    ):
+        verify_live_matches_backup(save_dir, backup_dir)
+    for target in targets:
+        _write_atomic(target, payload)
 
-    written = target.read_bytes()
-    if written != payload:
-        how = _roll_back(target, backup_dir, recorded)
-        raise SandboxError(
-            f"{target} did not verify after writing (wrote {digest_bytes(payload)}, read back "
-            f"{digest_bytes(written)}){how}"
-        )
-    try:
-        decoded = gd_save.decode(written)
-    except gd_save.SaveFormatError as error:
-        how = _roll_back(target, backup_dir, recorded)
-        raise SandboxError(
-            f"{target} does not decode after writing ({error}){how}"
-        ) from error
-    if decoded != xml:
-        how = _roll_back(target, backup_dir, recorded)
-        raise SandboxError(
-            f"{target} decoded to different bytes than the fixture{how}"
-        )
-    return target
+    for target in targets:
+        written = target.read_bytes()
+        if written != payload:
+            how = _roll_back(targets, backup_dir, recorded)
+            raise SandboxError(
+                f"{target} did not verify after writing (wrote {digest_bytes(payload)}, read "
+                f"back {digest_bytes(written)}){how}"
+            )
+        try:
+            decoded = gd_save.decode(written)
+        except gd_save.SaveFormatError as error:
+            how = _roll_back(targets, backup_dir, recorded)
+            raise SandboxError(f"{target} does not decode after writing ({error}){how}") from error
+        if decoded != xml:
+            how = _roll_back(targets, backup_dir, recorded)
+            raise SandboxError(f"{target} decoded to different bytes than the fixture{how}")
+    return targets[0]
 
 
-def _roll_back(target: Path, backup_dir: Path,
+def _roll_back(targets: list[Path], backup_dir: Path,
                recorded: dict[str, dict[str, object]]) -> str:
-    """Put the backed-up bytes back after a failed install, if the backup has them."""
-    if target.name not in recorded:
-        return "; there was no backed-up copy of that file to restore"
-    _copy_atomic(backup_dir / target.name, target)
-    return "; the backed-up file was restored"
+    """Put the backed-up bytes back after a failed install, for every file it touched."""
+    restored: list[str] = []
+    missing: list[str] = []
+    for target in targets:
+        if target.name not in recorded:
+            missing.append(target.name)
+            continue
+        _copy_atomic(backup_dir / target.name, target)
+        restored.append(target.name)
+    note = ""
+    if restored:
+        note += f"; restored {', '.join(restored)} from the backup"
+    if missing:
+        note += f"; no backed-up copy existed for {', '.join(missing)}"
+    return note
 
 
 def install(save_dir: Path, backup_dir: Path, fixture: Path,
