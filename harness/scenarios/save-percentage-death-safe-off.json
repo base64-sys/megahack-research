@@ -1,0 +1,157 @@
+{
+  "schema": "mh-scenario/1",
+  "id": "save-percentage-death-safe-off",
+  "status": "draft",
+  "description": "Same bounded death capture as save-percentage-death, but with the Safe Mode profile flag (0x1E2) declared false. This is the measurement named UNVERIFIED in notes/deterministic-capture.md: does the release variant then forward GJGameLevel::savePercentage and become observable at GD RVA 0x16C8B0? It is a measurement, not an adopted claim-class resolution.",
+  "baseline": {
+    "mega_hack": "v9.1.3",
+    "gd": "2.2081",
+    "geode": "5.6.1",
+    "arch": "x86_64"
+  },
+  "runtime_baseline": {
+    "geode": "5.11.2",
+    "profile": "runtime511"
+  },
+  "targets": {
+    "release": {
+      "artifact": "absolllute.hackmega_original.dll",
+      "sha256": "1635c3391e853d68eb718965a756fd411ec6a876c23c0b92db508366e1107a92"
+    },
+    "reconstruction": {
+      "artifact": "megahack.reconstruction.dll",
+      "sha256": "5f214c5f086c6339300a9adfeec94376f8e7f33a119272fda28d879b6117ac1f"
+    }
+  },
+  "harness": {
+    "id": "megahack.trace",
+    "version": "0.2.0",
+    "sha256": "27fdc58a7eec72d2c07af3d57ed6c6eeeb4da1487f30de1e74b2f2343c5a3597"
+  },
+  "mods": {
+    "required": [
+      "absolllute.hackmega",
+      "megahack.trace"
+    ],
+    "dependency_versions": {
+      "geode.node-ids": ">=v1.22.0"
+    },
+    "other_mods": "forbidden"
+  },
+  "level": {
+    "fixture": "fixtures/runtime/safe-mode-smoke.gmd",
+    "sha256": "58d4b320fced5935ff298ae20feefb565de405f010cdfadd86efe6713fdc33fd",
+    "source": "generated",
+    "notes": "Same generated fixture as no-input-smoke. Its first block is at x=50, roughly 3.5-4.8 s into the run depending on the player hitbox edge; the second is at x=100. sha256 is the digest of the level string the observer records at level_started (encoded k4), not the .gmd file."
+  },
+  "profile": {
+    "isolation": "disposable",
+    "notes": "Use a disposable Windows profile or VM; restore from a snapshot. Do not run against a live player profile."
+  },
+  "settings": {
+    "reset": "defaults",
+    "tags": [
+      {
+        "tag": "0x1E2",
+        "label": "HACK_SAFE_MODE",
+        "value": false,
+        "note": "false because CHEAT_SAFETY/HACK_SAFE_MODE is removed from PROFILES.DEFAULT for this run; restore the profile afterwards."
+      }
+    ]
+  },
+  "input": {
+    "driver": "operator",
+    "notes": "No input injection exists in this harness, and this scenario deliberately needs none: the operator launches the level, touches nothing, and quits after the capture window closes. `actions` is empty because the event of interest is the fixture's own first collision.",
+    "actions": []
+  },
+  "timing": {
+    "window": {
+      "anchor": "level_started",
+      "max_frames": 4500
+    },
+    "timeout_ms": 30000,
+    "fps_cap": 60,
+    "stop_on": [],
+    "notes": "4500 frames is calibrated from the four no-input-smoke traces: their rendered frame rate was 662.3-666.4 fps, so their 600-frame window was 0.899-0.904 s and never reached the first block. At the same rate 4500 frames is about 6.8 s - past the first block (~3.5-4.8 s) and before the second (~9.6 s), so the window closes during the post-death restart. fps_cap 60 is the requested cap, not an observation: Mega Hack's FPS bypass was in force and the game ignored it, which is exactly why max_frames is calibrated from measured frames. stop_on is empty because a windowed capture cannot stop on a milestone."
+  },
+  "milestones": {
+    "required": [
+      "level_started",
+      "attempt_started"
+    ],
+    "optional": [
+      "player_died",
+      "level_completed",
+      "save_requested"
+    ]
+  },
+  "hooks": {
+    "required": [
+      {
+        "key": "GeometryDash.exe:rva:0x3b8eb0",
+        "phases": [
+          "enter",
+          "exit"
+        ],
+        "min_count": 1
+      },
+      {
+        "key": "GeometryDash.exe:rva:0x3b4ba0",
+        "phases": [
+          "enter",
+          "exit"
+        ],
+        "min_count": 1
+      }
+    ],
+    "optional": [
+      {
+        "key": "GeometryDash.exe:rva:0x397f40",
+        "phases": [
+          "enter",
+          "exit"
+        ],
+        "min_count": 1,
+        "note": "pushButton: not required; the scenario needs no hand input."
+      },
+      {
+        "key": "GeometryDash.exe:rva:0x3981d0",
+        "phases": [
+          "enter",
+          "exit"
+        ],
+        "min_count": 1,
+        "note": "releaseButton: same reason as pushButton."
+      },
+      {
+        "key": "GeometryDash.exe:rva:0x16c8b0",
+        "phases": [
+          "enter",
+          "exit"
+        ],
+        "min_count": 1,
+        "note": "savePercentage: with 0x1E2 false the release is expected to call the original, so this run tests whether the observer sees it. GD calls it from PlayLayer::destroyPlayer (call site GD VA 0x1403B3DEA) and PlayLayer::levelComplete (GD VA 0x1403A8177)."
+      }
+    ]
+  },
+  "repetitions": 2,
+  "comparison": {
+    "order_groups": [
+      [
+        "level_started",
+        "attempt_started"
+      ]
+    ],
+    "tolerances": {},
+    "volatile": [
+      "t_ns",
+      "hook.va",
+      "thread.id",
+      "call.this.value",
+      "call.duration_ns",
+      "save.local_path",
+      "call.call_id",
+      "call.parent_call_id"
+    ]
+  }
+}
