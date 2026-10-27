@@ -222,7 +222,7 @@ the level fixture the manifest names does not exist yet. Method, evidence and op
 
 ## Notes map
 
-`notes/` holds 82 files and no index beyond this one. Start with the subsystem, not the
+`notes/` holds 83 files and no index beyond this one. Start with the subsystem, not the
 feature.
 
 | Theme | Notes |
@@ -232,7 +232,7 @@ feature.
 | Settings and API | `settings-registry`, `settings-contents`, `hackpro-api`, `definition-keys`, `tab-registration`, `nxui-menu`, `entry-path` |
 | Binary inventory | `string-inventory`, `sso-decoder`, `rtti-classes`, `init-table`, `import-dt`, `static-hack-label-map` |
 | Hooks by domain | `input-hooks`, `render-hooks`, `gameplay-hooks`, `ui-addons`, `save-data-hooks` |
-| Persistence | `persistence`, `save-lifecycle`, `import-dt` |
+| Persistence | `persistence`, `save-lifecycle`, `import-dt`, `gd-save-format` |
 | Features | one `<feature>-feature.md` per mapped feature, plus `unlock-bypasses` |
 | Android parity | `android-abi`, `android-symbol-parity`, `android-string-parity`, `android-input-parity` |
 | Validation and state | `feature-inventory`, `m3-validation`, `runtime-validation`, `runtime-validation-handoff`, `trace-harness`, `trace-observer`, `reconstruction-variant`, `geode-skeleton`, `portable-build` |

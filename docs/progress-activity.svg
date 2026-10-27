@@ -3,49 +3,49 @@
 <rect x="0.5" y="0.5" width="899" height="493" fill="none" stroke="#30363d" rx="10"/>
 <text x="28" y="40" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="19" font-weight="600" fill="#e6edf3">Recent work — what moved, newest first</text>
 <text x="28" y="61" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#8b949e">14 most recent commits · exit criteria currently 28/33</text>
-<circle cx="38.0" cy="94.0" r="4" fill="#3fb950"/>
-<text x="52.0" y="98.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">feat(observer): five checks that stop the observer from lying</text>
-<text x="872.0" y="98.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#3fb950" text-anchor="end">feat</text>
-<circle cx="38.0" cy="118.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="122.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(observer): stop chasing the optional save-percentage key</text>
-<text x="872.0" y="122.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
+<circle cx="38.0" cy="94.0" r="4" fill="#8b949e"/>
+<text x="52.0" y="98.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(reconstruction): add the runbook for the first comparison</text>
+<text x="872.0" y="98.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
+<circle cx="38.0" cy="118.0" r="4" fill="#484f58"/>
+<text x="52.0" y="122.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">chore(scenarios): re-pin the observer digest after the rebuild</text>
+<text x="872.0" y="122.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#484f58" text-anchor="end">chore</text>
 <circle cx="38.0" cy="142.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="146.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(observer): record that the save-percentage hook installed but never fired</text>
+<text x="52.0" y="146.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(reconstruction): record the second target and what a pass proves</text>
 <text x="872.0" y="146.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
-<circle cx="38.0" cy="166.0" r="4" fill="#3fb950"/>
-<text x="52.0" y="170.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">feat(observer): observe the save file around the percentage write</text>
-<text x="872.0" y="170.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#3fb950" text-anchor="end">feat</text>
+<circle cx="38.0" cy="166.0" r="4" fill="#484f58"/>
+<text x="52.0" y="170.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">chore(scenarios): pin safe-mode-smoke to the built artifacts</text>
+<text x="872.0" y="170.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#484f58" text-anchor="end">chore</text>
 <circle cx="38.0" cy="190.0" r="4" fill="#3fb950"/>
-<text x="52.0" y="194.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">feat(tools): add mh_trace_compare and make a blocked comparison say why</text>
+<text x="52.0" y="194.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">feat(reconstruction): add the megahack.reconstruction comparison target</text>
 <text x="872.0" y="194.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#3fb950" text-anchor="end">feat</text>
-<circle cx="38.0" cy="214.0" r="4" fill="#3fb950"/>
-<text x="52.0" y="218.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">feat(scenarios): use the contract's manifest instead of an invented stub</text>
-<text x="872.0" y="218.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#3fb950" text-anchor="end">feat</text>
-<circle cx="38.0" cy="238.0" r="4" fill="#d29922"/>
-<text x="52.0" y="242.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">fix(observer): fall through to the pending context when the named one fails</text>
-<text x="872.0" y="242.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#d29922" text-anchor="end">fix</text>
-<circle cx="38.0" cy="262.0" r="4" fill="#3fb950"/>
-<text x="52.0" y="266.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">feat(tools): grade a captured trace in one command</text>
-<text x="872.0" y="266.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#3fb950" text-anchor="end">feat</text>
+<circle cx="38.0" cy="214.0" r="4" fill="#d29922"/>
+<text x="52.0" y="218.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">fix(comparator): report a placeholder digest as blocked, not invalid</text>
+<text x="872.0" y="218.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#d29922" text-anchor="end">fix</text>
+<circle cx="38.0" cy="238.0" r="4" fill="#3fb950"/>
+<text x="52.0" y="242.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">feat(compare): derive the claim a pass can support</text>
+<text x="872.0" y="242.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#3fb950" text-anchor="end">feat</text>
+<circle cx="38.0" cy="262.0" r="4" fill="#58a6ff"/>
+<text x="52.0" y="266.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">refactor(harness): share pure record builders between the core and the observer</text>
+<text x="872.0" y="266.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#58a6ff" text-anchor="end">refactor</text>
 <circle cx="38.0" cy="286.0" r="4" fill="#3fb950"/>
-<text x="52.0" y="290.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">feat(observer): accept the run context from a file as well as the environment</text>
+<text x="52.0" y="290.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">feat(observer): five checks that stop the observer from lying</text>
 <text x="872.0" y="290.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#3fb950" text-anchor="end">feat</text>
-<circle cx="38.0" cy="310.0" r="4" fill="#3fb950"/>
-<text x="52.0" y="314.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">feat(observer): record which mod owns the hook on each GD function</text>
-<text x="872.0" y="314.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#3fb950" text-anchor="end">feat</text>
+<circle cx="38.0" cy="310.0" r="4" fill="#8b949e"/>
+<text x="52.0" y="314.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(observer): stop chasing the optional save-percentage key</text>
+<text x="872.0" y="314.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <circle cx="38.0" cy="334.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="338.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(observer): record the first evidence-grade trace</text>
+<text x="52.0" y="338.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(observer): record that the save-percentage hook installed but never fired</text>
 <text x="872.0" y="338.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <circle cx="38.0" cy="358.0" r="4" fill="#3fb950"/>
-<text x="52.0" y="362.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">feat(observer): state the loaded mods even when a run context supplies the meta</text>
+<text x="52.0" y="362.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">feat(observer): observe the save file around the percentage write</text>
 <text x="872.0" y="362.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#3fb950" text-anchor="end">feat</text>
 <circle cx="38.0" cy="382.0" r="4" fill="#3fb950"/>
-<text x="52.0" y="386.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">feat(runner): pin the target variant instead of labelling it</text>
+<text x="52.0" y="386.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">feat(tools): add mh_trace_compare and make a blocked comparison say why</text>
 <text x="872.0" y="386.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#3fb950" text-anchor="end">feat</text>
 <circle cx="38.0" cy="406.0" r="4" fill="#3fb950"/>
-<text x="52.0" y="410.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">feat(runner): read Map B settings tags from the profile enabled list</text>
+<text x="52.0" y="410.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">feat(scenarios): use the contract's manifest instead of an invented stub</text>
 <text x="872.0" y="410.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#3fb950" text-anchor="end">feat</text>
 <line x1="28.0" y1="450.0" x2="872.0" y2="450.0" stroke="#30363d" stroke-width="1"/>
 <text x="28.0" y="464.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="10" fill="#8b949e">regenerated on every watchdog start, so a turn's work shows up here · image 4 of 4</text>
-<text x="872.0" y="464.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">git 779b764</text>
+<text x="872.0" y="464.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">git 6252656</text>
 </svg>

@@ -179,8 +179,10 @@ context rebuilt, because the manifest's own digest is part of the context.
   code path (the shared builders) is proven byte-identical, but "it still traces on a real
   session" stays UNVERIFIED until the next capture.
 - **No level fixture.** `fixtures/runtime/safe-mode-smoke.gmd` is absent, so the gate will stop
-  at the level row as `blocked` even with two runs per variant. Producing a valid `.gmd` needs
-  the game; fabricating one would be a fake identity.
+  at the level row as `blocked` even with two runs per variant. The 2.2081 save container and
+  `k4` are now recovered and implemented ([gd-save-format.md](gd-save-format.md)); what is
+  still missing is the minimal level-dict key set, a playable object string, and a run proving
+  GD loads the generated file. The manifest's hash stays a placeholder until then.
 - **No behaviour signal.** The `savePercentage` path never fired in two sessions
   ([trace-observer.md](trace-observer.md) §The save-percentage site); the claim machinery is
   ready for it but nothing claims `behavioural` today.

@@ -650,9 +650,11 @@ traces, logs, and dumps go under `runtime-traces/` (gitignored); they are not co
 - `UNVERIFIED:` can GD 2.2081 be redirected to an isolated save directory with a
   supported launch flag or environment variable? Until confirmed, use a disposable
   profile or VM.
-- `UNVERIFIED:` how is the local `.gmd` fixture generated deterministically, and what
-  exact level content triggers `savePercentage` after a short attempt? The Safe Mode
-  example is a draft for this reason.
+- `UNVERIFIED:` what exact level content triggers `savePercentage` after a short attempt. The
+  Safe Mode example is a draft for this reason. The *container* is no longer open: the
+  2.2081 save format and `k4` are recovered and implemented in
+  [gd-save-format.md](gd-save-format.md); what remains is the minimal level-dict key set, a
+  playable object string, and a run that proves GD loads the generated file.
 - `UNVERIFIED:` can the harness observe the target's callback wrapper without
   reimplementing the release's `TulipConvention`? If not, only the GD-method boundary
   is observable, and internal branch claims stay out of scope.
