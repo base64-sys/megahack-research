@@ -13,9 +13,9 @@ Status vocabulary: `pending`, `in progress`, `done`, `blocked`.
 | O1 | Discover the Geode 5.11.2 mod build path: SDK layout, exact command, produced artifacts, host toolchain | done |
 | O2 | Observer skeleton: mod `megahack.trace`, links the portable core, writes meta + end to its save directory (`traces/`) | done (build only — the write is unproven until a run) |
 | O3a | Hook bridge, one hook end to end: `PlayLayer::resetLevel` enter/exit with call ids, depth, parent and `thread.role` from the load thread | done (build only — firing unproven until a run) |
-| O3b | Hook bridge, remaining pilot keys (`PlayLayer::init`, `PlayerObject::pushButton`/`releaseButton`, `GJBaseGameLayer::handleButton`, `savePercentage`) and the observed main-thread proof | pending |
+| O3b | Hook bridge, remaining pilot keys: `PlayLayer::postUpdate`, `PlayerObject::pushButton`, `PlayerObject::releaseButton` | done (build only) |
 | O4 | Runner: hashes, one-target enforcement, sha256 sidecar, runtime511 selection, manifest feeding | pending |
-| O5 | Pilot capture in runtime511 and a real `read_trace` pass (needs the user to launch) | pending |
+| O5 | Pilot capture in runtime511 and a real `read_trace` pass, plus the proofs only a run can give (hooks fire; the load thread is the main thread) - needs the user to launch | pending |
 
 ## Evidence log
 
@@ -88,3 +88,26 @@ Status vocabulary: `pending`, `in progress`, `done`, `blocked`.
   main thread. Both are named in the note and in the code.
 - Commit: `feat(observer): hook PlayLayer::resetLevel and emit enter/exit pairs`.
 - Next: O3b, the remaining pilot keys.
+
+### Iteration 5 — O3b: all four required pilot hooks are in
+
+- The pilot's four required keys (`notes/runtime-validation.md` §hooks, manifest
+  `safe-mode-smoke`) are now implemented, each verified by two angles:
+
+  | RVA | Method | Note evidence | Geode 2.2081 binding |
+  | --- | --- | --- | --- |
+  | `0x3B8EB0` | `PlayLayer::resetLevel` | address-map.md:50 | `modify/PlayLayer.hpp:1150` |
+  | `0x3B4BA0` | `PlayLayer::postUpdate` | audio-sync-feature.md:103 | `modify/PlayLayer.hpp:1120` |
+  | `0x397F40` | `PlayerObject::pushButton` | gameplay-hooks.md:1590 | `modify/PlayerObject.hpp:1925` |
+  | `0x3981D0` | `PlayerObject::releaseButton` | gameplay-hooks.md:1591 | `modify/PlayerObject.hpp:1931` |
+
+  The binding column is generated code shipped with the SDK, so the notes and the loader
+  agree on the addresses - the constants in the observer are not a lone transcription.
+- The hook plumbing is now shared: `HookScope begin_hook(spec, this)` / `end_hook(...)`, so a
+  new key is a spec constant plus a two-line detour. The stack pop also recovers if a
+  detour returned out of order (it removes its own id instead of assuming the top).
+- `savePercentage` (`0x16C8B0`) stays out: the manifest lists it as optional and UNVERIFIED.
+- Not proven yet, and now tracked in O5: that these hooks fire, and that the load thread is
+  the main thread. A build cannot answer either.
+- Commit: `feat(observer): hook the four required pilot methods`.
+- Next: O4, the runner.

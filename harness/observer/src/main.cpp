@@ -1,18 +1,23 @@
 // Observer mod: the runtime half of the trace harness.
 //
-// O3a (harness/OBSERVER-PROGRESS.md): one hook, end to end - PlayLayer::resetLevel. It emits
-// a `hook` enter record before the original runs and `hook` exit after it, through the
-// portable core's TraceWriter, so the call stack in the trace is produced by real nesting
-// rather than asserted.
+// O3a/O3b (harness/OBSERVER-PROGRESS.md): the hooks the pilot scenario declares as required.
+// Each one writes a `hook` enter record before the original runs and a `hook` exit after it,
+// with a call id, a depth and a parent taken from an explicit stack, so the call tree in the
+// trace comes from real nesting rather than from an assertion.
 //
-// Contract sources: notes/runtime-validation.md "hook event" (fields), "call pairing"
-// (call_id unique per run, depth from 1, parent is the enclosing observed call),
-// "thread.role" (main only when proven).
+// Contract source: notes/runtime-validation.md "hook event", "call pairing", "thread.role".
+// Hook targets (file, address, tool), all four confirmed against the Geode 2.2081 bindings:
 //
-// The hook target is GeometryDash.exe RVA 0x3B8EB0: notes/address-map.md row
-// `PlayLayer::resetLevel`, and the contract's own example trace names the same key.
+//   0x3B8EB0  PlayLayer::resetLevel      notes/address-map.md:50, gameplay-hooks.md
+//   0x3B4BA0  PlayLayer::postUpdate      notes/audio-sync-feature.md:103
+//   0x397F40  PlayerObject::pushButton   notes/gameplay-hooks.md:1590
+//   0x3981D0  PlayerObject::releaseButton notes/gameplay-hooks.md:1591
+//
+// The bindings ship the same addresses (`GEODE_APPLY_MODIFY_FOR_FUNCTION(base::get() +
+// 0x397f40, ...)` in the generated Geode/modify/PlayerObject.hpp), which is the second angle.
 
 #include <Geode/modify/PlayLayer.hpp>
+#include <Geode/modify/PlayerObject.hpp>
 
 #include <mh/contract.hpp>
 #include <mh/json.hpp>
@@ -20,6 +25,7 @@
 #include <mh/trace_writer.hpp>
 #include <mh/value.hpp>
 
+#include <algorithm>
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
@@ -36,9 +42,17 @@ using namespace geode::prelude;
 
 namespace {
 
-// notes/address-map.md: PlayLayer::resetLevel, RVA 0x3B8EB0 (image base 0x140000000).
-constexpr std::uint32_t kPlayLayerResetLevelRva = 0x3B8EB0;
-constexpr char kPlayLayerResetLevelKey[] = "GeometryDash.exe:rva:0x3b8eb0";
+struct HookSpec {
+    const char* key;    // contract spelling: <module>:rva:<lowercase hex>
+    const char* method; // human label for the same address
+    std::uint32_t rva;
+};
+
+constexpr HookSpec kResetLevel{"GeometryDash.exe:rva:0x3b8eb0", "PlayLayer::resetLevel", 0x3B8EB0};
+constexpr HookSpec kPostUpdate{"GeometryDash.exe:rva:0x3b4ba0", "PlayLayer::postUpdate", 0x3B4BA0};
+constexpr HookSpec kPushButton{"GeometryDash.exe:rva:0x397f40", "PlayerObject::pushButton", 0x397F40};
+constexpr HookSpec kReleaseButton{"GeometryDash.exe:rva:0x3981d0",
+                                  "PlayerObject::releaseButton", 0x3981D0};
 
 constexpr char kUnknownDigest[] =
     "0000000000000000000000000000000000000000000000000000000000000000";
@@ -49,6 +63,16 @@ struct Session {
     std::thread::id load_thread;
     std::vector<std::string> call_stack;
     std::int64_t next_call = 1;
+    std::int64_t started_ns = 0;
+};
+
+// One in-flight hook call. `active` is false when no trace is open, in which case the
+// detour behaves like the original with a few cheap checks.
+struct HookScope {
+    bool active = false;
+    std::string call_id;
+    std::string parent;
+    std::int64_t depth = 0;
     std::int64_t started_ns = 0;
 };
 
@@ -114,13 +138,13 @@ void mark_unobserved(mh::Capture& capture, std::string path, std::string reason)
 mh::ThreadInfo current_thread(const Session& session) {
     mh::ThreadInfo info;
     if (std::this_thread::get_id() == session.load_thread) {
-        // UNVERIFIED until a captured run compares this with the frame thread: Geode loads
-        // mods on the thread that starts the game, and this records identity, not a guess
-        // from a thread name.
+        // UNVERIFIED until a captured run compares this with the thread that runs the
+        // frame: the mod load event is documented as running during startup, and this
+        // records identity, not an inference from a thread name.
         info.id = "main";
         info.role = mh::ThreadRole::main;
     } else {
-        char buffer[32];
+        char buffer[48];
         std::snprintf(buffer, sizeof(buffer), "thread:%llu",
                       static_cast<unsigned long long>(
                           std::hash<std::thread::id>{}(std::this_thread::get_id())));
@@ -130,49 +154,42 @@ mh::ThreadInfo current_thread(const Session& session) {
     return info;
 }
 
-mh::json::Json build_hook_object(std::uintptr_t image_base) {
+std::uintptr_t image_base() {
+    return reinterpret_cast<std::uintptr_t>(GetModuleHandleW(nullptr));
+}
+
+mh::json::Json build_hook_object(const HookSpec& spec) {
+    char rva[16];
+    std::snprintf(rva, sizeof(rva), "0x%X", spec.rva);
+    char va[32];
+    std::snprintf(va, sizeof(va), "0x%llX",
+                  static_cast<unsigned long long>(image_base() + spec.rva));
+
     mh::json::Json hook = object();
     hook.set("observer", mh::json::Json::string("gd_method"));
-    hook.set("key", mh::json::Json::string(kPlayLayerResetLevelKey));
+    hook.set("key", mh::json::Json::string(spec.key));
     hook.set("module", mh::json::Json::string("GeometryDash.exe"));
-    hook.set("method", mh::json::Json::string("PlayLayer::resetLevel"));
+    hook.set("method", mh::json::Json::string(spec.method));
     hook.set("resolution", mh::json::Json::string("rva"));
-    hook.set("rva", mh::json::Json::string("0x3B8EB0"));
-    hook.set("va", mh::json::Json::string(
-                       [&] {
-                           char buffer[32];
-                           std::snprintf(buffer, sizeof(buffer), "0x%llX",
-                                         static_cast<unsigned long long>(
-                                             image_base + kPlayLayerResetLevelRva));
-                           return std::string(buffer);
-                       }()));
+    hook.set("rva", mh::json::Json::string(rva));
+    hook.set("va", mh::json::Json::string(va));
     hook.set("target", mh::json::Json::null());
     hook.set("convention", mh::json::Json::string("unknown"));
     return hook;
 }
 
-std::uintptr_t image_base() {
-    return reinterpret_cast<std::uintptr_t>(GetModuleHandleW(nullptr));
-}
-
-void emit_hook(const char* phase, const std::string& call_id, std::int64_t depth,
-               const std::string& parent_call_id, void* self, bool has_parent,
-               std::int64_t duration_ns) {
-    std::lock_guard<std::mutex> lock(g_mutex);
-    if (!g_session || !g_session->writer) {
-        return;
-    }
-    Session& session = *g_session;
-
+// Emits one record. Caller holds g_mutex.
+void emit_hook_locked(Session& session, const char* phase, const HookSpec& spec,
+                      const HookScope& scope, void* self, std::int64_t duration_ns) {
     mh::json::Json call = object();
-    call.set("call_id", mh::json::Json::string(call_id));
-    call.set("depth", mh::json::Json::integer(depth));
-    call.set("parent_call_id",
-             has_parent ? mh::json::Json::string(parent_call_id) : mh::json::Json::null());
+    call.set("call_id", mh::json::Json::string(scope.call_id));
+    call.set("depth", mh::json::Json::integer(scope.depth));
+    call.set("parent_call_id", scope.parent.empty() ? mh::json::Json::null()
+                                                    : mh::json::Json::string(scope.parent));
     call.set("this", value_json(mh::Value::observed_ptr(
                        static_cast<std::uint64_t>(reinterpret_cast<std::uintptr_t>(self)))));
-    call.set("args", value_json(
-                         mh::Value::unavailable("arguments are not captured by this hook")));
+    call.set("args",
+             value_json(mh::Value::unavailable("arguments are not captured by this hook")));
     call.set("return", value_json(mh::Value::null_value()));
     if (duration_ns >= 0) {
         call.set("duration_ns", mh::json::Json::integer(duration_ns));
@@ -181,7 +198,7 @@ void emit_hook(const char* phase, const std::string& call_id, std::int64_t depth
     mh::json::Json body = object();
     body.set("kind", mh::json::Json::string("hook"));
     body.set("phase", mh::json::Json::string(phase));
-    body.set("hook", build_hook_object(image_base()));
+    body.set("hook", build_hook_object(spec));
     body.set("call", std::move(call));
 
     mh::EventContext context;
@@ -193,46 +210,76 @@ void emit_hook(const char* phase, const std::string& call_id, std::int64_t depth
     session.sink.flush();
 }
 
+HookScope begin_hook(const HookSpec& spec, void* self) {
+    HookScope scope;
+    std::lock_guard<std::mutex> lock(g_mutex);
+    if (!g_session || !g_session->writer) {
+        return scope;
+    }
+    Session& session = *g_session;
+    scope.active = true;
+    scope.call_id = "c" + std::to_string(session.next_call++);
+    scope.depth = static_cast<std::int64_t>(session.call_stack.size()) + 1;
+    if (!session.call_stack.empty()) {
+        scope.parent = session.call_stack.back();
+    }
+    session.call_stack.push_back(scope.call_id);
+    scope.started_ns = steady_ns();
+    emit_hook_locked(session, "enter", spec, scope, self, -1);
+    return scope;
+}
+
+void end_hook(HookScope& scope, const HookSpec& spec, void* self) {
+    if (!scope.active) {
+        return;
+    }
+    const std::int64_t duration = steady_ns() - scope.started_ns;
+    std::lock_guard<std::mutex> lock(g_mutex);
+    if (!g_session || !g_session->writer) {
+        return;
+    }
+    Session& session = *g_session;
+    if (!session.call_stack.empty() && session.call_stack.back() == scope.call_id) {
+        session.call_stack.pop_back();
+    } else {
+        auto position = std::find(session.call_stack.begin(), session.call_stack.end(),
+                                  scope.call_id);
+        if (position != session.call_stack.end()) {
+            session.call_stack.erase(position);
+        }
+    }
+    emit_hook_locked(session, "exit", spec, scope, self, duration);
+}
+
 } // namespace
 
 class $modify(TracePlayLayer, PlayLayer) {
     void resetLevel() {
-        std::string call_id;
-        std::string parent;
-        std::int64_t depth = 0;
-        std::int64_t started = 0;
-        bool tracked = false;
-
-        {
-            std::lock_guard<std::mutex> lock(g_mutex);
-            if (g_session && g_session->writer) {
-                Session& session = *g_session;
-                call_id = "c" + std::to_string(session.next_call++);
-                depth = static_cast<std::int64_t>(session.call_stack.size()) + 1;
-                const bool has_parent = !session.call_stack.empty();
-                if (has_parent) {
-                    parent = session.call_stack.back();
-                }
-                session.call_stack.push_back(call_id);
-                tracked = true;
-
-                emit_hook("enter", call_id, depth, parent, this, has_parent, -1);
-                started = steady_ns();
-            }
-        }
-
+        HookScope scope = begin_hook(kResetLevel, this);
         PlayLayer::resetLevel();
+        end_hook(scope, kResetLevel, this);
+    }
 
-        if (tracked) {
-            const std::int64_t duration = steady_ns() - started;
-            {
-                std::lock_guard<std::mutex> lock(g_mutex);
-                if (g_session && !g_session->call_stack.empty()) {
-                    g_session->call_stack.pop_back();
-                }
-            }
-            emit_hook("exit", call_id, depth, parent, this, !parent.empty(), duration);
-        }
+    void postUpdate(float dt) {
+        HookScope scope = begin_hook(kPostUpdate, this);
+        PlayLayer::postUpdate(dt);
+        end_hook(scope, kPostUpdate, this);
+    }
+};
+
+class $modify(TracePlayerObject, PlayerObject) {
+    bool pushButton(PlayerButton button) {
+        HookScope scope = begin_hook(kPushButton, this);
+        const bool result = PlayerObject::pushButton(button);
+        end_hook(scope, kPushButton, this);
+        return result;
+    }
+
+    bool releaseButton(PlayerButton button) {
+        HookScope scope = begin_hook(kReleaseButton, this);
+        const bool result = PlayerObject::releaseButton(button);
+        end_hook(scope, kReleaseButton, this);
+        return result;
     }
 };
 
@@ -297,8 +344,7 @@ $on_mod(Loaded) {
     gd.set("sha256", mh::json::Json::null());
 
     mh::json::Json geode = object();
-    geode.set("version", mh::json::Json::string(
-                             Loader::get()->getVersion().toNonVString()));
+    geode.set("version", mh::json::Json::string(Loader::get()->getVersion().toNonVString()));
     geode.set("sha256", mh::json::Json::null());
 
     mh::json::Json harness = object();
@@ -362,9 +408,8 @@ $on_mod(Loaded) {
     log::info("trace opened at {} (run {})", path.string(), run_id);
 }
 
-// The game's own exit event: "This can be used as a safe place for cleanup of global state"
-// (Geode loader/include/Geode/loader/GameEvent.hpp). A crash never reaches it, which is what
-// the contract wants - no end record means the run is incomplete, not truncated.
+// The SDK documents GameEventType::Exiting as the safe place for global cleanup. A crash
+// never reaches it, so the trace stays without an end record - incomplete, not truncated.
 $on_game(Exiting) {
     std::lock_guard<std::mutex> lock(g_mutex);
     if (!g_session || !g_session->writer) {

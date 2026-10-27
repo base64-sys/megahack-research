@@ -87,6 +87,18 @@ One hook, end to end, as of iteration 4:
 | mechanism | Geode `$modify`, so the loader resolves the address | `Geode/modify/PlayLayer.hpp` |
 | call ids | `c1`, `c2`, … per session; depth from an explicit stack | contract §call pairing |
 
+All four keys the pilot marks required are wired (iteration 5):
+
+| RVA | Method | Notes | Geode 2.2081 binding |
+| --- | --- | --- | --- |
+| `0x3B8EB0` | `PlayLayer::resetLevel` | address-map.md:50 | `modify/PlayLayer.hpp:1150` |
+| `0x3B4BA0` | `PlayLayer::postUpdate` | audio-sync-feature.md:103 | `modify/PlayLayer.hpp:1120` |
+| `0x397F40` | `PlayerObject::pushButton` | gameplay-hooks.md:1590 | `modify/PlayerObject.hpp:1925` |
+| `0x3981D0` | `PlayerObject::releaseButton` | gameplay-hooks.md:1591 | `modify/PlayerObject.hpp:1931` |
+
+`GJGameLevel::savePercentage` (`0x16C8B0`, address-map.md:52) is optional in the manifest and
+stays unhooked until the pilot's trigger question is answered.
+
 The detour writes `enter` before calling the original and `exit` after it, with
 `call.duration_ns` on the exit. `args` is `unavailable` (this hook does not capture them) and
 `return` is `null` for a void method; neither is invented. Events go through
