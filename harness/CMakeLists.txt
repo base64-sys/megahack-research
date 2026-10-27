@@ -61,3 +61,17 @@ add_test(NAME trace_check_example
 add_test(NAME trace_check_usage COMMAND mh_trace_check)
 set_tests_properties(trace_check_usage PROPERTIES WILL_FAIL TRUE)
 
+
+add_executable(mh_scenario_check tools/scenario_check.cpp)
+target_link_libraries(mh_scenario_check PRIVATE mh_trace)
+target_compile_features(mh_scenario_check PRIVATE cxx_std_20)
+if(MSVC)
+  target_compile_options(mh_scenario_check PRIVATE /W4 /permissive-)
+else()
+  target_compile_options(mh_scenario_check PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+
+add_test(NAME scenario_check_example
+         COMMAND mh_scenario_check ${CMAKE_CURRENT_SOURCE_DIR}/scenarios/safe-mode-smoke.json)
+add_test(NAME scenario_check_usage COMMAND mh_scenario_check)
+set_tests_properties(scenario_check_usage PROPERTIES WILL_FAIL TRUE)
