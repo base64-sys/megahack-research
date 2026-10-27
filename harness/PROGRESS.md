@@ -20,7 +20,7 @@ evidence (test name, gate output, commit subject).
 | 6b | Trace reader/validator: required keys present, seq gaps, end record required, capture gate | done |
 | 7 | Scenario manifest parser and validator (mh-scenario/1): required fields, status vocabulary, level/profile/settings rules | done |
 | 8 | Comparator core: comparability gate, volatile-field normalisation, canonical event keys | done |
-| 9 | Per-key sequence alignment: min_count on both sides, LCS/Needleman-Wunsch with the documented tie-breaks, missing vs extra classification | pending |
+| 9 | Per-key sequence alignment: min_count on both sides, LCS/Needleman-Wunsch with the documented tie-breaks, missing vs extra classification | done |
 | 10 | Ordering groups and value comparison: main-thread only, tolerance formula with a mandatory "why", result statuses | pending |
 | 11 | Synthetic corpus: one pair per status (pass, pass_with_warnings, fail, blocked, unstable, invalid), including the seven-line example trace from notes/runtime-validation.md, which must validate and round-trip | pending |
 | 12 | Docs: README harness section and notes/trace-harness.md test matrix | pending |
@@ -314,8 +314,46 @@ evidence (test name, gate output, commit subject).
   `comparator_gate_summary_counts_an_incomplete_trace_as_crashed`.
 - Build: `119 test(s), 0 failed`, `ctest` `100% tests passed out of 1`.
 
+### Item 9 — per-key sequence alignment
+
+- Files: `include/mh/sequence.hpp`, `src/sequence.cpp`, `tests/test_sequence.cpp`.
+- `align_sequences` builds a suffix LCS table and walks forward, which lets the tie-breaks
+  be the contract's words in order: exact payload match first, then the earlier release
+  event, then the earlier reconstruction event. Adjacent missing/extra steps are coalesced
+  into one `changed` pair, because "A gap is a missing event; a mismatched pair is a changed
+  event" — a same-length difference must not read as two absences.
+- Equality is a caller-supplied `PayloadEqual` predicate, so item 10's tolerance-aware value
+  comparison plugs in without this unit re-implementing value rules. A string overload
+  keeps the tests readable.
+- `check_min_counts` implements the first sentence of §3 on both sides; a required key with
+  zero occurrences on either side is a finding, not a vacuous match.
+- `align_by_key` reports the union of keys in sorted order, so a key present on only one
+  side is reported instead of being silently skipped.
+- Terminology in code: `missing` = present in the release only, `extra` = present in the
+  reconstruction only, matching the §6 wording "Missing in release or reconstruction".
+- Tests (14): `alignment_of_identical_sequences_is_all_matched`,
+  `alignment_reports_a_deleted_event_as_missing`,
+  `alignment_reports_an_inserted_event_as_extra`,
+  `alignment_reports_a_substitution_as_changed`,
+  `alignment_prefers_a_match_over_a_gap_that_scores_the_same`,
+  `alignment_prefers_the_earlier_release_event_on_a_tie`,
+  `alignment_keeps_indices_strictly_increasing`,
+  `alignment_of_duplicate_payloads_matches_one_and_reports_the_rest`,
+  `alignment_of_an_empty_side_reports_everything`, `alignment_is_deterministic`,
+  `min_count_is_enforced_on_both_sides`,
+  `min_count_accepts_a_key_absent_from_both_count_maps_only_when_not_required`,
+  `align_by_key_covers_keys_present_on_only_one_side`,
+  `align_by_key_gives_an_alignment_for_a_key_only_on_the_reconstruction_side`.
+- Build: `133 test(s), 0 failed`, `ctest` `100% tests passed out of 1`.
+
 ## Open questions
 
+- **Tie-break reading.** "preferring an exact payload match, then the earlier release
+  event, then the earlier reconstruction event" is implemented as: match when it preserves
+  the LCS length, else consume the release event first on a tie. UNVERIFIED: whether
+  "earlier" means earlier in file order (implemented) or earlier in the alignment; the two
+  readings coincide for the cases in this repo's tests but could differ on a long
+  insert/delete run.
 - **What is a "canonical payload"?** §Comparison rules 3 compares "ordered payload
   sequences" without defining the payload subset. `normalize_event` implements §1's list
   and additionally drops the whole `hook.target` block (the registering mod's addresses and

@@ -11,6 +11,7 @@ add_executable(mh_trace_tests
   test_trace_reader.cpp
   test_scenario.cpp
   test_comparator.cpp
+  test_sequence.cpp
 )
 
 target_link_libraries(mh_trace_tests PRIVATE mh_trace)
