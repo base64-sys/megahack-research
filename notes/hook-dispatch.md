@@ -223,8 +223,8 @@ script restricted the registration helper to two names (`FUN_1800AB850` and
 -- 143 distinct helpers, all calling `geode::hook::createConvention` -- so the full sweep
 now yields **338 registration sites over 215 distinct GD methods**. The method name, the
 callback and the host target all come from the registration call; the target is either a
-hard-coded host RVA (317 sites) or a name resolved at runtime from a mangled host symbol
-(30 sites over 26 methods).
+hard-coded host RVA (308 sites, 188 distinct values) or a name resolved at runtime from a
+mangled host symbol (30 sites over 26 methods).
 
 Every method maps to exactly one target, with no method carrying two. That is the check
 that the positional pairing is sound: 25 registrations of `resetLevel` all landing on
@@ -258,6 +258,14 @@ address moved from the patch's label to a disassembly-backed fact.
 
 43 of the 338 callbacks are Ghidra `LAB_` labels and 19 are data slots, so neither has a
 recovered `.c` to read. Recorded as `callback_kind=label` / `data` rather than dropped.
+
+**Resolved 2026-10-27** ([hook-target-verification.md](hook-target-verification.md)): those
+62 are code addresses that Ghidra never promoted to a function, and `.pdata` has no
+`RUNTIME_FUNCTION` for them either — two engines, one answer. Decoded, 21 are a bare
+`jmp` into a `_wrappers.tsv` thunk, 19 are a single `ret`, 9 write state and return, 8 jump
+into Mega Hack code, 2 jump indirectly. They are real callbacks, not missing data; the
+label/data distinction in the TSV is Ghidra's typing, not a behavioural category. All 164
+registrars, 143 helpers and 277 thunks, by contrast, are exact procedure entries.
 
 ## The settings accessor this note used to call "missing"
 

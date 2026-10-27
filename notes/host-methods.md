@@ -112,6 +112,24 @@ rather than on Mega Hack's own `hackpro.json`, the write has to go through that 
 `data.json` vs `hackpro.json` framing is moot. See notes/persistence.md. `FUN_180199D10`
 registers the three hooks and contains no storage code.
 
+## Verified against the live Ghidra inventory (2026-10-27)
+
+The whole index was re-read through a live Ghidra `list_strings` (9,957 defined strings,
+Evidence `ev_a455a3e3c1fe6a6d6611008617ffa806727be09275983a7c1889cd74d0b6b91b`):
+
+- **All 214 rows verify exactly**: the `host_method_va` is a defined string object and its
+  text equals the method name, with zero mismatches. The VA column is sound.
+- The index is a **subset, not the universe**. Ten of the 215 hooked methods have no row,
+  and those ten have **zero hits in all 9,957 defined strings** — the literal is in the
+  code (the decompiled registration call shows it) but Ghidra never defined a string
+  object at it. Nine further rows describe methods that no registration hooks.
+- Two of the ten missing rows are `target_kind=name`, i.e. hooks resolved by mangled
+  symbol: `cocos2d::CCDirector::drawScene` and `cocos2d::CCMotionStreak::initWithFade`.
+  A resolver built from this table would silently fail on them.
+
+Details, byte-level shapes and the 62 callbacks this matters for are in
+[hook-target-verification.md](hook-target-verification.md).
+
 ## Open questions
 
 - (Resolved 2026-10-20.) Best Run is not stored by Mega Hack: the full hook surface (338

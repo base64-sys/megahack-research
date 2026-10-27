@@ -197,7 +197,12 @@ settings mechanism are done; the settings *contents* (202 keys) are now also map
   - The shutdown path: release-side shutdown is atexit(FUN_180001370) (resets CoreDirector
     vtables, frees two allocations); TLS callbacks: none. The patch-side wrapper at
     `0x180155155` remains UNVERIFIED on the release side.
-  - Hook-target RVAs still flagged UNVERIFIED per row in `_hook_sites.tsv`.
+  - Hook-target RVAs still flagged UNVERIFIED per row in `_hook_sites.tsv`. **Corrected
+    2026-10-27:** the index carries no per-row UNVERIFIED column, and the flag was never
+    re-emitted after a regeneration. Measured instead: of 188 distinct target RVAs, 183 are
+    exact function entries in GD 2.2081's `.pdata`, 145 also have a thunk addend, 41 have one
+    angle and **2 (`0xC77D0`, `0xC7810`) have only the registration argument**. See
+    [hook-target-verification.md](../notes/hook-target-verification.md).
   - The serialiser's `this` base and the exact C++ type of the registry's map container.
   - Settings registry contents are now mapped (202 keys / 5 types / observed values) from
     the user's hackpro.json; see [settings-contents.md](../notes/settings-contents.md). The
@@ -306,6 +311,13 @@ Exit criteria:
 - [x] High-value clusters documented as patterns rather than 160 isolated notes: input
       hooks, render hooks, gameplay rewrites, UI add-ons, save-data features.
 - [ ] Reconstructed modules validated against release behaviour for the sampled clusters.
+      **Method (2026-10-27):** the JSONL trace schema, scenario manifest, comparison
+      rules and M3 evidence checklist are in
+      [runtime-validation.md](../notes/runtime-validation.md). This is a method only:
+      no cluster has been runtime-validated, and the five sampled clusters in
+      [m3-validation.md](../notes/m3-validation.md) remain structural-only. The static
+      reference stays at Geode 5.6.1; runtime validation uses the separate Geode 5.11.2
+      `runtime511` profile.
 
 ### M4 – Mega Hack persistence and the `.dt` importer (in progress)
 
