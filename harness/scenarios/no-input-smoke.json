@@ -32,6 +32,6 @@
   "comparison": {
     "order_groups": [["level_started", "attempt_started"]],
     "tolerances": {},
-    "volatile": ["t_ns", "hook.va", "thread.id", "call.this.value", "call.duration_ns", "save.local_path"]
+    "volatile": ["t_ns", "hook.va", "thread.id", "call.this.value", "call.duration_ns", "save.local_path", "call.call_id", "call.parent_call_id"]
   }
 }

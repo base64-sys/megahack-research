@@ -34,7 +34,9 @@ void replace_all(std::string& text, std::string_view from, std::string_view to) 
 
 // `save_site_required` moves 0x16c8b0 between `hooks.required` and `hooks.optional`; nothing
 // else in the manifest changes, so the two cases differ by exactly the decision under test.
-std::string manifest_text(bool save_site_required) {
+// `comparison.volatile` is the contract's escape hatch for a field that has been *observed*
+// to vary between runs of one build; `volatile_entry` is the JSON text of one such path.
+std::string manifest_text(bool save_site_required, std::string volatile_entry = "") {
   std::string text = R"JSON({
   "schema": "mh-scenario/1",
   "id": "claim",
@@ -54,12 +56,13 @@ std::string manifest_text(bool save_site_required) {
   "hooks": {"required": [{"key": "GeometryDash.exe:rva:0x3b8eb0", "phases": ["enter", "exit"], "min_count": 1}@SAVE_REQUIRED@],
             "optional": [{"key": "GeometryDash.exe:rva:0x16c8b0", "phases": ["enter", "exit"], "min_count": 1}]},
   "repetitions": 2,
-  "comparison": {"order_groups": [["level_started"]], "tolerances": {}, "volatile": []}
+  "comparison": {"order_groups": [["level_started"]], "tolerances": {}, "volatile": [@VOLATILE@]}
 })JSON";
   replace_all(text, "@SAVE_REQUIRED@",
               save_site_required
                   ? R"(, {"key": "GeometryDash.exe:rva:0x16c8b0", "phases": ["enter", "exit"], "min_count": 1})"
                   : "");
+  replace_all(text, "@VOLATILE@", volatile_entry);
   replace_all(text, "@RELEASE_SHA@", sha('a'));
   replace_all(text, "@RECON_SHA@", sha('b'));
   replace_all(text, "@HARNESS_SHA@", sha('c'));
@@ -70,6 +73,18 @@ std::string manifest_text(bool save_site_required) {
 struct TraceOptions {
   std::string role = "release";
   bool emit_save_site = false;  // the 0x16c8b0 hook pair and its snapshots
+  // `frame` is `CCDirector::getTotalFrames()`, counted since the process started, so a later
+  // launch of the same build starts its window at a different absolute frame. `frame_base`
+  // moves the whole document; `hook_frame_shift` moves only the hook events, so a real
+  // one-frame difference can be told apart from a shifted clock.
+  std::int64_t frame_base = 0;
+  std::int64_t hook_frame_shift = 0;
+  // The observer's per-invocation counter, not behaviour: two runs of one build allocate
+  // these in whatever order their hooks happen to run.
+  std::string call_id = "c1";
+  // The JSON text of the `comparison.volatile` entries this trace's own manifest carries,
+  // so the trace's `scenario.sha256` matches the manifest it is compared against.
+  std::string manifest_volatile;
 };
 
 mh::EventContext context(std::int64_t t_ns, std::int64_t frame) {
@@ -147,40 +162,44 @@ Json meta_body(const TraceOptions& options, const mh::ScenarioDocument& manifest
 }
 
 std::string build_trace(const TraceOptions& options, bool save_site_required) {
-  const mh::ScenarioDocument manifest = mh::read_scenario(manifest_text(save_site_required));
+  const mh::ScenarioDocument manifest =
+      mh::read_scenario(manifest_text(save_site_required, options.manifest_volatile));
 
   std::ostringstream out;
   mh::TraceWriter writer(out, mh::TraceHeader{"00000000-0000-4000-8000-000000000002",
                                               sha('0')});
   writer.write_meta(meta_body(options, manifest), mh::Capture{});
 
+  const std::int64_t anchor_frame = options.frame_base;
+  const std::int64_t hook_frame = options.frame_base + 1 + options.hook_frame_shift;
+
   writer.write_event(
       mh::records::milestone_event("level_started",
                                    mh::Value::observed_str(sha('d'))),
-      context(100, 0));
+      context(100, anchor_frame));
   writer.write_event(
       mh::records::hook_event("enter", reset_level(), Json::null(),
-                              mh::records::call_object("c1", 1, std::nullopt, 0)),
-      context(150, 1));
+                              mh::records::call_object(options.call_id, 1, std::nullopt, 0)),
+      context(150, hook_frame));
   writer.write_event(
       mh::records::hook_event("exit", reset_level(), Json::null(),
-                              mh::records::call_object("c1", 1, std::nullopt, 0, 900)),
-      context(160, 1));
+                              mh::records::call_object(options.call_id, 1, std::nullopt, 0, 900)),
+      context(160, hook_frame));
   if (options.emit_save_site) {
     writer.write_event(
         mh::records::hook_event("enter", save_percentage(), Json::null(),
                                 mh::records::call_object("c2", 1, std::nullopt, 0)),
-        context(170, 1));
+        context(170, hook_frame));
     writer.write_event(
         mh::records::save_event("snapshot_before", false, std::nullopt, std::nullopt, "saves/l.dat"),
-        context(171, 1));
+        context(171, hook_frame));
     writer.write_event(
         mh::records::save_event("snapshot_after", true, 12, std::string("beef"), "saves/l.dat"),
-        context(172, 1));
+        context(172, hook_frame));
     writer.write_event(
         mh::records::hook_event("exit", save_percentage(), Json::null(),
                                 mh::records::call_object("c2", 1, std::nullopt, 0, 300)),
-        context(173, 1));
+        context(173, hook_frame));
   }
 
   mh::EndInfo end;
@@ -197,9 +216,9 @@ std::vector<mh::TraceDocument> two_runs(const std::string& text) {
 
 mh::ComparisonReport compare(const std::vector<mh::TraceDocument>& release,
                              const std::vector<mh::TraceDocument>& reconstruction,
-                             bool save_site_required) {
-  return mh::compare_traces(mh::read_scenario(manifest_text(save_site_required)), release,
-                            reconstruction);
+                             bool save_site_required, std::string volatile_entry = "") {
+  return mh::compare_traces(mh::read_scenario(manifest_text(save_site_required, volatile_entry)),
+                            release, reconstruction);
 }
 
 }  // namespace
@@ -276,4 +295,85 @@ MH_TEST(report_carries_the_derived_claim_even_when_the_gate_stops_it) {
 
   MH_CHECK_EQ(report.gate, mh::GateStatus::blocked);
   MH_CHECK_EQ(report.claim, mh::ClaimClass::surface);
+}
+
+MH_TEST(a_later_launch_of_the_same_behaviour_is_comparable) {
+  // `frame` is `CCDirector::getTotalFrames()`, an absolute count since the process started
+  // (the first four captures opened at frames 12507 and 37963 of the same level). Two runs
+  // of one build therefore differ in every `frame` until it is rebased on the document's own
+  // `level_started`; the behaviour-carrying clock is "frames since the level started".
+  TraceOptions release_first;
+  TraceOptions release_second;
+  release_second.frame_base = 32460;
+  TraceOptions reconstruction_first;
+  reconstruction_first.role = "reconstruction";
+  reconstruction_first.frame_base = 512;
+  TraceOptions reconstruction_second;
+  reconstruction_second.role = "reconstruction";
+  reconstruction_second.frame_base = 37963;
+
+  const mh::ComparisonReport report =
+      compare({mh::read_trace(build_trace(release_first, false)),
+               mh::read_trace(build_trace(release_second, false))},
+              {mh::read_trace(build_trace(reconstruction_first, false)),
+               mh::read_trace(build_trace(reconstruction_second, false))},
+              false);
+
+  MH_CHECK_EQ(report.unstable, false);
+  MH_CHECK_EQ(report.status, mh::ComparisonStatus::pass);
+}
+
+MH_TEST(a_hook_that_fires_one_frame_later_is_still_unstable) {
+  // The guard against the cheap fix: making `frame` volatile would also hide a real
+  // one-frame difference in when a hook fired, which is the signal the bounded window exists
+  // to produce. Rebasing must keep it visible.
+  TraceOptions release_first;
+  TraceOptions release_second;
+  release_second.hook_frame_shift = 1;  // same behaviour, one frame later
+
+  const std::string first_text = build_trace(release_first, false);
+  const std::string second_text = build_trace(release_second, false);
+
+  TraceOptions reconstruction_options;
+  reconstruction_options.role = "reconstruction";
+  const mh::ComparisonReport report =
+      compare({mh::read_trace(first_text), mh::read_trace(second_text)},
+              two_runs(build_trace(reconstruction_options, false)), false);
+
+  MH_CHECK_EQ(report.unstable, true);
+}
+
+MH_TEST(a_volatile_path_the_manifest_declares_is_not_compared) {
+  // The contract: "Record the varying field in `comparison.volatile` only after it has been
+  // observed to vary, with the observed run ids." A declared path has to actually leave the
+  // payload; otherwise the field is decoration and every run whose identifiers differ is
+  // `unstable` for a reason no reader can act on.
+  const std::string declared_entry = R"("call.call_id")";
+  auto build_pair = [&](const std::string& volatile_entry) {
+    TraceOptions release_first;
+    release_first.manifest_volatile = volatile_entry;
+    TraceOptions release_second = release_first;
+    release_second.call_id = "c9";
+    TraceOptions reconstruction_first;
+    reconstruction_first.role = "reconstruction";
+    reconstruction_first.manifest_volatile = volatile_entry;
+    TraceOptions reconstruction_second = reconstruction_first;
+    reconstruction_second.call_id = "c7";
+    return std::pair<std::vector<mh::TraceDocument>, std::vector<mh::TraceDocument>>{
+        {mh::read_trace(build_trace(release_first, false)),
+         mh::read_trace(build_trace(release_second, false))},
+        {mh::read_trace(build_trace(reconstruction_first, false)),
+         mh::read_trace(build_trace(reconstruction_second, false))}};
+  };
+
+  // Undeclared: the identifier is part of the payload, so the variant is unstable.
+  const auto undeclared = build_pair("");
+  MH_CHECK_EQ(compare(undeclared.first, undeclared.second, false).unstable, true);
+
+  // Declared: it is not compared, and the runs agree.
+  const auto declared = build_pair(declared_entry);
+  const mh::ComparisonReport report =
+      compare(declared.first, declared.second, false, declared_entry);
+  MH_CHECK_EQ(report.unstable, false);
+  MH_CHECK_EQ(report.status, mh::ComparisonStatus::pass);
 }

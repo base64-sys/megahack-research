@@ -34,19 +34,72 @@ std::string string_member(const json::Json& object, std::string_view key) {
 // two variants' copies of the same behaviour compare equal. `seq` is a line counter, the
 // run identity is deliberately random, and `capture` is evidence about the observation
 // rather than the behaviour.
-json::Json comparison_payload(const json::Json& event) {
-  return normalize_event(event, {"schema", "type", "run_id", "run_fingerprint", "seq",
-                                 "capture"});
+//
+// `frame` is `CCDirector::getTotalFrames()`: an absolute count since the process started, so
+// the same behaviour never repeats its frame numbers across launches (the first four bounded
+// captures opened at frames 12507 and 37963 of the same level). The behaviour-carrying clock
+// is "frames since the level started", which is the unit the bounded window is measured in,
+// so a document's frames are rebased on its own `level_started` observation, 1-based. The
+// field is kept, not dropped: a hook that fires one frame later must still be a difference.
+// A document with no `level_started` keeps absolute frames - absence of the anchor is not a
+// licence to rewrite the clock, and such a scenario has to declare `frame` volatile.
+json::Json comparison_payload(const json::Json& event,
+                              std::optional<std::int64_t> level_started_frame,
+                              const std::vector<std::string>& declared_volatile) {
+  // The envelope is per-file; `comparison.volatile` is the manifest's own list of fields it
+  // observed to vary between runs of one build ("record the varying field ... only after it
+  // has been observed to vary, with the observed run ids"). Both are removed here or nowhere:
+  // a declared path that the payload still contained would be decoration.
+  std::vector<std::string> volatile_paths{"schema", "type",   "run_id", "run_fingerprint",
+                                          "seq",    "capture"};
+  volatile_paths.insert(volatile_paths.end(), declared_volatile.begin(),
+                        declared_volatile.end());
+  json::Json payload = normalize_event(event, volatile_paths);
+  if (!level_started_frame.has_value()) {
+    return payload;
+  }
+  // Rebuilt member by member: `Json::set` refuses an existing key, so the rebased field is
+  // written while the object is constructed rather than patched in place.
+  json::Json rebased = json::Json::object();
+  bool rebased_any = false;
+  for (const auto& [name, value] : payload.members()) {
+    if (name == "frame" && value.kind() == json::Json::Kind::integer) {
+      rebased.set(name, json::Json::integer(value.integer_value() - *level_started_frame + 1));
+      rebased_any = true;
+    } else {
+      rebased.set(name, value);
+    }
+  }
+  return rebased_any ? rebased : payload;
 }
 
-std::map<std::string, std::vector<std::string>> payloads_by_key(const TraceDocument& trace) {
+// The document's own `level_started` frame, or `std::nullopt` when it never observed one.
+std::optional<std::int64_t> anchor_frame(const TraceDocument& trace) {
+  for (const json::Json& event : trace.events) {
+    if (string_member(event, "kind") != "milestone" ||
+        string_member(event, "name") != "level_started") {
+      continue;
+    }
+    const json::Json* frame = member(event, "frame");
+    if (frame == nullptr || frame->kind() != json::Json::Kind::integer) {
+      return std::nullopt;
+    }
+    return frame->integer_value();
+  }
+  return std::nullopt;
+}
+
+std::map<std::string, std::vector<std::string>> payloads_by_key(
+    const TraceDocument& trace, const std::vector<std::string>& declared_volatile) {
+  const std::optional<std::int64_t> anchor = anchor_frame(trace);
   std::map<std::string, std::vector<std::string>> payloads;
   for (const json::Json& event : trace.events) {
     const std::optional<std::string> key = canonical_event_key(event);
     if (!key.has_value()) {
       continue;
     }
-    payloads[*key].push_back(comparison_payload(event).to_canonical());
+    payloads[*key].push_back(
+        comparison_payload(event, anchor, declared_volatile).to_canonical());
   }
   return payloads;
 }
@@ -68,14 +121,15 @@ bool payloads_differ(const std::map<std::string, std::vector<std::string>>& lhs,
 // The event keys that disagree between a variant's first run and its other runs, newest last.
 // Pure and bounded: this feeds a diagnostic message, not a verdict.
 std::vector<std::pair<std::string, std::string>> variant_differences(
-    const std::vector<TraceDocument>& runs, std::size_t limit = 8) {
+    const std::vector<TraceDocument>& runs,
+    const std::vector<std::string>& declared_volatile, std::size_t limit = 8) {
   std::vector<std::pair<std::string, std::string>> differences;
   if (runs.size() < 2) {
     return differences;
   }
-  const auto baseline = payloads_by_key(runs.front());
+  const auto baseline = payloads_by_key(runs.front(), declared_volatile);
   for (std::size_t index = 1; index < runs.size(); ++index) {
-    const auto other = payloads_by_key(runs[index]);
+    const auto other = payloads_by_key(runs[index], declared_volatile);
     const std::string run = "run " + std::to_string(index + 1) + " vs run 1";
     // Stable order: every key either side, so the first reported difference is reproducible.
     std::set<std::string> keys;
@@ -105,13 +159,14 @@ std::vector<std::pair<std::string, std::string>> variant_differences(
 
 // §8: "compare each variant's repeated runs with the same rules. If a required event,
 // payload, or order differs within a variant, the scenario is `unstable`".
-bool variant_is_unstable(const std::vector<TraceDocument>& runs) {
+bool variant_is_unstable(const std::vector<TraceDocument>& runs,
+                         const std::vector<std::string>& declared_volatile) {
   if (runs.size() < 2) {
     return false;
   }
-  const auto baseline = payloads_by_key(runs.front());
+  const auto baseline = payloads_by_key(runs.front(), declared_volatile);
   for (std::size_t index = 1; index < runs.size(); ++index) {
-    if (payloads_differ(baseline, payloads_by_key(runs[index]))) {
+    if (payloads_differ(baseline, payloads_by_key(runs[index], declared_volatile))) {
       return true;
     }
   }
@@ -181,8 +236,9 @@ void add_finding(ComparisonReport& report, ComparisonStatus severity, std::strin
 // Diagnostic only: `finalize_status` ignores `unstable` findings, so this cannot change a
 // verdict. It answers the question the bare `unstable: yes` leaves open - which keys disagreed.
 void note_variant_drift(ComparisonReport& report, const char* variant,
-                        const std::vector<TraceDocument>& runs) {
-  const auto differences = variant_differences(runs);
+                        const std::vector<TraceDocument>& runs,
+                        const std::vector<std::string>& declared_volatile) {
+  const auto differences = variant_differences(runs, declared_volatile);
   if (differences.empty()) {
     return;
   }
@@ -310,12 +366,14 @@ ComparisonReport compare_traces(const ScenarioDocument& manifest,
   const Scenario& scenario = *manifest.scenario;
 
   // -- §8 stability, within each variant, before any cross-variant claim ------
-  report.unstable = variant_is_unstable(release_runs) || variant_is_unstable(reconstruction_runs);
+  report.unstable = variant_is_unstable(release_runs, scenario.volatile_paths) ||
+                    variant_is_unstable(reconstruction_runs, scenario.volatile_paths);
   // `unstable` is a verdict, and on its own it does not say what disagreed. These findings are
   // diagnostics: `finalize_status` ignores this severity, so the verdict is unchanged and the
   // operator learns which event keys differ between two runs of the same variant.
-  note_variant_drift(report, "release", release_runs);
-  note_variant_drift(report, "reconstruction", reconstruction_runs);
+  note_variant_drift(report, "release", release_runs, scenario.volatile_paths);
+  note_variant_drift(report, "reconstruction", reconstruction_runs,
+                     scenario.volatile_paths);
 
   // -- §3 min_count on both sides, before any alignment is trusted -----------
   std::vector<RequiredKeyCount> required;
@@ -334,8 +392,8 @@ ComparisonReport compare_traces(const ScenarioDocument& manifest,
 
   // -- §3 per-key alignment --------------------------------------------------
   report.alignments =
-      align_by_key(payloads_by_key(release_runs.front()),
-                   payloads_by_key(reconstruction_runs.front()));
+      align_by_key(payloads_by_key(release_runs.front(), scenario.volatile_paths),
+                   payloads_by_key(reconstruction_runs.front(), scenario.volatile_paths));
   for (const KeyAlignment& key_alignment : report.alignments) {
     const bool required_key = is_required_key(scenario, key_alignment.key);
     const ComparisonStatus severity =
