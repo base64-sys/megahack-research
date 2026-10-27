@@ -118,7 +118,12 @@ Artifacts from this build (not committed, `.gitignore` has `/reconstruction/geod
 | --- | --- |
 | `megahack.reconstruction.dll` | `5f214c5f086c6339300a9adfeec94376f8e7f33a119272fda28d879b6117ac1f` |
 | `megahack.reconstruction.geode` | `df5961623d01f4d336f7d1f88fc01e55e188182843153981e8566bf6450a3ba7` |
-| `megahack.trace.geode` (observer, after the record refactor) | `8be7118a67d375425479c01f51dd340fecc33f05fe8d705a5116cea7a04cde43` |
+| `megahack.trace.geode` (observer, after the record refactor) | `9b4065b264d2f5301ba095435e0fb3bcea73ca051c636b07cb20458aeea5e454` |
+
+That last row is a re-pin: touching the observer source during the commit split forced a
+rebuild, the package digest moved (`8be7118a…` → `9b4065b2…`), and the manifest had to be
+re-filled and re-hashed. This is the cost of a non-reproducible build made concrete, and it is
+why the pin is per build rather than per source tree.
 
 `geode build` reports exit 1 on the first build after a configure change while still packaging,
 and 0 on an unchanged re-run - the same behaviour already recorded for the observer, not a new
@@ -150,7 +155,7 @@ context rebuilt, because the manifest's own digest is part of the context.
   the two traces' `environment.geode.version` with each other - so
   `scenario_accepts_a_baseline_that_differs_from_the_runtime` pins that editing `baseline` does
   not invalidate a manifest.
-- New manifest SHA-256: `3ec2449adc4079746406c9f3be7787eb344fdf765c2c8c92c7e835616fa764b1`.
+- New manifest SHA-256: `9a871e0638c06edc28984c3c105a952beccced6fce72c03a351390f708411da1`.
 
 ## Evidence
 
