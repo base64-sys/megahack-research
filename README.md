@@ -9,6 +9,9 @@ Research notes and original tooling only. [docs/GOALS.md](docs/GOALS.md) says wh
 means, [docs/ROADMAP.md](docs/ROADMAP.md) tracks it, [AGENTS.md](AGENTS.md) holds the working
 rules.
 
+Continuing this work in a fresh session? [HANDOFF.md](HANDOFF.md) is the paste-ready summary:
+what is verified, what is open, the run book and the traps.
+
 ## Status
 
 Four generated graphics, four lenses, because one number cannot portray progress honestly.
