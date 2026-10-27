@@ -42,6 +42,9 @@ class Json {
   // Precondition: kind() is the matching kind. Read access is deliberately narrow: a
   // value's meaning comes from the trace schema, not from probing the tree.
   std::string_view string_value() const noexcept { return text_; }
+  std::int64_t integer_value() const noexcept { return integer_; }
+  double real_value() const noexcept { return real_; }
+  bool boolean_value() const noexcept { return bool_; }
 
   // Object member. Throws std::invalid_argument when the key already exists (a document
   // with duplicate keys has no single interpretation) or when this is not an object.
