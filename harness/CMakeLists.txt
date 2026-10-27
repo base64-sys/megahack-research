@@ -36,6 +36,16 @@ add_library(mh_trace STATIC
 target_include_directories(mh_trace PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_compile_features(mh_trace PUBLIC cxx_std_20)
 
+# Host tool: grade a captured trace without writing a test (harness/OBSERVER-PROGRESS.md O4c).
+add_executable(mh_trace_check tools/trace_check.cpp)
+target_link_libraries(mh_trace_check PRIVATE mh_trace)
+target_compile_features(mh_trace_check PRIVATE cxx_std_20)
+if(MSVC)
+  target_compile_options(mh_trace_check PRIVATE /W4 /permissive-)
+else()
+  target_compile_options(mh_trace_check PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+
 if(MSVC)
   target_compile_options(mh_trace PRIVATE /W4 /permissive-)
 else()
@@ -44,4 +54,10 @@ endif()
 
 enable_testing()
 add_subdirectory(tests)
+
+# The validator CLI over the note's own example: valid, exit 0 (harness/OBSERVER-PROGRESS.md O4c).
+add_test(NAME trace_check_example
+         COMMAND mh_trace_check ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/example_trace.jsonl)
+add_test(NAME trace_check_usage COMMAND mh_trace_check)
+set_tests_properties(trace_check_usage PROPERTIES WILL_FAIL TRUE)
 

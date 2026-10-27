@@ -163,6 +163,23 @@ five members the trace reader requires of a meta record, a non-negative integer
 (`target`, `scenario`, `environment.harness`, `level`) - a placeholder cannot enter a
 fingerprint by accident.
 
+## Validator CLI (O4c)
+
+`mh_trace_check <trace.jsonl> [--json]` runs the core reader over a file, so a captured run
+can be graded without writing a test:
+
+| Situation | Exit | Output |
+| --- | --- | --- |
+| note's seven-line example | 0 | `valid, 5 event(s), 0 error(s), 3 warning(s)`, meta and end present |
+| same file with the `end` line removed | 1 | `missing_end: no end record: the trace is incomplete` |
+| no argument | 2 | usage |
+| `--json` | as above | one object: `structurally_valid`, `meta`, `end`, `events`, `errors`, `warnings`, `issues[]` |
+
+The warnings on the example are the reader's own and are expected: `meta` omits `mods`, the
+`end` record omits `artifacts`, and one event's capture is `unavailable`. ctest covers the
+first and third rows (`trace_check_example`, `trace_check_usage`); the fixture is
+`harness/tests/fixtures/example_trace.jsonl`, written by the same generator as the header.
+
 ## Runbook for the first capture (needs the user)
 
 Nothing below has been executed; installing a mod into a profile and launching a game are
@@ -173,9 +190,9 @@ user actions.
 2. Write the context:
    `python harness/tools/preflight.py --target samples/absolllute.hackmega/absolllute.hackmega_original.dll --gd <runtime511>/GeometryDash.exe --geode <runtime511>/Geode.dll --harness <installed>/megahack.trace.geode --profile runtime511 --gd-version 2.2081 --geode-version 5.11.2 --scenario <manifest> --repetition 0 --context <path>`
 3. Launch with `MH_TRACE_CONTEXT=<path>` in the environment, load one level, quit.
-4. The trace appears as `<mod save dir>/traces/<run_id>.jsonl`. Validating it needs a host
-   tool that runs the reader over a file; the core's reader is a library, so O4c adds that
-   command (`harness/tools` or a small `mh_trace_check` target) before the capture is graded.
+4. The trace appears as `<mod save dir>/traces/<run_id>.jsonl`; grade it with
+   `harness/build/mh_trace_check <trace>` (exit 0 means structurally valid, and it prints
+   every issue the reader found).
 5. `python harness/tools/preflight.py --sidecar <trace>` writes its digest.
 
 ## Open questions

@@ -46,3 +46,9 @@ inline constexpr std::string_view kExampleTrace =
 OUT.parent.mkdir(parents=True, exist_ok=True)
 OUT.write_text(header, encoding="utf-8", newline="\n")
 print(f"wrote {OUT} ({len(lines)} lines, {sum(len(line) + 1 for line in lines)} bytes)")
+
+# The same bytes as a file, so the host validator (mh_trace_check) has a fixture it can be
+# run against from ctest instead of only from a C++ test.
+JSONL = REPO / "harness" / "tests" / "fixtures" / "example_trace.jsonl"
+JSONL.write_text(chr(10).join(lines) + chr(10), encoding="utf-8", newline="\n")
+print(f"wrote {JSONL} ({len(lines)} lines)")

@@ -16,7 +16,9 @@ Status vocabulary: `pending`, `in progress`, `done`, `blocked`.
 | O3b | Hook bridge, remaining pilot keys: `PlayLayer::postUpdate`, `PlayerObject::pushButton`, `PlayerObject::releaseButton` | done (build only) |
 | O4a | Runner preflight: target/environment hashes, one-target rule, profile refusal, trace sha256 sidecar, fragment in meta spelling, python tests | done |
 | O4b | Run-context handshake: the runner writes a context file before launch, the observer fills meta (target, environment, scenario, level, settings) and the real `run_fingerprint` from it at load, then marks it consumed | done (build only - the load path is unproven until a run) |
-| O4c | Validator CLI: a host command that runs `read_trace` over a captured JSONL and prints its issues, so a capture can be graded without a test build | pending |
+| O4c | Validator CLI: a host command that runs `read_trace` over a captured JSONL and prints its issues, so a capture can be graded without a test build | done |
+| O6 | Milestones and frames: `level_started`/`attempt_started` milestone records and a real `frame` on every event, which the pilot manifest requires | pending |
+| O7 | Settings snapshot at the first hook: read the target's `settings.tags` for the scenario's required tags and record them in meta (currently `null` + `capture.missing`) | pending |
 | O5 | Pilot capture in runtime511 and a real `read_trace` pass, plus the proofs only a run can give (hooks fire; the load thread is the main thread) - needs the user to launch | pending |
 
 ## Evidence log
@@ -149,3 +151,20 @@ Status vocabulary: `pending`, `in progress`, `done`, `blocked`.
 - The load path itself is still unproven - it needs a run, which is O5.
 - Commit: `feat(context): hand the runner's facts to the observer before launch`.
 - Next: O4c, the validator CLI (the last item that does not need a game run).
+
+### Iteration 8 — O4c: the reader is now runnable against a real file
+
+- `harness/tools/trace_check.cpp` -> `mh_trace_check <trace.jsonl> [--json]`, exit 0
+  structurally valid, 1 invalid, 2 usage/IO. `--json` emits the same findings as one object so
+  the runner can consume them without parsing English.
+- Verified on the note's seven-line example: `valid, 5 event(s), 0 error(s), 3 warning(s)`,
+  exit 0; with the `end` line removed: `missing_end`, 1 error, exit 1; with no argument: exit 2;
+  `--json` reports the same three warnings.
+- The generator now also writes `tests/fixtures/example_trace.jsonl` (the same bytes as the
+  header fixture, idempotent), and ctest gained `trace_check_example` and
+  `trace_check_usage`: **3 ctest entries, all passing** (170 cases + 2 CLI tests).
+- Remaining backlog is split by blocker: O5 needs the user (install + launch), while O6
+  (milestones + frames) and O7 (settings snapshot) are ordinary work, so the loop continues
+  on those instead of stopping.
+- Commit: `feat(tools): add mh_trace_check to grade a captured trace`.
+- Next: O6, milestone records and real frame numbers.
