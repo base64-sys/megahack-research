@@ -245,7 +245,9 @@ std::optional<std::int64_t> current_frame() {
 
 // The target's own hook on the same GD function, resolved once per address from the live hook
 // list. This is what makes a trace say *which implementation* was running: the release and a
-// reconstruction both hook the same addresses, and only the owner differs.
+// reconstruction both hook the same addresses, and only the owning module differs. The contract
+// spells `hook.target.module` as a module image name (`absolllute.hackmega_original.dll`), so
+// that is what goes there, with the mod id kept alongside for the settings cross-reference.
 struct TargetHook {
     std::string module;
     std::int64_t priority = 0;
@@ -265,7 +267,13 @@ const std::optional<TargetHook>& target_hook_for(std::uintptr_t address) {
         }
         for (Hook* hook : mod->getHooks()) {
             if (hook && hook->getAddress() == address) {
-                result = TargetHook{std::string(mod->getID()),
+                std::error_code error;
+                std::filesystem::path binary = mod->getBinaryPath();
+                std::string module = binary.filename().string();
+                if (module.empty()) {
+                    module = std::string(mod->getID());
+                }
+                result = TargetHook{std::move(module),
                                     static_cast<std::int64_t>(hook->getPriority())};
                 break;
             }
