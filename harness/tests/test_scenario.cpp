@@ -148,6 +148,24 @@ MH_TEST(scenario_rejects_a_live_profile) {
   MH_CHECK(!document.approved_for_evidence());
 }
 
+MH_TEST(scenario_accepts_an_operator_driven_input_block) {
+  // The harness has no input injection, so a manual pilot must be able to say so instead of
+  // declaring `harness` or `os` and claiming automation it does not have.
+  const ScenarioDocument document =
+      mh::read_scenario(replaced(example(), R"("driver": "harness")",
+                                 R"("driver": "operator")"));
+  MH_CHECK(document.valid());
+  MH_CHECK(!has_error(document, ScenarioIssueKind::bad_driver));
+}
+
+MH_TEST(scenario_rejects_an_unknown_input_driver) {
+  const ScenarioDocument document =
+      mh::read_scenario(replaced(example(), R"("driver": "harness")",
+                                 R"("driver": "robot")"));
+  MH_CHECK(has_error(document, ScenarioIssueKind::bad_driver));
+  MH_CHECK(!document.valid());
+}
+
 MH_TEST(scenario_rejects_a_short_level_hash) {
   const ScenarioDocument document = mh::read_scenario(replaced(
       example(), "0000000000000000000000000000000000000000000000000000000000000000",

@@ -511,9 +511,13 @@ ScenarioDocument read_scenario(std::string_view json_text) {
   const json::Json* input = member(root, "input");
   if (is_object(input)) {
     const std::optional<std::string> driver = string_member(*input, "driver");
-    if (!driver.has_value() || (*driver != "harness" && *driver != "os")) {
+    // `operator` is not an automation claim: it states that a human drives the input, which is
+    // the only driver the harness actually has. Without it a manual run would have to be
+    // declared `harness` or `os`, either of which would be false.
+    if (!driver.has_value() ||
+        (*driver != "harness" && *driver != "os" && *driver != "operator")) {
       add_issue(document, ScenarioIssueSeverity::error, ScenarioIssueKind::bad_driver,
-                "input.driver", "driver must be harness or os");
+                "input.driver", "driver must be harness, os or operator");
     }
     const json::Json* actions = member(*input, "actions");
     if (!is_array(actions)) {

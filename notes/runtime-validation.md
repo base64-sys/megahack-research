@@ -391,12 +391,15 @@ can redirect the GD save path on 2.2081.
 
 ### Input
 
-`driver` is `"harness"` for input injected through the game's own input path, or
-`"os"` for OS-level synthetic input. `"os"` is less deterministic and must be declared
-in the manifest; it is not the default. The exact harness input API is `UNVERIFIED`
-for the 5.11.2 runtime; this contract defines only the logical actions. An action has
-`at_frame`, `action` (`press`, `release`, `quit`, or `wait`), and `key` (`space`,
-`mouse_left`, or null for `quit`).
+`driver` is `"harness"` for input injected through the game's own input path, `"os"` for
+OS-level synthetic input, or `"operator"` when a human presses the keys and quits. `"os"` is
+less deterministic and must be declared in the manifest; it is not the default. `"operator"`
+is the honest declaration while no input driver exists: the actions are instructions to the
+operator, `at_frame` is a target rather than a promise, and the trace's authority for what was
+actually pressed is the `pushButton`/`releaseButton` hook records, not `input_sent`. The exact
+harness input API is `UNVERIFIED` for the 5.11.2 runtime; this contract defines only the
+logical actions. An action has `at_frame`, `action` (`press`, `release`, `quit`, or `wait`),
+and `key` (`space`, `mouse_left`, or null for `quit`).
 
 The trace records the observed hook calls (`PlayerObject::pushButton`,
 `PlayerObject::releaseButton`, `GJBaseGameLayer::handleButton`) and the milestone

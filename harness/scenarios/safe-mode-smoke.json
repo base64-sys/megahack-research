@@ -14,8 +14,8 @@
   "level": {"fixture": "fixtures/runtime/safe-mode-smoke.gmd", "sha256": "0000000000000000000000000000000000000000000000000000000000000000", "source": "generated", "notes": "Local fixture only; no user or online level."},
   "profile": {"isolation": "disposable", "notes": "Use a disposable Windows profile or VM; restore from a snapshot. Do not run against a live player profile."},
   "settings": {"reset": "defaults", "tags": [{"tag": "0x1E2", "label": "HACK_SAFE_MODE", "value": true}]},
-  "input": {"driver": "harness", "actions": [{"at_frame": 30, "action": "press", "key": "space"}, {"at_frame": 60, "action": "release", "key": "space"}, {"at_frame": 180, "action": "quit", "key": null}]},
-  "timing": {"max_frames": 240, "timeout_ms": 30000, "fps_cap": 60, "stop_on": ["save_requested", "player_died", "level_completed"]},
+  "input": {"driver": "operator", "notes": "No input injection exists in this harness: a human presses and releases space and quits. at_frame is a target, not a promise.", "actions": [{"at_frame": 30, "action": "press", "key": "space"}, {"at_frame": 60, "action": "release", "key": "space"}, {"at_frame": 180, "action": "quit", "key": null}]},
+  "timing": {"max_frames": 240, "timeout_ms": 30000, "fps_cap": 60, "stop_on": ["save_requested", "player_died", "level_completed"], "notes": "Nothing enforces max_frames or timeout_ms, and nothing stops on these milestones; they are the operator's instruction for when to end the session."},
   "milestones": {"required": ["level_started", "attempt_started"], "optional": ["save_requested", "player_died", "level_completed"]},
   "hooks": {
     "required": [
