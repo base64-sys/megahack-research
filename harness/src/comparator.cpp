@@ -291,6 +291,22 @@ GateResult check_comparability(const ScenarioDocument& scenario_document,
   }
   const Scenario& scenario = *scenario_document.scenario;
 
+  // -- Runs: the precondition for every row below -------------------------
+  // Checked first because each following row compares the two variants: with one absent there
+  // is nothing to compare, and reporting every row as a mismatch buries the single real reason.
+  // A run with no reconstruction at all used to come back as ten identity failures and
+  // `invalid`, instead of one `blocked` row saying the evidence is not there yet.
+  if (release.runs < 2 || reconstruction.runs < 2) {
+    add_gate_issue(result, "runs", "at least two runs per variant are required");
+  }
+  if (release.crashed_runs != 0 || reconstruction.crashed_runs != 0) {
+    add_gate_issue(result, "runs", "a variant has a crashed, timed-out or incomplete run");
+  }
+  if (release.runs == 0 || reconstruction.runs == 0) {
+    result.status = GateStatus::blocked;
+    return result;
+  }
+
   // -- Scenario: same scenario.sha256, same scenario.id --------------------
   if (release.scenario_sha256 != scenario_document.sha256 ||
       reconstruction.scenario_sha256 != scenario_document.sha256) {
@@ -348,12 +364,7 @@ GateResult check_comparability(const ScenarioDocument& scenario_document,
   }
 
   // -- Runs: at least two per variant, no crash or timeout ---------------
-  if (release.runs < 2 || reconstruction.runs < 2) {
-    add_gate_issue(result, "runs", "at least two runs per variant are required");
-  }
-  if (release.crashed_runs != 0 || reconstruction.crashed_runs != 0) {
-    add_gate_issue(result, "runs", "a variant has a crashed, timed-out or incomplete run");
-  }
+  // (checked before the identity rows; see the top of this function)
 
   // Identity failures are `invalid`; a missing required observation is `blocked`.
   const bool identity_failed = !result.issues.empty();

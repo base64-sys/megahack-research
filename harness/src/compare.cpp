@@ -155,8 +155,16 @@ ComparisonReport compare_traces(const ScenarioDocument& manifest,
 
   if (gate.status != GateStatus::pass) {
     // "If any fails, the result is `invalid` or `blocked`; do not compare them
-    // 'approximately'."
-    report.status = finalize_status(gate.status, {});
+    // 'approximately'." The gate's own reasons travel with the report: a status with no
+    // explanation is unusable, which is how a draft manifest reported `invalid` and said
+    // nothing about its zeroed digests.
+    const ComparisonStatus severity = gate.status == GateStatus::blocked
+                                          ? ComparisonStatus::blocked
+                                          : ComparisonStatus::invalid;
+    for (const GateIssue& issue : gate.issues) {
+      report.findings.push_back(Finding{severity, issue.check, issue.detail});
+    }
+    report.status = finalize_status(gate.status, report.findings);
     return report;
   }
   if (!manifest.scenario.has_value() || release_runs.empty() ||

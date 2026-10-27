@@ -307,6 +307,25 @@ MH_TEST(comparator_gate_invalidates_a_crashed_run) {
   MH_CHECK(has_check(result, "runs"));
 }
 
+MH_TEST(comparator_gate_blocks_when_a_variant_is_absent) {
+  // A comparison with no reconstruction runs at all is blocked on evidence, not invalid: the
+  // identity rows have nothing to compare, so they must stay silent instead of each reporting a
+  // mismatch against a variant that does not exist.
+  const mh::ScenarioDocument manifest = example_scenario();
+  const VariantSummary release = variant("release", manifest.scenario->release_sha256, manifest);
+  VariantSummary reconstruction =
+      variant("reconstruction", manifest.scenario->reconstruction_sha256, manifest);
+  reconstruction.runs = 0;
+
+  const GateResult result = mh::check_comparability(manifest, release, reconstruction);
+  MH_CHECK_EQ(result.status, GateStatus::blocked);
+  MH_CHECK(has_check(result, "runs"));
+  MH_CHECK(!has_check(result, "scenario"));
+  MH_CHECK(!has_check(result, "harness"));
+  MH_CHECK(!has_check(result, "target"));
+  MH_CHECK_EQ(result.issues.size(), std::size_t{1});
+}
+
 MH_TEST(comparator_gate_blocks_on_dropped_events) {
   const mh::ScenarioDocument manifest = example_scenario();
   const VariantSummary release = variant("release", manifest.scenario->release_sha256, manifest);
