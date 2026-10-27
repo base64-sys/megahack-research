@@ -16,6 +16,8 @@
 // The bindings ship the same addresses (`GEODE_APPLY_MODIFY_FOR_FUNCTION(base::get() +
 // 0x397f40, ...)` in the generated Geode/modify/PlayerObject.hpp), which is the second angle.
 
+#include <Geode/loader/Dirs.hpp>
+#include <Geode/modify/GJGameLevel.hpp>
 #include <Geode/modify/PlayLayer.hpp>
 #include <Geode/modify/PlayerObject.hpp>
 
@@ -23,6 +25,7 @@
 #include <mh/context.hpp>
 #include <mh/json.hpp>
 #include <mh/json_parse.hpp>
+#include <mh/sha256.hpp>
 #include <mh/trace_writer.hpp>
 #include <mh/value.hpp>
 
@@ -53,6 +56,8 @@ struct HookSpec {
 constexpr HookSpec kResetLevel{"GeometryDash.exe:rva:0x3b8eb0", "PlayLayer::resetLevel", 0x3B8EB0};
 constexpr HookSpec kPostUpdate{"GeometryDash.exe:rva:0x3b4ba0", "PlayLayer::postUpdate", 0x3B4BA0};
 constexpr HookSpec kPushButton{"GeometryDash.exe:rva:0x397f40", "PlayerObject::pushButton", 0x397F40};
+constexpr HookSpec kSavePercentage{"GeometryDash.exe:rva:0x16c8b0", "GJGameLevel::savePercentage",
+                                   0x16C8B0};
 constexpr HookSpec kReleaseButton{"GeometryDash.exe:rva:0x3981d0",
                                   "PlayerObject::releaseButton", 0x3981D0};
 
@@ -376,6 +381,60 @@ void emit_milestone_locked(Session& session, const char* name) {
     session.sink.flush();
 }
 
+// `save` is "an observed file state or write; not inferred from a hook" (notes/runtime-validation.md),
+// so this records what the file system actually holds at that moment: a snapshot before the
+// target's veto would run, and one after. Equal digests mean the write did not happen; a changed
+// digest means it did. That difference is the only thing in a trace that depends on the target's
+// behaviour rather than on the observer's own hooks.
+mh::json::Json save_snapshot_object(const char* phase) {
+    const std::filesystem::path save_dir = geode::dirs::getSaveDir();
+    const std::filesystem::path path = save_dir / "CCLocalLevels.dat";
+
+    mh::json::Json body = object();
+    body.set("kind", mh::json::Json::string("save"));
+    body.set("store", mh::json::Json::string("gd_save"));
+    body.set("phase", mh::json::Json::string(phase));
+    body.set("source", mh::json::Json::string("filesystem"));
+    body.set("path_template", mh::json::Json::string("<gd_save>/CCLocalLevels.dat"));
+
+    std::error_code error;
+    const bool exists = std::filesystem::exists(path, error) && !error;
+    body.set("exists", mh::json::Json::boolean(exists));
+    if (!exists) {
+        body.set("size", mh::json::Json::null());
+        body.set("sha256", mh::json::Json::null());
+        body.set("keys", mh::json::Json::null());
+        body.set("local_path", mh::json::Json::string(path.string()));
+        return body;
+    }
+
+    const std::string bytes = read_text_file(path);
+    body.set("size", mh::json::Json::integer(static_cast<std::int64_t>(bytes.size())));
+    body.set("sha256", mh::json::Json::string(mh::sha256_hex(bytes)));
+    body.set("keys", mh::json::Json::null());
+    body.set("local_path", mh::json::Json::string(path.string()));
+    return body;
+}
+
+void emit_save_locked(Session& session, const char* phase) {
+    mh::EventContext context;
+    context.t_ns = steady_ns();
+    context.frame = current_frame();
+    context.thread = current_thread(session);
+    context.capture.status = mh::CaptureStatus::complete;
+
+    session.writer->write_event(save_snapshot_object(phase), context);
+    session.sink.flush();
+}
+
+void emit_save(const char* phase) {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    if (!g_session || !g_session->writer) {
+        return;
+    }
+    emit_save_locked(*g_session, phase);
+}
+
 void emit_milestone(const char* name) {
     std::lock_guard<std::mutex> lock(g_mutex);
     if (!g_session || !g_session->writer) {
@@ -463,6 +522,20 @@ class $modify(TracePlayerObject, PlayerObject) {
         const bool result = PlayerObject::releaseButton(button);
         end_hook(scope, kReleaseButton, this);
         return result;
+    }
+};
+
+// The manifest lists `0x16c8b0` as an optional hook and `save_requested` as an optional
+// milestone, so this site can be absent without invalidating a run.
+class $modify(TraceGJGameLevel, GJGameLevel) {
+    void savePercentage(int percent, bool isPracticeMode, int clicks, int attempts,
+                        bool isChkValid) {
+        emit_milestone("save_requested");
+        emit_save("snapshot_before");
+        HookScope scope = begin_hook(kSavePercentage, this);
+        GJGameLevel::savePercentage(percent, isPracticeMode, clicks, attempts, isChkValid);
+        end_hook(scope, kSavePercentage, this);
+        emit_save("snapshot_after");
     }
 };
 
