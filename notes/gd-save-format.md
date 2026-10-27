@@ -84,17 +84,44 @@ Unblocked: a fixture generator can now write a complete `CCLocalLevels.dat` (or 
 `.gmd` in the same dialect) from a declarative spec, because both layers — plist and `k4` — are
 implemented and tested.
 
-Still missing before the manifest's `level.sha256` can be pinned:
+### The generator, and the fixture it writes
 
-- **Which level-dict keys GD requires** on load. The keys observed in a real level are
-  `kCEK`, `k18`, `k36`, `k23`, `k2`, `k4`, …; the minimum set is not established, and a
-  guessed minimum that GD tolerates on one build is not a format.
-- **A playable object string.** The grammar is visible (`kS38` colour channels, then
-  `id,x,y,...;` objects) but a shape that reliably produces `postUpdate`, `resetLevel` and
-  button events for a few hundred frames is a design choice, not a fact.
-- **Proof GD loads the generated file.** Only a run closes that; the fixture must therefore
-  stay out of the manifest's hash until then, or the manifest would claim an observation
-  nobody made.
+`harness/tools/make_level_fixture.py` (+ `test_make_level_fixture.py`, 12 cases) emits one
+level from a declarative spec: three blocks in the player's path, at x = 150, 300 and 600, the
+last one also setting the level's length.
 
-`level.sha256` stays a placeholder for now, and the gate keeps saying `blocked` on that row —
-which is the honest state.
+| Artifact | Detail |
+| --- | --- |
+| `harness/fixtures/runtime/safe-mode-smoke.gmd` | 1,031 bytes of GD plist XML |
+| SHA-256 | `edcfd088e227efda17a4c45a635518771d2261ad99ae3799cdda4bde9bc73e34` |
+| level dict | the 43 keys GD 2.2081 wrote for a real level, same order |
+| `k4` | `base64url(gzip("kS38,…;1,1,2,150,3,15;…"))`, deterministic |
+
+The `.gmd` is the canonical text form and the file whose digest the manifest will pin; it is
+*our* interchange artifact, and `gd_save.py --check` correctly refuses it, because a `.gmd` is
+not a container. `--install <save-dir>` converts the same XML into `CCLocalLevels.dat` through
+`gd_save.encode`, refusing to replace an existing save without `--force` and keeping a `.dat.bak`
+when forced.
+
+Values for the keys whose meaning is not established (`k18`, `k36`, `k23`, `k11`, `k16`, `k21`,
+`k27`, `k42`, `k45`, `k50`, `k48`, `k106`, `kI*`) are ordinary defaults. Only `kCEK`, `k2`,
+`k4` and `k5` are read as what they obviously are.
+
+### The `level` row is an assertion, not an observation
+
+`meta.level` reaches the trace from the run context, which the runner copies from the manifest.
+So the gate's level row compares the manifest's hash with itself: it can show `pass` without
+anything having observed which level the game loaded.
+
+Therefore `level.sha256` **stays zero** in `harness/scenarios/safe-mode-smoke.json` — not
+because the fixture is missing any more, but because filling it would make a row pass that
+proves nothing. Closing that needs the trace to carry an observed level identity, which the
+`milestone` record's existing `data` value can hold without a schema change — but it needs the
+`PlayLayer → GJGameLevel` field offsets and a run, so it is the next task, not this one.
+
+Still missing before an M3 run:
+
+- **Save isolation.** The fixture cannot be installed into a live save (see above), so either
+  `%LOCALAPPDATA%` redirects GD's save directory or the run happens in a VM.
+- **Proof GD loads the generated file.** Only a run closes that. Until then the manifest keeps
+  its placeholder and the gate keeps saying `blocked` on that row — which is the honest state.

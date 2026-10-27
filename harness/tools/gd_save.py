@@ -50,6 +50,22 @@ class SaveFormatError(ValueError):
     """The bytes are not a GD save container."""
 
 
+def gzip_bytes(payload: bytes) -> bytes:
+    """A gzip stream with the header fields GD writes: zero mtime, XFL 0, OS 10."""
+    compressor = zlib.compressobj(6, zlib.DEFLATED, -zlib.MAX_WBITS)
+    deflate = compressor.compress(payload) + compressor.flush()
+    return (
+        _GZIP_HEADER
+        + deflate
+        + struct.pack("<I", zlib.crc32(payload) & 0xFFFFFFFF)
+        + struct.pack("<I", len(payload) & 0xFFFFFFFF)
+    )
+
+
+def gunzip(data: bytes) -> bytes:
+    return zlib.decompress(data, wbits=16 + zlib.MAX_WBITS)
+
+
 def decode(data: bytes) -> bytes:
     """Container bytes -> the plist XML GD wrote."""
     if not data:
@@ -63,22 +79,14 @@ def decode(data: bytes) -> bytes:
     except (binascii.Error, ValueError) as error:
         raise SaveFormatError(f"payload is not base64url: {error}") from error
     try:
-        return zlib.decompress(compressed, wbits=16 + zlib.MAX_WBITS)
+        return gunzip(compressed)
     except zlib.error as error:
         raise SaveFormatError(f"payload is not a gzip stream: {error}") from error
 
 
 def encode(xml: bytes) -> bytes:
     """Plist XML -> container bytes. Deterministic: same input, same bytes."""
-    compressor = zlib.compressobj(6, zlib.DEFLATED, -zlib.MAX_WBITS)
-    deflate = compressor.compress(xml) + compressor.flush()
-    stream = (
-        _GZIP_HEADER
-        + deflate
-        + struct.pack("<I", zlib.crc32(xml) & 0xFFFFFFFF)
-        + struct.pack("<I", len(xml) & 0xFFFFFFFF)
-    )
-    text = base64.urlsafe_b64encode(stream).rstrip(b"=")
+    text = base64.urlsafe_b64encode(gzip_bytes(xml)).rstrip(b"=")
     return bytes(byte ^ XOR_KEY for byte in text)
 
 
