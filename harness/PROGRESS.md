@@ -16,7 +16,8 @@ evidence (test name, gate output, commit subject).
 | 3 | Canonical JSON writer: sorted keys, no insignificant whitespace, UTF-8, plus run_fingerprint as SHA-256 over the canonical object (own SHA-256, no deps) | done |
 | 4 | Trace writer: meta/event/end, seq from 0, attempted/dropped counters, capture status, JSONL, no BOM | done |
 | 5 | Call pairing and call-stack validation: unique call_id, depth/parent chain, unclosed enters, exit without enter, reused id | done |
-| 6 | Trace reader/validator: required keys present, seq gaps, end record required, capture gate | pending |
+| 6a | Strict JSON parser (RFC 8259) for the trace reader: no BOM, no duplicate keys, order preserved | done |
+| 6b | Trace reader/validator: required keys present, seq gaps, end record required, capture gate | pending |
 | 7 | Scenario manifest parser and validator (mh-scenario/1): required fields, status vocabulary, level/profile/settings rules | pending |
 | 8 | Comparator core: comparability gate, volatile-field normalisation, canonical event keys | pending |
 | 9 | Per-key sequence alignment: min_count on both sides, LCS/Needleman-Wunsch with the documented tie-breaks, missing vs extra classification | pending |
@@ -170,6 +171,33 @@ evidence (test name, gate output, commit subject).
   `call_stack_rejects_exit_depth_that_does_not_match_the_enter`,
   `call_stack_ignores_an_empty_event_list`.
 - Build: `58 test(s), 0 failed`, `ctest` `100% tests passed out of 1`.
+
+### Item 6a — strict JSON parser
+
+- Split: item 6 needs a parser before it can validate anything, so the backlog now has
+  6a (this) and 6b (reader/validator). Item 6 was one iteration's worth of nothing else.
+- Files: `include/mh/json_parse.hpp`, `src/json_parse.cpp`, `tests/test_json_parse.cpp`.
+- Strict where the contract is strict: a BOM is a parse error (§Trace format "no BOM"),
+  duplicate keys are rejected (the canonical writer would have to drop one silently),
+  comments and trailing commas are rejected, and nesting is capped at 128 so a corrupt
+  document cannot exhaust the stack.
+- Numbers: a plain integer literal becomes `integer` when it fits int64, otherwise `real`
+  rather than truncated; a fraction or exponent is always `real`.
+- Key order is preserved, so a parsed line can be written back unchanged. That is the
+  first half of the §Complete illustrative trace round-trip requirement in item 11.
+- Tests (9): `json_parse_accepts_the_contract_value_objects` (all ten §Value objects
+  spellings from the note, byte-identical after parse → write),
+  `json_parse_rejects_malformed_documents` (14 documents),
+  `json_parse_preserves_key_order_for_round_trip`,
+  `json_parse_decodes_escapes_and_surrogate_pairs`,
+  `json_parse_distinguishes_integer_from_real`, `json_parse_rejects_duplicate_keys`,
+  `json_parse_rejects_nesting_beyond_the_limit`,
+  `json_parse_reports_the_offset_of_a_syntax_error`,
+  `json_parse_round_trips_a_nested_document`.
+- Build: `67 test(s), 0 failed`, `ctest` `100% tests passed out of 1`.
+- Known limitation: exponent notation (`1e3`) is semantically round-tripped but printed as
+  `1000`, because the writer emits the shortest decimal. Integer and plain-decimal
+  documents are byte-identical.
 
 ## Open questions
 

@@ -19,6 +19,7 @@ add_library(mh_trace STATIC
   src/contract.cpp
   src/value.cpp
   src/json.cpp
+  src/json_parse.cpp
   src/sha256.cpp
   src/fingerprint.cpp
   src/trace_writer.cpp
