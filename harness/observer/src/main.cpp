@@ -56,6 +56,10 @@ constexpr HookSpec kPushButton{"GeometryDash.exe:rva:0x397f40", "PlayerObject::p
 constexpr HookSpec kReleaseButton{"GeometryDash.exe:rva:0x3981d0",
                                   "PlayerObject::releaseButton", 0x3981D0};
 
+// PlayLayer::init (GeometryDash.exe RVA 0x3A5B00) is not one of the manifest's required hook
+// keys: it is observed as the `level_started` milestone, so no hook key is invented for it.
+// RVA sources: hook-registrations.md:117 and the generated Geode/modify/PlayLayer.hpp note.
+
 constexpr char kUnknownDigest[] =
     "0000000000000000000000000000000000000000000000000000000000000000";
 
@@ -206,6 +210,14 @@ std::uintptr_t image_base() {
     return reinterpret_cast<std::uintptr_t>(GetModuleHandleW(nullptr));
 }
 
+// The contract's `frame` field: the engine's own frame counter, not a restart-relative one.
+std::optional<std::int64_t> current_frame() {
+    if (auto* director = cocos2d::CCDirector::get()) {
+        return static_cast<std::int64_t>(director->getTotalFrames());
+    }
+    return std::nullopt;
+}
+
 mh::json::Json build_hook_object(const HookSpec& spec) {
     char rva[16];
     std::snprintf(rva, sizeof(rva), "0x%X", spec.rva);
@@ -251,11 +263,38 @@ void emit_hook_locked(Session& session, const char* phase, const HookSpec& spec,
 
     mh::EventContext context;
     context.t_ns = steady_ns();
+    context.frame = current_frame();
     context.thread = current_thread(session);
     context.capture.status = mh::CaptureStatus::complete;
 
     session.writer->write_event(body, context);
     session.sink.flush();
+}
+
+// notes/runtime-validation.md "milestone": kind, name, and data as a value object. The pilot
+// manifest's required milestones are level_started and attempt_started.
+void emit_milestone_locked(Session& session, const char* name) {
+    mh::json::Json body = object();
+    body.set("kind", mh::json::Json::string("milestone"));
+    body.set("name", mh::json::Json::string(name));
+    body.set("data", value_json(mh::Value::null_value()));
+
+    mh::EventContext context;
+    context.t_ns = steady_ns();
+    context.frame = current_frame();
+    context.thread = current_thread(session);
+    context.capture.status = mh::CaptureStatus::complete;
+
+    session.writer->write_event(body, context);
+    session.sink.flush();
+}
+
+void emit_milestone(const char* name) {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    if (!g_session || !g_session->writer) {
+        return;
+    }
+    emit_milestone_locked(*g_session, name);
 }
 
 HookScope begin_hook(const HookSpec& spec, void* self) {
@@ -302,7 +341,16 @@ void end_hook(HookScope& scope, const HookSpec& spec, void* self) {
 } // namespace
 
 class $modify(TracePlayLayer, PlayLayer) {
+    bool init(GJGameLevel* level, bool useReplay, bool dontCreateObjects) {
+        // Emitted before the original runs: PlayLayer::init sets the level up and may call
+        // resetLevel itself, and the manifest's order group requires level_started first.
+        // A failed init therefore still records the attempt, which is the honest reading.
+        emit_milestone("level_started");
+        return PlayLayer::init(level, useReplay, dontCreateObjects);
+    }
+
     void resetLevel() {
+        emit_milestone("attempt_started");
         HookScope scope = begin_hook(kResetLevel, this);
         PlayLayer::resetLevel();
         end_hook(scope, kResetLevel, this);

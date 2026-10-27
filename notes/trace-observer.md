@@ -180,6 +180,22 @@ The warnings on the example are the reader's own and are expected: `meta` omits 
 first and third rows (`trace_check_example`, `trace_check_usage`); the fixture is
 `harness/tests/fixtures/example_trace.jsonl`, written by the same generator as the header.
 
+## Milestones and frames (O6)
+
+| Record | Source | Address |
+| --- | --- | --- |
+| `milestone level_started` | `PlayLayer::init`, emitted before the original | RVA `0x3A5B00` (hook-registrations.md:117; binding note) |
+| `milestone attempt_started` | `PlayLayer::resetLevel`, at entry | RVA `0x3B8EB0` (address-map.md:50) |
+| `frame` on every event | `CCDirector::getTotalFrames()` | cocos `CCDirector.h:179` |
+
+`PlayLayer::init` is deliberately *not* a hook key: the pilot lists four hook keys and init is
+not among them, so the milestone is the record for it and no key is invented.
+
+`level_started` is written before the original `init` runs, because setting a level up can
+call `resetLevel` itself and the manifest's order group requires `level_started` first. The
+cost is that a failing `init` still records the attempt; that is the honest reading of "a
+level was started", and the trace shows no later events for it.
+
 ## Runbook for the first capture (needs the user)
 
 Nothing below has been executed; installing a mod into a profile and launching a game are

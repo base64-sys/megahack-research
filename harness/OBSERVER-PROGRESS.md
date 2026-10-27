@@ -17,7 +17,7 @@ Status vocabulary: `pending`, `in progress`, `done`, `blocked`.
 | O4a | Runner preflight: target/environment hashes, one-target rule, profile refusal, trace sha256 sidecar, fragment in meta spelling, python tests | done |
 | O4b | Run-context handshake: the runner writes a context file before launch, the observer fills meta (target, environment, scenario, level, settings) and the real `run_fingerprint` from it at load, then marks it consumed | done (build only - the load path is unproven until a run) |
 | O4c | Validator CLI: a host command that runs `read_trace` over a captured JSONL and prints its issues, so a capture can be graded without a test build | done |
-| O6 | Milestones and frames: `level_started`/`attempt_started` milestone records and a real `frame` on every event, which the pilot manifest requires | pending |
+| O6 | Milestones and frames: `level_started`/`attempt_started` milestone records and a real `frame` on every event, which the pilot manifest requires | done (build only) |
 | O7 | Settings snapshot at the first hook: read the target's `settings.tags` for the scenario's required tags and record them in meta (currently `null` + `capture.missing`) | pending |
 | O5 | Pilot capture in runtime511 and a real `read_trace` pass, plus the proofs only a run can give (hooks fire; the load thread is the main thread) - needs the user to launch | pending |
 
@@ -168,3 +168,21 @@ Status vocabulary: `pending`, `in progress`, `done`, `blocked`.
   on those instead of stopping.
 - Commit: `feat(tools): add mh_trace_check to grade a captured trace`.
 - Next: O6, milestone records and real frame numbers.
+
+### Iteration 9 — O6: milestones and real frame numbers
+
+- `level_started` and `attempt_started` are emitted as milestone records
+  (`kind`, `name`, `data` as a value object), which is the shape the contract's example uses
+  and the manifest's `milestones.required` asks for.
+- `level_started` comes from `PlayLayer::init`, RVA `0x3A5B00` (hook-registrations.md:117 and
+  the binding's own address note). It is **not** turned into a hook key - the manifest lists
+  four hook keys and init is not one of them, so the milestone is the record for it.
+- It is emitted *before* the original runs: `PlayLayer::init` sets the level up and may call
+  `resetLevel` itself, and the manifest's order group requires `level_started` first. A failed
+  init therefore still records the attempt; that is the honest reading of the event.
+- Every event now carries `frame` from `CCDirector::getTotalFrames()` (cocos `CCDirector.h:179`),
+  not a counter the observer maintains.
+- Built and packaged, exit 0. Unverified until a run: that init precedes resetLevel in practice
+  and that frames are non-zero.
+- Commit: `feat(observer): emit level_started and attempt_started milestones with real frames`.
+- Next: O7, the settings snapshot.
