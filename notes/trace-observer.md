@@ -468,8 +468,16 @@ because the call is virtual. So the trigger has to be established by observation
 call graph: an attempt that ends (death or completion) is the candidate.
 
 
-UNVERIFIED: whether ending an attempt calls it at all, and whether the before/after file
-digests differ under Safe Mode. Both need one run that dies or completes a level.
+UNVERIFIED, and now deprioritised: whether ending an attempt calls it at all, and whether the
+before/after file digests differ under Safe Mode. Two sessions produced no call - one with 14
+attempts, one that ran to 35,753 events after a completion - while the game wrote its save
+files anyway. The address is not in doubt (GeometryDash.exe `0x16C8B0` is a real function
+entry, and `_hook_sites.tsv` shows the release hooking the same RVA), so the function is
+simply not on the path this scenario exercises.
+
+Consequence: the key stays optional and unobserved, and the comparison's signal is the
+lifecycle surface (which hooks exist, enter/exit balance, milestone order and counts), not the
+veto. Chasing the veto further costs user runs for a key the manifest already marks optional.
 
 ## Runbook for the first capture (needs the user)
 
