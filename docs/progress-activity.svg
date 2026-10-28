@@ -4,48 +4,48 @@
 <text x="28" y="40" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="19" font-weight="600" fill="#e6edf3">Recent work — what moved, newest first</text>
 <text x="28" y="61" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#8b949e">14 most recent commits · exit criteria currently 28/33</text>
 <circle cx="38.0" cy="94.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="98.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(m3): map Decimal Places to tag 430 and its two formatters</text>
+<text x="52.0" y="98.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(m3): tighten the Coin Shower and Show Total Attempts evidence</text>
 <text x="872.0" y="98.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <circle cx="38.0" cy="118.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="122.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(m3): map Better Calculation to tag 431 and getCurrentPercent</text>
+<text x="52.0" y="122.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(m3): bind tags 422 and 442 to the Player-on-Top rows</text>
 <text x="872.0" y="122.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <circle cx="38.0" cy="142.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="146.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(m3): record the action-listener id namespace</text>
+<text x="52.0" y="146.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(m3): map Decimal Places to tag 430 and its two formatters</text>
 <text x="872.0" y="146.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <circle cx="38.0" cy="166.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="170.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(m3): map Crash Game to action 0x360 and its null write</text>
+<text x="52.0" y="170.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(m3): map Better Calculation to tag 431 and getCurrentPercent</text>
 <text x="872.0" y="170.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <circle cx="38.0" cy="190.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="194.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(m3): trace Icon Stealer to the ProfilePage::init hook</text>
+<text x="52.0" y="194.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(m3): record the action-listener id namespace</text>
 <text x="872.0" y="194.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <circle cx="38.0" cy="214.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="218.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(m3): map Icon Stealer to its profile-page button chain</text>
+<text x="52.0" y="218.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(m3): map Crash Game to action 0x360 and its null write</text>
 <text x="872.0" y="218.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <circle cx="38.0" cy="238.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="242.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(m3): correct the keybind store and row-handler reading</text>
+<text x="52.0" y="242.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(m3): trace Icon Stealer to the ProfilePage::init hook</text>
 <text x="872.0" y="242.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <circle cx="38.0" cy="262.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="266.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(m3): map the v6.0.0 keybinding system to core::Keybinds</text>
+<text x="52.0" y="266.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(m3): map Icon Stealer to its profile-page button chain</text>
 <text x="872.0" y="266.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <circle cx="38.0" cy="286.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="290.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(m5): attribute the remaining Android name hooks to tags 38 and 47</text>
+<text x="52.0" y="290.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(m3): correct the keybind store and row-handler reading</text>
 <text x="872.0" y="290.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <circle cx="38.0" cy="310.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="314.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(m5): attribute the Android input detours to three features</text>
+<text x="52.0" y="314.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(m3): map the v6.0.0 keybinding system to core::Keybinds</text>
 <text x="872.0" y="314.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <circle cx="38.0" cy="334.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="338.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(m5): prove three Android input name hooks are installed</text>
+<text x="52.0" y="338.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(m5): attribute the remaining Android name hooks to tags 38 and 47</text>
 <text x="872.0" y="338.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <circle cx="38.0" cy="358.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="362.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(m5): measure Android input parity by imports and name strings</text>
+<text x="52.0" y="362.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(m5): attribute the Android input detours to three features</text>
 <text x="872.0" y="362.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <circle cx="38.0" cy="382.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="386.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(m3): map Trigger Value Bypass to the host slider bounds</text>
+<text x="52.0" y="386.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(m5): prove three Android input name hooks are installed</text>
 <text x="872.0" y="386.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <circle cx="38.0" cy="406.0" r="4" fill="#8b949e"/>
-<text x="52.0" y="410.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs: refresh progress graphics</text>
+<text x="52.0" y="410.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="12" fill="#e6edf3">docs(m5): measure Android input parity by imports and name strings</text>
 <text x="872.0" y="410.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">docs</text>
 <line x1="28.0" y1="450.0" x2="872.0" y2="450.0" stroke="#30363d" stroke-width="1"/>
 <text x="28.0" y="464.0" font-family="Segoe UI,DejaVu Sans,Helvetica,sans-serif" font-size="10" fill="#8b949e">regenerated on every watchdog start, so a turn's work shows up here · image 4 of 4</text>
-<text x="872.0" y="464.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">git cc256e0</text>
+<text x="872.0" y="464.0" font-family="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" font-size="10" fill="#8b949e" text-anchor="end">git b0f868d</text>
 </svg>
