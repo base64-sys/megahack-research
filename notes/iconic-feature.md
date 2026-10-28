@@ -127,6 +127,58 @@ record's eight icon ids, three colours, glow byte and one extra dword onto the G
 host object at host RVA `0x17B4A0`. It is an action, not a toggle, so it has no
 settings tag to promote against.
 
+## Evidence - how the Iconic tab defines and stores its rows (2026-10-28)
+
+**Question.** The three Iconic changelog rows ("Added Iconic" v9.0.0, "Same Dual Colour"
+v9.0.4, "Vanilla Progress Bar" v9.0.10) never bind to a `mov edx,<tag>` registration, so the
+row-to-code join has been failing. This section establishes what the Iconic rows actually are.
+
+**Method.** `_xrefs.tsv` filtered for `ICONIC`, then the owning function read from
+`recovered/functions/`, then `pe_disasm.py` on the helpers it calls, then a whole-`.text`
+rip-relative reference scan for the storage address.
+
+**Vocabulary.** Every Iconic definition key and its single owning function:
+
+| Key | Owner |
+| --- | --- |
+| `ICONIC` | `FUN_18011FFE0`, `FUN_18012CF20`, `FUN_18012EBE0`, `FUN_180132CE0`, `FUN_1801F8610` |
+| `ICONIC/GENERAL`, `ICONIC/EFFECTS`, `ICONIC/DISABLE`, `ICONIC/RAND`, `ICONIC/VANILLA_PROGRESS_BAR` | `FUN_18011FFE0` |
+| `ICONIC/PREVIEW/ICONS` | `FUN_1801261C0` |
+| `ICONIC/SPECIAL/PREVIEW`, `ICONIC/SPECIAL/INVERTED`, `ICONIC/SPECIAL/SPEED/PRE`, `ICONIC/SPECIAL/SPEED/SUF` | `FUN_1801FC6C0` |
+| `ICONIC/GLOW` | `FUN_1801F3B20` |
+| `HOME/SHORTCUT/ICONIC` | `FUN_18003C470`, `FUN_1800B6770` |
+
+**Row construction.** `FUN_18011FFE0` builds each row by SSO-composing its key, calling
+`hackpro::define(key)`, and handing the returned definition to a widget factory:
+`FUN_1801EC460("GJ_button_05.png", "GJ_button_01.png", definition, page, FUN_1801209F0)` for
+the toggle at `0x18011FFE0`+0x36 (key `ICONIC/VANILLA_PROGRESS_BAR` is stored with
+`builtin_strncpy(..., 0x1c)`), and `FUN_1801ECE60(definition)` for label/button rows. The
+two sub-page switch buttons are built at `0x1801207xx` from the same keys with
+`FUN_1801EBDB0`.
+
+**State plumbing.** The toggle callback `FUN_1801209F0` (`0x1801209F0..0x180120A32`) does:
+
+| Address | Instruction | Effect |
+| --- | --- | --- |
+| `0x1801209FA` | `call 0x18012C690` | returns the Iconic state object (magic-static guard) |
+| `0x180120A05` | `call 0x180136250` | `movzx eax,[rcx+0x20]; ret` - reads the toggle byte |
+| `0x180120A0C` | `xor bl,1` | inverts it |
+| `0x180120A14` | `call 0x180132A90` | `mov [rcx+0x20],dl; ret` - stores it |
+| `0x180120A26` | `jmp [rax+0x3C0]` | mirrors the value into the button's checked state |
+
+**Conclusion.** Iconic rows are not backed by a scanned `mov edx,<tag>` registration: the row's
+identity is a `hackpro::define` key, and its state is a single byte at `[state+0x20]` on a
+magic-static object. That is why the three Iconic rows cannot be bound by the label-map method
+used for the tag-backed features, and it is the concrete reason they stay `cluster`.
+
+UNVERIFIED: the identity of the state object - `FUN_18012C690` returns `0x180800C28`, and the
+only two rip-relative references to that address in `.text` are `0x18003D283` and `0x18003D2FE`
+inside the `core::Keybinds` accessor `0x18003D220`, whose singleton is `0x180800C20`; whether
+`+8` is a sub-object of that singleton or an adjacent global is not established.
+UNVERIFIED: how a definition key becomes a persisted setting (which FNV id `hackpro::define`
+assigns, and where the byte at `+0x20` is written back to the profile), which is what would let
+`ICONIC/VANILLA_PROGRESS_BAR` be matched to a behaviour site.
+
 ## Open questions
 
 - UNVERIFIED: what the Tulip convention's third argument (the `r8b` the detour tests)
