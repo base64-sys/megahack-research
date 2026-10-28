@@ -7,9 +7,10 @@
 - **Binaries** — `absolllute.megahack.android64.so` (10,721,792 bytes, SHA-256
   `06489f3b…31da`) and `absolllute.megahack.android32.so` (7,591,352 bytes, SHA-256
   `57bbe8d8…b913`), per [provenance.md](provenance.md).
-- **Status** — initial pass, corrected. The first version of this note scanned **defined**
-  `_ZN` symbols and reported "0" for every method. That measured Mega Hack's own code, not
-  its host surface; the table below replaces it.
+- **Status** — two passes. The first scanned **defined** `_ZN` symbols and reported "0" for
+  every method; that measured Mega Hack's own code, not its host surface. The second traced
+  the name-resolved registration sites and their detours. The first table is replaced below;
+  the detour attribution is a separate section.
 
 ## Method
 
@@ -128,16 +129,46 @@ three (`GJScaleControl::ccTouchMoved`, `EditorOptionsLayer::onButtonRows`,
 `EditorOptionsLayer::onButtonsPerRow`) have the same string shape but were not traced this
 pass. UNVERIFIED: their registration sites and detours.
 
+## Feature attribution of the three traced detours
+
+**Method.** Disassembled the three Android detours with capstone and resolved every `BL`/`B`
+through `.plt`; read the matching Windows detours from `recovered/functions/` and the
+feature registrations from [hook-registrations.md](hook-registrations.md).
+
+| Android target | Android detour | Windows detour | Shared behaviour |
+| --- | --- | --- | --- |
+| `SliderTouchLogic::ccTouchMoved` | `0x4C8108` | `0x18015D390` (tag 38, Slider Bypass) | flag at `+0x194`; `CCTouch::getLocation`; `CCNode::convertToNodeSpace`; call a virtual with the y when the flag is 1 and the x otherwise (Android `+0xE8`/`+0xD8`, Windows `+0xE0`/`+0xD0`); then `Slider::updateBar` (import, Android) vs `FUN_1801FF740` (Windows); then one more virtual on the slider (`+0x3E0` vs `+0x368`) |
+| `MenuGameLayer::ccTouchBegan` | `0x5339D8` | `0x180189400` (tag 457, Main Menu Gameplay) | null-check the owner, test two state bytes (Android `+0x996`/`+0x993`, Windows `+0x9BE`/`+0x9BB`), call `PlayerObject::pushButton(1)`, set one global byte (Android `0xA420452`, Windows `0x18080C920`), return 1; otherwise return 0 |
+| `LevelAreaLayer::onClickDoor` | `0x534848` | `0x180189F90` (tag 449, No Transition) | bare tail call: Android `b 0x923660` = `LevelAreaLayer::onEnterTower`; Windows `jmp 0x18014D3E0` = MH's lazy host-symbol binder for host RVA `0x2C57E0` |
+
+**Conclusion.** The three name-resolved hooks are the Android counterparts of Slider Bypass,
+Main Menu Gameplay and No Transition, by target and by detour behaviour. The Windows
+structures differ in base offsets and vtable slots, so the claim is feature identity, not
+layout identity. For No Transition the two builds take the same shortcut (skip the door
+transition and enter the tower), which makes the open `0x220` disagreement in
+[host-abi.md](host-abi.md#one-disagreement-left-open) more likely to be `onClickDoor` vs
+`onEnterTower` than a naming error.
+
+The Android build does not use the Windows settings table: `android64` contains exactly one
+`HACK_*` literal, `HACK_NOCLIP` at `0x211796` (raw-byte search of the whole image), so
+feature state on Android is not addressed by `HACK_SLIDER_LIMIT`-style tags.
+
 ## Open questions
 
-- UNVERIFIED: the three untraced name-resolved targets above; the next question is which
-  feature callback each detour implements, not whether the string is used.
+- UNVERIFIED: the three untraced name-resolved targets above
+  (`GJScaleControl::ccTouchMoved`, `EditorOptionsLayer::onButtonRows`,
+  `EditorOptionsLayer::onButtonsPerRow`); the next question is which feature callback each
+  detour implements, not whether the string is used.
 - The `0xBD8` argument at the SliderTouchLogic site is a handler-metadata value. Its meaning
   (`priority`? `after`?) is not established; the Windows equivalent is the `-32` argument in
   the `Hook` registration, but the units need not match.
-- UNVERIFIED: whether `SliderTouchLogic::ccTouchMoved` or `GJScaleControl::ccTouchMoved`
-  carries Slider Bypass and Toolbox Button Bypass on Android; both names are present and
-  the Windows split does not decide it.
+- UNVERIFIED: that host RVA `0x2C57E0` (the Windows No Transition forward) is
+  `LevelAreaLayer::onEnterTower`. Closing this needs a GD 2.2081 symbol anchor; the Android
+  import name and the `0x220` offset next to `onClickDoor` are consistent with it but are
+  not that anchor.
+- `SliderTouchLogic::ccTouchMoved` is now attributed to Slider Bypass on both platforms.
+  `GJScaleControl::ccTouchMoved` is still unattributed on Android; a Toolbox Button Bypass
+  binding would need its registration site, not the name alone.
 - UNVERIFIED: whether the two absent methods exist in the Android GD game binary. The
   absence above is bounded to the Mega Hack `.so` and to its complete file bytes; no
   Android GD image is in `samples/`.
