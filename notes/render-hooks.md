@@ -1207,6 +1207,47 @@ the wordings.
 - UNVERIFIED: whether the v6.x builds shipped the same constants; only the v9.1.3 image is in
   `samples/`, so the wording history is inferred from the changelog text, not from old binaries.
 
+## Evidence - Trail Always On is tag 448 and swaps stopStroke for resumeStroke (2026-10-28)
+
+**Question.** The v9.1.0-beta.3 row "Added Trail Always On" has no static `HACK_*` label.
+Which tag implements it?
+
+**Method.** Whole-`.text` capstone scan for `mov edx, 0x1c0` filtered by call shape
+(`mov rcx,rax; mov r8,rsi; call 0x18008f910`), then instruction-level read of the callback,
+then an import-name resolution of the detour's tail jump via `objdump -p`.
+
+| Field | Value |
+| --- | --- |
+| Tag | 448 (`0x1C0`), no static label |
+| Registration | `0x1800B1B6B mov edx,0x1c0` inside `FUN_1800AFAE0`, then `call 0x18008f910` |
+| Callback | `FUN_1801730B0` (385 bytes, 0 callers) |
+| Target | `cocos2d::CCMotionStreak::stopStroke`, resolved by mangled name `?stopStroke@CCMotionStreak@cocos2d@@QEAAXXZ` through `FUN_18010A5A0` with `"libcocos2d.dll"` (SSO chunks `libcoc`/`os`/`2d.dll`) |
+| Detour | `0x1801732A0`, installed by `FUN_180171FB0(..., "cocos2d::CCMotionStreak::stopStroke", 0xFFFFFFE0, 1)` |
+| Disable path | `FUN_180108A80(ctx, 0x1801732A0)` |
+
+The detour is two jumps and nothing else:
+
+```
+0x1801732A0  e9 3b ff 3b 00   jmp 0x1805331E0
+0x1805331E0  ff 25 4a 0d 11 00  jmp qword ptr [0x180643F30]
+```
+
+`objdump -p` resolves the IAT slot `0x180643F30` to
+`?resumeStroke@CCMotionStreak@cocos2d@@QEAAXXZ`. Both jumps preserve `rcx`, so the game's call to
+`streak->stopStroke()` becomes `streak->resumeStroke()` on the same object: the streak is never
+stopped, which is what keeps a trail drawn after the point where the game would have ended it.
+
+**Bounded negative.** A capstone scan of the whole `.text` for direct `jmp`/`call` operands equal to
+`0x1805331E0` returns exactly one site, the detour itself, so no other code reaches `resumeStroke`
+through that thunk. The only other hook on `stopStroke` is tag 395's No Trail callback
+(`FUN_180171DB0`), which removes the trail rather than preserving it.
+
+**Two independent angles.** (1) The mechanism: stop became resume, which is "always on" by
+construction. (2) The settings key `COSMETIC/HACK_TRAIL_ALWAYS_ON`
+([settings-contents.md](settings-contents.md) line 274) names the row, and the tag has one
+registration site, so the key and the behaviour can only refer to this pair. UNVERIFIED: the
+FNV assignment from that key to tag 448 is inferred from uniqueness, not read; no runtime capture.
+
 ## Evidence - the FPS setter: config id 484 and updateCustomFPS (2026-10-28)
 
 The v7.0 row "Added Unfocused FPS Setter" is the only settable-FPS mechanism in the image.
