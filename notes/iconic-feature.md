@@ -74,19 +74,65 @@ magic static at `.data` `0x180806C28`, 62 callers); it is only read at `+0x1C`, 
 non-zero. The record is released at the end (`cocos2d::CCObject::release`), so
 nothing of the viewed user is retained after the copy.
 
+**Install site.** The button is not gated by a settings key: `FUN_1800A8020`
+(`0x1800A8020`) installs six UI hooks unconditionally, each through its own helper
+(`FUN_1800A9E00`, `FUN_1800AA290`, `FUN_1800AA430`, `FUN_1800AA5D0`, `FUN_1800AA770`,
+`FUN_1800AA950`) that calls `geode::hook::createConvention(TulipConvention)` and then
+`FUN_180108E70(mod, target, detour, name, convention, &priority)` with priority
+`0xFFFFFFE0` (-32):
+
+| Target | RVA | Detour | Helpers |
+| --- | --- | --- | --- |
+| `AppDelegate::trySaveGame` | `0x83500` | `FUN_18010B000` | `FUN_1800A9E00` |
+| `MenuLayer::init` | `0x333A90` | `FUN_18010B020` | `FUN_1800AA290` |
+| `GJGarageLayer::init` | `0x273050` | `FUN_18010B060` (adds `"shards-menu"`) | `FUN_1800AA430` |
+| `PauseLayer::customSetup` | `0x37C870` | `FUN_18010B400` | `FUN_1800AA5D0` |
+| `PauseLayer::onResume` | `0x37E380` | `FUN_18010B4A0` | `FUN_1800AA770` |
+| `ProfilePage::init` | `0x3BE840` | `FUN_18010CDE0` | `FUN_1800AA950` |
+
+The same registrar then registers three settings callbacks with
+`FUN_18008F910(registry, 0x1BD, …)`, `FUN_1800733D0(registry, 0x1BE, …)` and
+`FUN_1800733D0(registry, 0x1BF, …)`, all pointing at `FUN_18010AFB0`, which reads
+`FUN_18008F420(registry, 0x1BD)` and hands it to `FUN_180122C30` on the object from
+`FUN_1800ADF90(FUN_1800ACA20())`. Those ids are the ICONIC row ids, not hack tags
+([settings-registry.md](settings-registry.md)); none of them touches the
+icon-stealer button, which is added on every `ProfilePage::init`.
+
+**The gate is the original `init`.** `FUN_1801AA6E0` (`0x1801AA6E0`) is a lazy
+trampoline for the host function it replaces — the same delayed-bind shape recorded for
+other replaced host methods in [gameplay-hooks.md](gameplay-hooks.md): it resolves
+`GetModuleHandleA(NULL)` + RVA `0x3BE840` once (`FUN_18010DDC0` / `FUN_1801AA7B0`,
+guard `DAT_180810C50`, pointer `DAT_180810C48`) and tail-calls it with the caller's
+registers untouched. The detour's own bytes show the check:
+
+```
+0x18010CDF7  mov   esi, r8d
+0x18010CDFA  mov   rdi, rcx
+0x18010CDFD  call  0x1801AA6E0     ; original ProfilePage::init
+0x18010CE02  mov   ebx, eax
+0x18010CE04  xor   al, 1
+0x18010CE06  or    al, sil
+0x18010CE09  jne   0x18010CF05     ; leave unless init() == true and r8b == 0
+```
+
+so "the gate returns 1" is "the original `ProfilePage::init` succeeded", and the
+`param_3` in the decompiled signature is the third argument of the Tulip convention,
+not an argument of `init`.
+
 **Conclusion.** Icon Stealer is a `left-menu` button on the user-profile layer
-(item id `icon-stealer`, sprite `GJ_selectSongBtn_001.png`), gated by
-`FUN_1801AA6E0()`, that offers a confirmation popup and then writes the viewed
+(item id `icon-stealer`, sprite `GJ_selectSongBtn_001.png`), added inside the
+`ProfilePage::init` detour whenever the original init succeeded, that offers a
+confirmation popup and then writes the viewed
 record's eight icon ids, three colours, glow byte and one extra dword onto the GD
 host object at host RVA `0x17B4A0`. It is an action, not a toggle, so it has no
 settings tag to promote against.
 
 ## Open questions
 
-- UNVERIFIED: what `FUN_1801AA6E0()` tests. It is called at the top of the installer,
-  returns 1 for the normal case, and has three call sites (`0x18010DDC0`, `0x1801AA7B0`,
-  `0x1803A5140` in `_calls.tsv`); the first of those is in the same profile-page
-  cluster and is the cheapest place to close it.
+- UNVERIFIED: what the Tulip convention's third argument (the `r8b` the detour tests)
+  carries; the detour leaves unless it is 0. Closing this needs the Geode
+  `TulipConvention` definition pinned to the 5.6.1 baseline (references/) rather than a
+  guess from the call site.
 - UNVERIFIED: which class the `left-menu` owner belongs to and what `[layer + 0x240]`
   and `[layer + 0x2B0]` are named. The `"left-menu"` / `"shards-menu"` node ids put
   the installer next to the profile-page builders in the `0x18010B000`–`0x18010D000`
