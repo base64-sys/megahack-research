@@ -300,7 +300,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v9.0.0 | Added Noclip Death Viewer | cluster | [noclip-feature.md](noclip-feature.md) |
 | v9.0.0 | Added Noclip option to Show Hitboxes on Death | cluster | [show-hitboxes-feature.md](show-hitboxes-feature.md#evidence---death-hitbox-options-and-the-completed-hitbox-tag-map-2026-10-26) | Tags 217/218 gate the death path; the two keys DEATH_OBJ and NOCLIP map onto them in an order the image does not fix. |
 | v9.0.0 | Added Ignore Speedhack option to Respawn Time | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
-| v9.0.0 | Added Trail Cutting Rate option | cluster | [render-hooks.md](render-hooks.md) |
+| v9.0.0 | Added Trail Cutting Rate option | mapped | [trail-cutting-feature.md](trail-cutting-feature.md#the-detour-body-2026-10-28) | tag 393 (`0x189`, no static label), single read `0x1801734FA` in the tag-392 detour `FUN_1801734C0`: `getConfigVar<double>(393)` bounds at `10.0` and scales the `CCMotionStreak::initWithFade` fade argument by the `.rdata` `0x180575F50` double `0.0784313753247261`, after which the original is called. |
 | v9.0.0 | Added Previews | cluster | [ui-addons.md](ui-addons.md) |
 | v9.0.0 | Added Dual Mode customisation | cluster | [iconic-feature.md](iconic-feature.md) |
 | v9.0.0 | Added Mini Icons in Normal Mode | cluster | [iconic-feature.md](iconic-feature.md) |

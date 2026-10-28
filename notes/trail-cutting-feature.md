@@ -39,9 +39,35 @@ The callback is `FUN_1801732c0` (`0x1801732c0`), which takes `(param_1, param_2)
 3. Analyzed `FUN_1801732c0` (the callback) with REA/Ghidra 12.1.2 — hooks
    `cocos2d::CCMotionStreak::initWithFade`.
 
+### The detour body (2026-10-28)
+
+`FUN_1801734c0` (`0x1801734C0..0x180173593`, 211 bytes, `.pdata` via `scripts/func_bounds.py`) is
+the `CCMotionStreak::initWithFade` detour. It is a **value transformer**, not a veto: it scales
+the fade duration and then calls the original.
+
+| Step | Evidence |
+| --- | --- |
+| registry = `FUN_18008A510()` | first call in the body |
+| `rate = getConfigVar<double>(393)` | `0x1801734FA mov edx,0x189` then `call 0x180003D80` |
+| bound | `ucomisd` against the double `10.0` at `.rdata` `0x1805756A0`, `jbe` to the bounded path; the constants `0.01` (`.rdata` `0x180575F40`) and `0.1` (`.rdata` `0x180575F48`) are the two branches |
+| scale | the fade argument is multiplied by the double `0.0784313753247261` at `.rdata` `0x180575F50` (`mulsd` at `0x18017353E`) before the original is called |
+| post-store | `movss` from `.rdata` `0x180534350` (float `0.0`) into `[streak+0x17C]` at `0x180173573`; the decompiler renders the success path as `[streak+0x17C] = 1.0 / fade` (UNVERIFIED operand order) |
+
+Tag 393 (`0x189`) is the **Trail Cutting Rate**: a whole-`.text` scan for `mov edx,0x189`
+returns exactly one site, `0x1801734FA`, so the rate is read only here. It has no static
+`HACK_*` label (the 85-entry map in [static-hack-label-map.md](static-hack-label-map.md) has no
+entry with value 393), which is why the earlier label join proposed only tag 392.
+
+The `0.0784313753247261` factor is a data constant at `.rdata` `0x180575F50`, applied
+unconditionally (`mulsd` at `0x18017353E`); its origin is not established. The decompiler's
+`m = 1.0 / max(rate, 0.01)` reading is consistent with the two bound constants but the exact
+operand order in the stream is not transcribed here (`0.25` at `.rdata` `0x180534358` is loaded
+at `0x180173527`), so the arithmetic is stated at decompiler level only.
+
 ## Open questions
 
-- UNVERIFIED: which JSON key binds to tag 0x188.
-- UNVERIFIED: the exact behavior of the hook (whether it vetoes or observes trail cutting).
-- UNVERIFIED: how the hook modifies trail cutting (the callback `FUN_1801734c0`
-  is not yet analyzed).
+- UNVERIFIED: which JSON key binds to tag 0x188 and which binds to tag 0x189. Neither appears
+  in the settings samples; the row labels exist only in the mod's own settings tree.
+- UNVERIFIED: the unit of the 393 rate and the meaning of the `0.078431375` factor, and whether
+  the `rate > 10` branch (`m = 0.1`) is a deliberate ceiling or an error path.
+- UNVERIFIED: no runtime observation of a cut trail; the claim is static, from the detour body.
