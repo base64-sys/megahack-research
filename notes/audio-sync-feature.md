@@ -168,7 +168,9 @@ is not proven.
 The hardcoded `+ 0x28` also matches the threshold's default of 40, so it may be a leftover
 constant rather than a lead-in term — UNVERIFIED.
 
-UNVERIFIED: what `0x18015A2F0` and `0x180129AB0` return; what dictionary groups 3, 6, 7 and 8
+`0x18015A2F0` is now identified: it returns the shared end-animation byte at `0x18080C008`
+([gameplay-hooks.md](gameplay-hooks.md#evidence---the-end-animation-flag-every-per-frame-feature-checks-2026-10-28)).
+UNVERIFIED: what `0x180129AB0` returns; what dictionary groups 3, 6, 7 and 8
 hold; the identity of the player-1 vtable slots `+0xC8` and `+0xD8` and of the layer slot
 `+0x4B8`; what `[engine+0x264]` is called in the host (read here as the music offset because
 the changelog fix "not accounting for Music Offset" matches it); and whether `[engine+0x228]`

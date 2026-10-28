@@ -90,6 +90,44 @@ The callback is `FUN_180172280` (`0x180172280`), which takes `(param_1, param_2)
 UNVERIFIED: which JSON key binds to tag 0x19E; the exact behavior of the hook
 (veto vs observe).
 
+## Evidence - the end-animation flag every per-frame feature checks (2026-10-28)
+
+`FUN_18015A140` is one of the nine registrars that no note mentioned, and it is not a feature: it
+installs three unconditional hooks that maintain one shared flag. The flag is the byte at
+`0x18080C008` (`DAT_18080c008`), and a RIP-relative scan of the whole `.text` finds **exactly four**
+references to it - the three writers here and one getter.
+
+| Role | Site | Instruction |
+| --- | --- | --- |
+| clear | `0x18015A220` | `mov byte [0x18080C008], 0`, then `jmp 0x1801A4300` (the delayed-bind trampoline for `PlayLayer::resetLevel`, RVA `0x3B8EB0`) |
+| set | `0x18015A243` | `mov byte [0x18080C008], 1`, then call `0x1801A5400` (trampoline for `PlayLayer::playEndAnimationToPos`, RVA `0x3ABA00`) |
+| set | `0x18015A2A3` | `mov byte [0x18080C008], 1`, then call `0x1801A56C0` (trampoline for `PlayLayer::playPlatformerEndAnimationToPos`, RVA `0x3AC3E0`) |
+| read | `0x18015A2F0` | `movzx eax, byte [0x18080C008]; ret` - an 8-byte leaf, five callers |
+
+So the byte means "the level-end animation is running": it is raised for the duration of either
+end-animation call and cleared by the next `resetLevel`.
+
+### Who checks it
+
+`_callers.tsv` gives the getter five callers, and four of them are per-frame detours:
+
+| Caller | Hook it is |
+| --- | --- |
+| `FUN_180175250` | Auto Music Sync's `PlayLayer::postUpdate` detour ([audio-sync-feature.md](audio-sync-feature.md)) |
+| `FUN_180178B10` | `PlayLayer::postUpdate` detour installed by registrar `0x1801789E0` (unattributed) |
+| `FUN_180185710` | not a hook site; an inner helper reached from another detour |
+| `FUN_180197270` | tag 488's `GJBaseGameLayer::update` detour ([render-hooks.md](render-hooks.md#evidence---lock-delta-is-tag-488-and-a-replacement-getmodifieddelta-2026-10-28)) |
+| `FUN_1801992B0` | `PlayLayer::postUpdate` detour installed by registrar `0x1801990B0` (unattributed) |
+
+**Conclusion.** The three hooks are infrastructure, not a changelog feature: they let every
+per-frame callback skip its work while the level-end animation plays. That is why the auto-sync
+detour's first test reads as a "level-state check" in the decompiler, and it is the reason no
+`Added ...` bullet names this registrar.
+
+UNVERIFIED: which tags own registrars `0x1801789E0` and `0x1801990B0` (the callbacks are only
+reachable through the hook-site table, not through `FUN_1800AFAE0`), and what `FUN_180185710`
+does with the value.
+
 ## Open questions
 
 - UNVERIFIED: which settings tags gate each gameplay hook. The recovered callbacks
