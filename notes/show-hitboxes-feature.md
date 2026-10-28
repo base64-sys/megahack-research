@@ -529,3 +529,31 @@ are "218 = death-object-only, 217 = noclip precondition" and its inverse, and th
 third argument; whether the death-object-only mode also requires the player to be dead at all.
 The five changelog rows for these options therefore stay `cluster` with this section as the
 record of why.
+
+## Evidence - Player Rotation is tag 207 and the rotated-quad branch (2026-10-28)
+
+**Question.** Of the five unlabelled hitbox option tags (207, 208, 209, 210, 229), which one is
+the v9.1.0-beta.1 "Player Rotation" option?
+
+**Method.** Decompiled `FUN_180202BD0` - the routine the player-box drawer calls for each box -
+and read its two branches against the cache bytes written by `FUN_1802022C0`, then checked its
+callers in `_callers.tsv`.
+
+| Fact | Value |
+| --- | --- |
+| Cache slot | `DAT_1808195A4`, the byte `FUN_1802022C0` writes from tag 207's read at `0x18020254D` |
+| Condition | `FUN_180202BD0` line 86: `if ((DAT_1808195a4 == 1) && (*(char *)(param_2 + 8) == 1))` |
+| Set branch | draws `CCDrawNode::drawPolygon(param_1, (CCPoint *)param_2, 4, ...)` - the four points handed in, i.e. the object's own rotated quad |
+| Clear branch | rebuilds axes-aligned corners from `param_2[1]` / `param_2[3]` and calls the same draw |
+| Callers | `_callers.tsv`: `1801809a0` and `180182550` (trail passes) and `180204150` (the player-box drawer documented above) |
+
+**Conclusion.** Tag 207 is the only tag in the family whose effect is a rotation: it switches a box
+from axes-aligned corners to the object's rotated points. The four keys in this family are "Player
+Rotation", "Hide Activated Objects", "Active Only" and "Death Object Only"; the last three are
+filters, and the remaining tags are filter-shaped (208 = player-vtable veto, 209 = section gate,
+210 = activated-node skip, 229 = colour mask). That leaves "Player Rotation" = 207 by capability,
+not by name similarity.
+
+UNVERIFIED: whether the option rotates only the player box or every box that reaches this routine
+from the trail passes (the callers share it), and that `[obj+0x40]` is the object's rotated flag -
+closing that needs GD field semantics for the object.
