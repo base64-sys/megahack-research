@@ -481,7 +481,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v7.0 (Full) | Added Screenshotter | cluster | [ui-addons.md](ui-addons.md) |
 | v7.0 (Full) | Added Extension Load Order & Toggling | cluster | [ui-addons.md](ui-addons.md) |
 | v7.0 (Full) | Added 0% Practice Mode Completion | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
-| v7.0 (Full) | Added Accurate Percentage Decimal Places | cluster | [best-run-feature.md](best-run-feature.md) |
+| v7.0 (Full) | Added Accurate Percentage Decimal Places | mapped | [best-run-feature.md](best-run-feature.md#evidence---decimal-places-tag-0x1ae-is-one-integer-shared-by-two-formatters-2026-10-28) | tag 430 (`0x1AE`, integer, no static label), read at exactly three `.text` sites: `0x180165174` in the `updateProgressbar` detour `FUN_180165110` (RVA `0x165110`), and `0x18024F159`/`0x18024F2C1` in the status-label formatter `FUN_18024E8D0` (RVA `0x24E8D0`). Both formatters do `pow(10.0, decimals)` + `floor` and format `{:.Nf}`; the progress bar returns early when `decimals == 2`, so two places is the vanilla default. |
 | v7.0 (Full) | Added Auto Deafen Undeafen Percentage | cluster | [audio-sync-feature.md](audio-sync-feature.md) |
 | v7.0 (Full) | Added Challenge List | cluster | [ui-addons.md](ui-addons.md) |
 | v7.0 (Full) | Added Custom Levels on Launch | cluster | [ui-addons.md](ui-addons.md) |

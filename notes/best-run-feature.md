@@ -136,3 +136,48 @@ question is now answered: this formatter is "Accurate Percentage" (tag 429) and 
 [Evidence - Better Calculation](#evidence---better-calculation-tag-0x1af-replaces-getcurrentpercent-2026-10-28).
 - UNVERIFIED: whether `STATUS/BEST_RUN/DROPDOWN/PREFIX` is the reused row's
   persisted display state or a separate setting.
+
+## Evidence - decimal places (tag 0x1AE) is one integer shared by two formatters (2026-10-28)
+
+The v7.0 row "Added Accurate Percentage Decimal Places" binds to tag `0x430` (`0x1AE`), the
+only tag in the percentage family that is read as an integer count.
+
+**Method.** A linear capstone scan of the whole `.text` section (RVA `0x1000`-`0x533FE6`,
+`CS_ARCH_X86`/`CS_MODE_64`, matching operand type `X86_OP_IMM`) for immediate `0x1AE` returns
+exactly three instructions, so the read boundary is the section and not a guess:
+
+| Site | Containing function | Role |
+| --- | --- | --- |
+| `0x180165174` `mov edx, 0x1ae` | `FUN_180165110` (`.pdata` `0x180165110..0x180165459`, RVA `0x165110`) | the `PlayLayer::updateProgressbar` detour (tag 429 callback) |
+| `0x18024F159` `mov edx, 0x1ae` | `FUN_18024E8D0` (`.pdata` `0x18024E8D0..0x18024FB1D`, RVA `0x24E8D0`, +`0x889`) | the status-label formatter, percentage branch |
+| `0x18024F2C1` `mov edx, 0x1ae` | same function, +`0x9F1` | the status-label formatter, second (tag `0x303`) branch |
+
+**Progress-bar formatter** (`FUN_180165110`): the value is read with
+`FUN_18002E4C0(registry, 0x1AE)`; `decimals == 2` returns immediately, i.e. two decimal
+places is the untouched default. Otherwise `pow(10.0, decimals)` scales the value from
+`FUN_1801A4CB0(PlayLayer)` (the lazy trampoline to `getCurrentPercent`, host RVA `0x3B3950`),
+`floor` rounds, the result is clamped to `[0.0, 100.0]` (`0x42C80000`), and the format string
+is built with `iVar7` as the precision. `FUN_18008F420(registry, 0x1AD)` — tag 429 — selects
+the fixed-precision branch when it is set.
+
+**Status-label formatter** (`FUN_18024E8D0`, which also owns `"Best Run: {}"`, `"Attempt {}"`,
+`"Frame {}"`, `"{} Deaths"`, `"{} Jumps"`, `"Recording: {}"`, `"Playing: {}/{}"`,
+`"Accuracy: {:.2f}%"`, `"Alive"`/`"Dead"` and the position pair `"({:.2f}, {:.2f})"`): both
+sites do `pow(10.0, decimals)`, `floor(value * scale)` and then format through the runtime
+pattern `"{{:.{}f}}%"` (`local_2b8`/`local_388` = 10 bytes, i.e. `{:.Nf}%`). The second site
+additionally requires `FUN_18002DE50(registry, 0x303)`.
+
+**Conclusion.** One integer setting — tag 430 — sets the decimal count for both percentage
+renderers, and the progress bar treats `2` as "leave vanilla alone". That is the mechanism of
+the v7.0 "Decimal Places" row; the same tag is the one the mapped v9.0.0 Accurate Percentage
+row already cites as "configurable decimals".
+
+**Open questions.**
+
+- UNVERIFIED: which settings row writes tag 430. Only reads appear at the three sites above;
+  the row's `define`/`setConfigVar` path is not in this note, so the label bound to `0x1AE` is
+  inferred from the reads and from the changelog wording.
+- UNVERIFIED: what tag `0x303` (771) gates at `0x18024F2C1`. It is a boolean read
+  (`FUN_18002DE50`) in the status-label path and has no entry in the mapped rows here.
+- The `else` branch of `FUN_180165110` (taken when decimals is not 2 and tag 429 is clear) was
+  not read past the branch, so "what happens when Accurate Percentage is off" is unrecorded.
