@@ -142,3 +142,44 @@ switch on trail type (0–9). `FUN_1801EE440` is called from `FUN_1801224A0` and
 
 UNVERIFIED: the exact render path (which GD object triggers `FUN_1801EE440`);
 whether the toggle affects only the blend mode or also the point count.
+## Evidence - Compact Lists is tag 473 and shrinks the level cells (2026-10-28)
+
+The row names no settings key in the inventory, but the image has exactly one mechanism that
+changes the layout of a level list cell, and it belongs to tag 473 (`0x1D9`, no static label;
+registered at `0x1800B2F1E` in `FUN_1800AFAE0`, callback `FUN_1801863B0`).
+
+| Target | RVA | Detour | Installer |
+| --- | --- | --- | --- |
+| `BoomListView::init` | `0x3C020` | `FUN_1801864E0` | `FUN_180186750` |
+| `LevelCell::loadLocalLevelCell` | `0xB0D70` | `FUN_180186560` | `FUN_1801866B0` |
+| `LevelCell::loadCustomLevelCell` | `0xAE230` | `FUN_180186620` | `FUN_180186B60` |
+
+**The flag.** `FUN_1801864E0` sets `DAT_18080C8A8` to 1 only when the list's type argument is
+5 or 6, or equals `0x10` (`if (1 < x - 5 && x != 0x10) flag = 0`), calls the original
+`FUN_1801E55A0`, then clears the flag. So the compaction applies to specific list types, not
+every list.
+
+**What the cell detours change** (all keyed on that flag, all through node ids):
+
+- `FUN_180186560` (local cells): child `main-layer` -> child `level-name` -> virtual `+0xA0`
+  with `0x3F19999A` = **0.6f**, i.e. the name label is scaled down.
+- `FUN_180186620` (custom cells): child `main-layer`, then `level-place` -> virtual `+0x140`
+  with `0` (hidden), `percentage-label` -> virtual `+0xE0` with `0x41C80000` = **25.0f**, and
+  `completed-icon` -> `+0xE0` with the same 25.0f, i.e. the number is dropped and the remaining
+  nodes are moved to x = 25.
+
+**Two angles.** Behaviour: this is the only code in the image that rescales or hides parts of a
+level cell, and the three node ids it touches (`level-name`, `level-place`,
+`percentage-label`, `completed-icon`) are each referenced only from these detours. Naming:
+`UNIVERSAL/HACK_COMPACT_LISTS` is the only compact-list key in the settings tree, and the row
+"Added Compact Lists" is the only changelog wording about list layout.
+
+**Conclusion.** Tag 473 is Compact Lists. Tag 465 (`0x1D1`, `FUN_18018C040` on
+`GJListLayer::init` and `CustomListView::loadCell`) hooks the same area but only calls a virtual
+`+0x28` with a zero argument on `[this+0x198]`; it does not change any cell content, so it stays
+unattributed.
+
+UNVERIFIED: which virtual slots `+0xA0`, `+0xE0`, `+0x140` and `+0x28` are (read as setScale,
+setPositionX, setVisible and setAnchorPoint/setPosition respectively), what list type ids 5, 6
+and `0x10` mean in GD 2.2081, and whether the 25.0f offset is a width derived from the hidden
+`level-place` node.
