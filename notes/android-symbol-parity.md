@@ -30,10 +30,13 @@
 
 ## Consequence for M5
 
-The Windows mapping route (MSVC RTTI + named host methods) does not transfer.
-Android parity must be driven by string keys and behaviour, not by class/method
-names. The 24 shared `HOME/...` keys and the zero `KEYBINDS/...` keys noted in
-[android-abi.md](android-abi.md) are the more useful anchors.
+The **RTTI** route does not transfer. The **host-method** route does, with a caveat:
+[android-input-parity.md](android-input-parity.md) shows thirteen of fifteen Windows input
+targets are addressable on Android by exact Itanium name — seven as `UND` imports and six as
+mangled/demangled name strings — so class/method names are usable for host methods even
+though they are not usable for Mega Hack's own classes. The 24 shared `HOME/...` keys and
+the zero `KEYBINDS/...` keys noted in [android-abi.md](android-abi.md) remain the anchors
+for the *feature* surface.
 
 ## Open questions
 
