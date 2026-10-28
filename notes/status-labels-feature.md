@@ -185,3 +185,48 @@ one-for-one, and no other row in the universe uses those words for a different m
 - UNVERIFIED: `testmode`, `best_run`, `noclip_acc`, `noclip_health`, `level_time`,
   `position` and `replay_state` were not read this pass; they are listed for the type
   vocabulary only.
+
+## Evidence - the FPS and CPS label types and their three settings keys (2026-10-28)
+
+Two `Added ...` rows name label *types* rather than toggles: v8.0.0-alpha7 "Added FPS & CPS
+Statuses" and v6.2.0 "Added FPS Counter". Both are branches of the same dispatch already
+described above, and both are corroborated by the type table in `FUN_1800AF1C0` (`fps`
+`0x2EC`/`0x2ED`, `cps` `0x2F5`/`0x2F6`).
+
+**`fps` branch** (`case 3` of `FUN_18024E8D0`; type test `0x18024E949`, the short compare
+`(short)*plVar1 == 0x7066` plus the `'s'` byte at `+2`):
+
+- `FUN_180156880(1, 0)` returns the frame rate for player index 1, printed straight into the
+  label stream.
+- boolean tag `0x2EF` appends `.rdata` `0x1805B8D78` = `" FPS"`.
+
+**`cps` branch** (type test `0x18024E962`, `(short)*plVar1 == 0x7063`):
+
+| Step | Call | What it appends |
+| --- | --- | --- |
+| current value | `FUN_180156790(3)` | live clicks per second, computed from the timestamp ring buffer inside `FUN_180156530()` |
+| tag `0x2F9` | `'/'` + `FUN_180156AF0()` = `[[FUN_180156530()]+0x30]` | a stored secondary count |
+| tag `0x2FA` | `'/'` + `FUN_180156B10()` = `[[FUN_180156530()]+0x38]` | a second stored count |
+| tag `0x2F8` | `FUN_180034CB0(&stream, 0x1805B8D7D)` | the literal `" CPS"` |
+
+When the two-player byte `[layer+0x422] == 1` and `[[layer+0x878]+0x3BC] == 1` the whole block
+repeats with player index 4, separated by a space.
+
+**The three tags are the three keys.** `notes/settings-contents.md` lists exactly three CPS
+sub-keys with default `True`: `STATUS/CPS/DROPDOWN/MAX`, `.../TOTAL` and `.../UNITS`. The code
+reads exactly three tags in this branch, and `UNITS` is proven by the literal: tag `0x2F8`
+appends `" CPS"`, so it is `UNITS`. `MAX` and `TOTAL` are `0x2F9` and `0x2FA` in one order or
+the other; which stored field (`+0x30` vs `+0x38`) is the maximum was not established, so the
+v7.1 row "Added Max CPS Option to Labels" stays `cluster` with that single gap.
+
+**Conclusion.** The alpha7 row is the pair of `fps` and `cps` types; the v6.2.0 "FPS Counter"
+row is the `fps` type under its older wording, with no separate mechanism in the image (the
+type table has one `fps` record and the dispatch one `fps` branch).
+
+**Open questions.**
+
+- UNVERIFIED: which of `0x2F9`/`0x2FA` is `MAX` and which is `TOTAL`. Closing it needs the
+  writers of `[holder+0x30]` and `[holder+0x38]` inside the click-statistics object, or a
+  runtime reading of a label with each key toggled in turn.
+- UNVERIFIED: whether `FUN_180156880`'s first argument selects a player or a mode; only index
+  `1` is used here.

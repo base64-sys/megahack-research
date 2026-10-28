@@ -396,7 +396,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v8.0.0-alpha7 | Added Noclip Accuracy | mapped | [noclip-feature.md](noclip-feature.md) | tag 497 (0x1F1, runtime-assigned Map B); `FUN_180152010` hooks `EndLevelLayer::showLayer` (RVA 0x134CA0) and draws "Noclip: {:.2f}%" unless tag enabled. Also reads `HACK_NOCLIP` (tag 72). See noclip-feature.md. |
 | v8.0.0-alpha7 | Added Noclip Limits | mapped | [noclip-feature.md](noclip-feature.md) | tag 83 (`HACK_NOCLIP_LIMITS`); `FUN_18017A290` implements accuracy limit (tag 0x55/0x54) and death limit (tag 0x57/0x56) gating tint overlay. See noclip-feature.md. |
 | v8.0.0-alpha7 | Added Cheat Indicator with breakdown | cluster | [ui-addons.md](ui-addons.md) |
-| v8.0.0-alpha7 | Added FPS & CPS Statuses | cluster | [status-labels-feature.md](status-labels-feature.md) |
+| v8.0.0-alpha7 | Added FPS & CPS Statuses | mapped | [status-labels-feature.md](status-labels-feature.md#evidence---the-fps-and-cps-label-types-and-their-three-settings-keys-2026-10-28) | Label types, not toggles: the type table in `FUN_1800AF1C0` has `fps` `0x2EC`/`0x2ED` and `cps` `0x2F5`/`0x2F6`, and `FUN_18024E8D0` dispatches both (`0x18024E949` and `0x18024E962`). The `cps` branch prints `FUN_180156790(3)` then the `0x2F9`/`0x2FA` counts and a `" CPS"` suffix gated by `0x2F8`; the `fps` branch prints `FUN_180156880(1,0)` and a `" FPS"` suffix gated by `0x2EF`. |
 | v8.0.0-alpha7 | Added Message, Percentage & Level Time Statuses | cluster | [status-labels-feature.md](status-labels-feature.md) |
 | v8.0.0-alpha6 | Added Show Layout | mapped | [gameplay-hooks.md](gameplay-hooks.md#evidence--show-layout-2026-10-25) | tag 260 (`0x104`, `HACK_SHOW_LAYOUT`, static map `0x180064095`); registered at `0x1800b2b5c`, callback `FUN_18017f0f0` installs six hooks (`resetLevel`, `applyEnterEffect`, `applyCustomEnterEffect`, `triggerObject`, `addGlow`, `saveActiveColors`); the resetLevel detour reads Map A tags 262 and 263. |
 | v8.0.0-alpha6 | Added Endscreen Hider | cluster | [render-hooks.md](render-hooks.md) |
@@ -458,7 +458,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v7.1 (Full) | Added Keep Wave Trail on Death | cluster | [gameplay-hooks.md](gameplay-hooks.md#evidence--wave-trail-on-death-and-the-trail-preservation-hooks-2026-10-26) | Same behaviour as the v8.0.3-alpha.1 row, and only one death-path trail mechanism exists in the image, so the two rows are either a rename or a duplicate. The image cannot separate them; the v8 wording matches the label and settings key, so that row carries the mapping. |
 | v7.1 (Full) | Added Load Failed Bypass | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v7.1 (Full) | Added Lock Delta | cluster | [render-hooks.md](render-hooks.md) |
-| v7.1 (Full) | Added Max CPS Option to Labels | cluster | [status-labels-feature.md](status-labels-feature.md) |
+| v7.1 (Full) | Added Max CPS Option to Labels | cluster | [status-labels-feature.md](status-labels-feature.md#evidence---the-fps-and-cps-label-types-and-their-three-settings-keys-2026-10-28) | Three CPS keys (`MAX`, `TOTAL`, `UNITS`) match three tags: `0x2F8` is `UNITS` (appends the literal `" CPS"` at `.rdata` `0x1805B8D7D`); `MAX`/`TOTAL` are `0x2F9`/`0x2FA`, which append `[[FUN_180156530()]+0x30]` and `[+0x38]` after a `/`. Which stored field is the maximum is the only gap. |
 | v7.1 (Full) | Added Meta (Player Data) Label | cluster | [status-labels-feature.md](status-labels-feature.md) |
 | v7.1 (Full) | Added mirror P1/P2 Inputs | cluster | [input-hooks.md](input-hooks.md) |
 | v7.1 (Full) | Added No Centre Preview Line | cluster | [render-hooks.md](render-hooks.md) |
@@ -558,7 +558,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v6.2.0 (Full) | Added ColourID Bypass | cluster | [ui-addons.md](ui-addons.md) |
 | v6.2.0 (Full) | Added Copy LevelID Fix | cluster | [ui-addons.md](ui-addons.md) |
 | v6.2.0 (Full) | Added Demon List integration | cluster | [ui-addons.md](ui-addons.md) |
-| v6.2.0 (Full) | Added FPS Counter | cluster | [status-labels-feature.md](status-labels-feature.md) |
+| v6.2.0 (Full) | Added FPS Counter | mapped | [status-labels-feature.md](status-labels-feature.md#evidence---the-fps-and-cps-label-types-and-their-three-settings-keys-2026-10-28) | Older wording of the `fps` label type; one `fps` record in the type table and one `fps` branch at `0x18024E949`, so no separate counter mechanism exists in the image. |
 | v6.2.0 (Full) | Added Level Restart button | cluster | [ui-addons.md](ui-addons.md) |
 | v6.2.0 (Full) | Added Lock Cursor | cluster | [render-hooks.md](render-hooks.md) |
 | v6.2.0 (Full) | Added Mini Cube Icon mod | cluster | [iconic-feature.md](iconic-feature.md) |
