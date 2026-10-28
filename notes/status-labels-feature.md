@@ -74,6 +74,34 @@ UNVERIFIED: which function renders ids `0x309`/`0x30A` and `0x310`/`0x311`; whic
 end-level list. Closing it needs the renderer (a second dispatch over the same type strings) or
 a runtime capture of the label.
 
+### The two noclip records are never read anywhere (2026-10-28)
+
+The table gap above is not a formatter omission; the ids are not read at all in this build.
+Three measurements bound it:
+
+1. `recovered/functions/_settings.tsv` lists every config id with an accessor call - 192 ids -
+   and contains **no** row for 777 (`0x309`), 778 (`0x30A`), 784 (`0x310`) or 785 (`0x311`).
+   Neighbouring ids do appear (771, 772, 773 are all there), so absence is not an artefact of
+   the index.
+2. A byte scan of the whole `.text` for `ba <imm32>` with the four values returns four sites,
+   and a capstone pass that keeps only instructions starting at those addresses leaves three
+   real ones, all for `0x310`: `0x1802463FD`, `0x180246EC5`, `0x180246F5B`. Each is followed
+   by a call to `0x1803A4CF0`, which is not one of the config accessors
+   (`0x18002DE50`, `0x18008F420`, `0x18002E4C0`, `0x180003D80`, `0x18002EE40`), so none of
+   them reads a setting. The `0x309`/`0x30A` hits do not decode to instruction starts at all.
+3. `FUN_18024E8D0` dispatches the other seventeen type names and contains no `noclip` literal,
+   which is the formatter half already recorded above.
+
+Conclusion: the two noclip records are defined in the type table and addressable in the
+settings tree, but nothing in this binary reads their ids or renders them, so "Noclip Death
+Viewer" and the counter half of "Noclip Death Counter" cannot be bound to them from the image.
+UNVERIFIED: whether an earlier build read them, or whether the renderer lives outside this
+module.
+
+**Method note.** `ba <imm32>` byte hits must be filtered to capstone instruction starts before
+being treated as tag reads: raw `bytes.find` produced four sites here of which one was
+mid-instruction, and the same trap applies to every immediate scan in this repo.
+
 ## Open questions
 
 - UNVERIFIED: which functions read each `STATUS/FIELDS/*` key and format the
