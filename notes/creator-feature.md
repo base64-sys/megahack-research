@@ -172,3 +172,43 @@ multiple-trail meaning; the option is tag 62. Corrected in place above.
 **UNVERIFIED.** What `DAT_18080C180`/`DAT_18080C188` are (a vector of 0x48-byte trail records whose
 writer was not read), what `[layer+0x3770]` is, and whether the `-0x71c71c71c71c71c7` division is
 only the compiler's division by 0x48 for the record count.
+
+## Evidence - Level Edit is tag 45 and a forced game-state around three editor entry points (2026-10-28)
+
+`HACK_LEVEL_EDIT` (tag 45, `0x2D`, label-map entry recorded in
+[static-hack-label-map.md](static-hack-label-map.md)) has no `Added ...` bullet; the only
+changelog line that names it is a fix, "Fixed Level Edit loading levels in read-only mode".
+The mechanism is one callback installing three hooks, and each detour does the same thing:
+force one field and restore it.
+
+| Hook | Host RVA | Detour | Installer | Order |
+| --- | --- | --- | --- | --- |
+| `PauseLayer::customSetup` | `0x37C870` | `FUN_18015FE70` | `FUN_1800AA5D0` | `-32` |
+| `PauseLayer::onTryEdit` | `0x37E550` | `FUN_18015FEC0` | `FUN_1800AA770` | `0xBD8` |
+| `EditorPauseLayer::init` | `0xD9EC0` | `FUN_18015FF20` | `FUN_18015FF70` | `-32` |
+
+Registration is `FUN_1800AFAE0` line 710, `FUN_18008f910(uVar1,0x2d,&local_60)` with
+`local_58 = FUN_18015FD40`.
+
+**What each detour does.** All three read `lVar2 = [[current level]+0x878]` and the int at
+`lVar2+0x454`. When that int is already `2` they call the original directly. Otherwise they
+store `2`, call the original (`FUN_1801A2C30` for `customSetup`, `FUN_1801A2EE0` for
+`onTryEdit`, `FUN_18010EBE0` for `EditorPauseLayer::init`) and write the old value back -
+except `FUN_18015FF20`, which only restores it when the call returns true and otherwise
+leaves `2` in place.
+
+**Conclusion.** The toggle makes the host take its "this level is editable" path for the
+duration of the pause-menu setup, the edit button press and the editor pause layer's init,
+then restores the real state. That is what the fix bullet describes: without it the editor
+would be entered in a read-only mode. The tag is therefore a shipped toggle with a fix
+bullet only, and it belongs in the toggles-outside-the-389 table.
+
+**Open questions.**
+
+- UNVERIFIED: what `[current level + 0x878] + 0x454` is in the host (a game-state or
+  level-type field; the value 2 is what the host's editable path expects). Closing it needs
+  the GD 2.2081 layout, which is not in `samples/`.
+- UNVERIFIED: whether `FUN_18015FF20` leaving `2` behind on a false return is intended or a
+  fall-through in the original code; it is the only asymmetry of the three.
+- UNVERIFIED: which setting key writes tag 45 (`_settings.tsv` records no accessor for it,
+  so the write reaches the tag through the profile loader's label map).
