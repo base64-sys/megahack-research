@@ -256,3 +256,25 @@ clicks-per-window value, and the getter `FUN_180156AF0` returns exactly that fie
 UNVERIFIED: what writes `+0x38` and therefore whether `TOTAL` means all clicks or all clicks in
 the session window; no instruction in the image was found writing that field next to
 `FUN_180156530`, so it may be set at record creation.
+
+**Total clicks and the single CPS readout (2026-10-28).** The `+0x38` field that the `cps`
+branch prints under tag `0x2FA` is written by the click recorder `FUN_180156400`
+(`0x180156400`): `plVar2[7] = plVar2[7] + 1` on every call, then a timestamp is appended to the
+ring buffer, samples older than the window are pruned (`_Xtime_get_ticks()*100 + (-1000000000)`
+for the default key, `(-1500000000)` when `param_1 - 1 < 2`, i.e. the two player keys), and the
+resulting `count / window` is folded into the running maximum at `+0x30`
+(`if ((ulonglong)plVar2[6] < uVar6) plVar2[6] = uVar6;`). So `+0x38` is a click counter and
+`+0x30` is the maximum per-second rate. `FUN_1801571E0` zeroes both fields for the player keys
+3 and 4 (called from `FUN_1801A4300`), which is the reset path.
+
+The recorder has exactly three callers: `0x180157180` (the `PlayerObject::pushButton` hook of
+[input-hooks.md](input-hooks.md)), `0x1801570C0` (a `CCScheduler::update` hook) and
+`0x180156ED0`. `FUN_180156790` - the function that computes the value printed as CPS - has
+exactly **one** caller in the whole image, the formatter `FUN_18024E8D0`. There is therefore one
+CPS readout in the build, the `cps` label type, which is what the v6.3.0 "Added Clicks per
+Second counter" row names.
+
+`STATUS/CPS/DROPDOWN/TOTAL` = `0x2FA` prints that counter; `MAX` = `0x2F9` prints `+0x30`;
+`UNITS` = `0x2F8` prints the `" CPS"` suffix. The v7.0 "Level Status Only Total Clicks" row is
+**not** this branch: the formatter always prints the live value first and only appends the
+slash-separated extras, so no "only the total" mode exists in the image.
