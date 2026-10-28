@@ -1711,3 +1711,80 @@ UNVERIFIED: the identity of RVA `0x39A1D0`; what `byte [player+0x9BF]` and
 `byte [player+0x9C4]` are (plausible: held-button id and a "clicking enabled" flag); where
 `HOLD`/`RELEASE`/`OFFSET`/`MODE` are read; and therefore whether this tag serves
 "Auto Clicker" or a different input row such as "Replay option to block inputs".
+
+## Evidence - Quick Chests is tag 461 and a reward-delay clamp (2026-10-28)
+
+The v7.1.1 row "Added Quick Chests" is a single boolean tag whose entire effect is to collapse
+the reward animation's waiting time.
+
+**Method.** The label map in `FUN_180062940` gives the label-to-tag pair directly (the record
+layout is described in
+[hook-registrations.md](hook-registrations.md#how-the-static-label-map-stores-a-tag-2026-10-28));
+a whole-`.text` immediate scan then bounds the read sites, and the detours are read from
+instruction bytes with `samples/absolllute.hackmega/tools/pe_disasm.py` and resolved to import
+names with `objdump -p`.
+
+| Field | Value |
+| --- | --- |
+| Label | `HACK_FAST_CHESTS` (`.rdata` `0x18053F2A3`), stored by `FUN_180062940` as `local_ab0 = 0x1cd` |
+| Tag | 461 (`0x1CD`) |
+| Map store | `0x1800630DA` |
+| Only reader | `0x1800B300C mov edx,0x1cd` in the dispatcher `FUN_1800AFAE0`, handing `FUN_18008F910(registry,0x1cd,&fn)` `local_58 = FUN_180187820` |
+| Callback | `FUN_180187820` (`0x180187820`, 1,018 bytes) |
+| Flag | `DAT_18080C8E0` (byte) |
+
+`FUN_180187820` installs five hooks, all at order `0xFFFFFFE0` (-32) with the final argument 1:
+
+| Target | Host RVA | Detour | Name string |
+| --- | --- | --- | --- |
+| `RewardUnlockLayer::init` | `0x3CDDF0` | `FUN_180187CE0` | `"RewardUnlockLayer::init"` |
+| `RewardUnlockLayer::playRewardEffect` | `0x3CEDE0` | `FUN_180187D00` | `"RewardUnlockLayer::playRewardEffect"` |
+| `RewardUnlockLayer::showCloseButton` | `0x3D0480` | `FUN_180187D20` | `"RewardUnlockLayer::showCloseButton"` |
+| `cocos2d::CCDelayTime::create` | mangled `?create@CCDelayTime@cocos2d@@SAPEAV12@M@Z` | `0x180187D40` | `"cocos2d::CCDelayTime::create"` |
+| `cocos2d::CCFadeIn::create` | mangled `?create@CCFadeIn@cocos2d@@SAPEAV12@M@Z` | `0x180187D60` | `"cocos2d::CCFadeIn::create"` |
+
+The three `RewardUnlockLayer` detours are plain wrappers: each writes `1` to the flag, calls the
+trampoline of the original (`FUN_1801AAAE0`, `FUN_1801AAD30`, `FUN_1801AAE00`) and writes `0`
+back (`0x180187CE4`/`0x180187CF0`, `0x180187D04`/`0x180187D10`, `0x180187D24`/`0x180187D30`).
+So the flag marks "inside a reward unlock layer call".
+
+The two `create` detours read it:
+
+```
+0x180187D40  cmp  byte ptr [rip + 0x684B99], 0    ; -> 0x18080C8E0
+0x180187D47  xorps xmm1, xmm1
+0x180187D4A  jne  0x180187D4F
+0x180187D4C  movaps xmm1, xmm0                     ; flag clear: keep caller's delay
+0x180187D4F  movaps xmm0, xmm1
+0x180187D52  jmp  0x1805323A0                      ; CCDelayTime::create
+
+0x180187D60  cmp  byte ptr [rip + 0x684B79], 0    ; -> 0x18080C8E0
+0x180187D67  je   0x180533030                     ; flag clear: original duration
+0x180187D6D  movss xmm0, [rip + 0x3E9A63]         ; -> 0x1805717D8, bytes cd cc cc 3d = 0.1f
+0x180187D74  jmp  0x180533030                      ; CCFadeIn::create
+```
+
+Inside a reward layer call the delay argument is therefore forced to `0.0f` and the fade-in
+duration to `0.1f`; outside it both calls are untouched.
+
+**Closure.** A rip-target scan for absolute `0x18080C8E0` returns exactly eight references: the
+three set/clear pairs above and the two reads in the `create` detours. No other instruction in
+`.text` can set or read the flag, so the fast path cannot be triggered from anywhere else.
+
+**Import confirmation.** `objdump -p` on the DLL reports IAT slot `0x180643758` (the `jmp`
+target at `0x1805323A0`) as `?create@CCDelayTime@cocos2d@@SAPEAV12@M@Z` and slot `0x1806437A0`
+(at `0x180533030`) as `?create@CCFadeIn@cocos2d@@SAPEAV12@M@Z`, so the two detours really do sit
+in front of the cocos2d factory functions rather than in front of a same-RVA helper.
+
+**Conclusion.** Quick Chests is tag 461 (`HACK_FAST_CHESTS`). While a `RewardUnlockLayer` call is
+in progress, its `CCDelayTime::create` delay is forced to zero and its `CCFadeIn` duration to
+0.1 s, which removes the pause between reward steps - the row's wording exactly. No chest
+count, drop table or reward state is touched.
+
+**Open questions.**
+
+- UNVERIFIED: whether any caller passes a delay the wrapper should preserve; the wrapper always
+  zeroes it, so the argument is ignored inside a reward layer by design, but no runtime capture
+  confirms the intended animation timing.
+- UNVERIFIED: which settings row writes tag 461. The label exists in the static map and the tag
+  is read in the dispatcher, but the `hackpro.json` row that binds it is not in the image.

@@ -433,7 +433,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v7.1.1 (Full) | Added Invisible Dual Fix | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v7.1.1 (Full) | Added Magic Screenshots | cluster | [ui-addons.md](ui-addons.md) |
 | v7.1.1 (Full) | Added Only Death Object option for Hitboxes on Death | cluster | [show-hitboxes-feature.md](show-hitboxes-feature.md#evidence---death-hitbox-options-and-the-completed-hitbox-tag-map-2026-10-26) | Same mechanism as the v9.0.0 Death Object Only wording; not promoted for the same reason. |
-| v7.1.1 (Full) | Added Quick Chests | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
+| v7.1.1 (Full) | Added Quick Chests | mapped | [gameplay-hooks.md](gameplay-hooks.md#evidence---quick-chests-is-tag-461-and-a-reward-delay-clamp-2026-10-28) | tag 461 (`0x1CD`, `HACK_FAST_CHESTS` at `.rdata` `0x18053F2A3`, map store `0x1800630DA`, only reader `0x1800B300C`), callback `FUN_180187820` installs five -32-order hooks. Its three `RewardUnlockLayer` wrappers set the byte flag `0x18080C8E0` around the original call, and while it is set `0x180187D40` forces the `CCDelayTime::create` delay to `0.0f` and `0x180187D60` forces the `CCFadeIn::create` duration to `0.1f` (`0x1805717D8`). Exactly 8 references to the flag exist: 3 set/clear pairs plus 2 reads. |
 | v7.1.1 (Full) | Added Random Menu Music | cluster | [audio-sync-feature.md](audio-sync-feature.md) |
 | v7.1.1 (Full) | Added Random SFX | cluster | [audio-sync-feature.md](audio-sync-feature.md) |
 | v7.1.1 (Full) | Added Secure Servers | cluster | [ui-addons.md](ui-addons.md) |
