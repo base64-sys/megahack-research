@@ -29,7 +29,34 @@ Changelog features include:
 
 ## Open questions
 
-- UNVERIFIED: which settings tags correspond to `ITERATIONS` and `THICKNESS`.
+- Which tags correspond to `ITERATIONS` and `THICKNESS` — measured, not guessed, below.
+
+### The hitbox/trail code does not read an iteration count or a thickness (2026-10-28)
+
+**Method.** A drift-free byte-pattern scan for `ba <imm32>` followed within 24 bytes by a
+`call` to a known accessor (`0x18002DE50`/`0x18008F420` bool, `0x18002E4C0` int,
+`0x180003D80` double). Byte patterns keep the address exact where a linear capstone sweep
+from the section start drifts (see [finding-code.md](finding-code.md#file-offsets-the-0xc00-trap-in-scratch-scanners-2026-10-28)).
+Scratch: `$env:TEMP\mhre\pat47d.py`. Whole image: 141 distinct tags have at least one such
+read site.
+
+**The hitbox and trail functions read these tags and nothing else** (`0x180200000`-`0x180206000`
+plus `0x18017F000`-`0x180186000`): 192, 193, 195, 196, 198, 199, 201, 202, 204, 205, 206,
+207, 208, 209, 210, 211, 212, 213, 216, 217, 218, 224, 226, 227, 228, 229, 237, 238, 239,
+240\. Every one already has a documented meaning except the five unlabelled option tags.
+
+**Two candidates that the shape rules out:**
+
+| Tag | Site | Why it is not `ITERATIONS` / `THICKNESS` |
+| --- | --- | --- |
+| 226 (`0xE2`) int | `0x180180487`, inside `0x180180280..0x180180570` | the value is subtracted from a global counter and branch-tested (`sub rdx,rax; jbe 0x1801804F2`), an elapsed/cooldown comparison, not a loop bound |
+| 213 (`0xD5`) double | `0x1802022DE`, first read of the hitbox cache writer `0x1802022C0..0x180202602` | divided by a constant, multiplied and truncated to an int before being cached as a byte, i.e. a percent-to-byte opacity scale, not a line width in pixels |
+
+**Conclusion.** Neither setting is read on the hitbox/trail draw path, so their tags live
+somewhere this scan cannot see (a page builder, a preview, or a read farther than 24 bytes
+from a `mov edx,imm`). UNVERIFIED: the two tags. Closing this needs the trajectory settings
+page or a runtime dump of the `Tag` map; the earlier "tag 226 = iterations" reading is
+contradicted by the comparison shape above.
 - UNVERIFIED: which render hook draws the trajectory and whether it reuses
   `CCDrawNode` or a custom primitive.
 - ~~UNVERIFIED: whether "CBS Tick Highlighting" is a separate setting or a mode~~ —
