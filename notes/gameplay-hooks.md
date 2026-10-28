@@ -1852,3 +1852,52 @@ UNVERIFIED: the names of object ids 41 and 26; whether `[layer+0x309E]` is the p
 (the guard is measured, the meaning is not); which field `[level_settings+0x155]` is (read here as
 the mode selector because the toggle is named Force Platformer); and the direction of both toggles
 - which state the label's "on" enables. No runtime capture.
+
+## Evidence - four shipped labels that have no changelog row (2026-10-28)
+
+Question: `HACK_CUSTOM_OBJECT_BYPASS`, `HACK_FREE_SCROLL`, `HACK_PRACTICE_MUSIC` and
+`HACK_RANDOM_SEED` are shipped labels in the static map but no `Added ...` bullet names them.
+What does each one install?
+
+Method: read the tag from [static-hack-label-map.md](static-hack-label-map.md), then a byte scan
+of `.text` for `ba <imm32>` with a `call 0x18008F910` within 24 bytes (the registration shape
+documented in [hook-registrations.md](hook-registrations.md)); the callback comes from the
+decompiled `FUN_1800AFAE0` line for that tag, and the target RVA and detour from the callback body.
+
+| Label | Tag | Registration | Callback | Target (RVA) | Detour | Order |
+| --- | --- | --- | --- | --- | --- | --- |
+| `HACK_CUSTOM_OBJECT_BYPASS` | 46 (`0x02E`) | `0x1800B0154` | `FUN_18015EEF0` | `EditorUI::onNewCustomItem` (`0xE4030`) | `FUN_18015EF60` | `0xBD8` |
+| `HACK_FREE_SCROLL` | 52 (`0x034`) | `0x1800B02B9` | `FUN_18015F890` | `EditorUI::constrainGameLayerPosition` (`0x122980`) | `0x18015F900` | `0xFFFFF428` |
+| `HACK_PRACTICE_MUSIC` | 88 (`0x058`) | `0x1800B2904` | `FUN_18017DE30` | `GameStatsManager::isItemUnlocked` (`0x1E5820`) | `LAB_18017E000` | `-32` |
+| `HACK_RANDOM_SEED` | 308 (`0x134`) | `0x1800B29F7` | `FUN_18017E2C0` | `PlayLayer::resetLevel` (`0x3B8EB0`) | `FUN_18017E6A0` | `-32` |
+
+What the bodies do:
+
+- **Custom Object Bypass** (`FUN_18015EF60`): when the object array at `[this+0x340]` is
+  non-empty it copies the first element into a `std::string` (`FUN_18010F740`), passes it to
+  `FUN_180147F70`, zeroes the dword at `[this+0x4D8]` and calls `FUN_1801102B0`. So the custom
+  item path is taken straight from the already-selected object instead of the vanilla flow.
+- **Free Scroll** (`FUN_18015F890`) installs an order `-3032` detour at `0x18015F900` on
+  `EditorUI::constrainGameLayerPosition`, the routine that keeps the editor camera inside the
+  level bounds; the detour body has no separate decompiled file (it is a short jump region), so
+  what it returns is UNVERIFIED.
+- **Practice Music** (`FUN_18017DE30`) installs the `isItemUnlocked` detour, then writes a
+  `CCString` with data `"1"` into the stats dictionary under the key built by
+  `FUN_18014B270(store, &key, 0x11, 0xC)`, and mirrors the toggle into the level byte
+  `[PlayLayer+0x31F1]`. The `(17,12)` key pair and the flag byte are UNVERIFIED.
+- **Random Seed** (`FUN_18017E2C0`) hooks `PlayLayer::resetLevel` with `FUN_18017E6A0`, which
+  reads int tag **309** (`0x135`) and stores it into the host object at RVA `0x6C2E90`; then
+  registers a change listener on 309 (`FUN_18017E6E0`); then registers the composed condition
+  `{310 (0x136), 308}` whose action `FUN_18017E7A0` installs `GJBaseGameLayer::init`
+  (`0x206F30` -> `FUN_18017E930`) and `GameObject::resetObject` (`0x1906D0` -> `FUN_18017EA00`).
+  Both the listener and the action regenerate a 1,000-entry table of float pairs at
+  `[obj+0x10CC + 8i]` / `[obj+0x10D0 + 8i]`, each in `[-1, 1]`, from an LCG
+  (`x = x*0x343FD + 0x269EC3`, then `x = x*-0x560397F7 + 0x1E278E7A`).
+
+Conclusion: the four are shipped toggles with no changelog wording. Three of them hook a named
+editor or gameplay entry point with a single detour, and the seed feature is a three-tag family
+(308 master, 309 seed integer, 310 companion condition) sharing one regenerated random table.
+
+UNVERIFIED: what the free-scroll detour returns; what the custom-item post-processing does with
+the copied object; the meaning of the `(17,12)` stats key and of `[PlayLayer+0x31F1]`; what tag
+310 adds; and whether the 1,000-entry table is what randomises object or decoration placement.
