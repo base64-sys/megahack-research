@@ -566,6 +566,29 @@ from a profile JSON object, so the text is user data that only exists at runtime
 is correct. `scripts/decode_sso.py` recovers SSO-built constants elsewhere;
 see [finding-code.md](finding-code.md).
 
+### Bounded: the key text is absent from the whole file (2026-10-28)
+
+The line above is about the call sites; this is the stronger statement. A raw byte search of
+the complete 8,697,056-byte image finds **none** of five representative key paths taken from
+[settings-contents.md](settings-contents.md): `SCREENSHOT/COMBO`,
+`COSMETIC/ACCURATE_PERCENTAGE/DROPDOWN/BETTER_CALCULATION`, `BETTER_CALCULATION`,
+`ICON_RANDOMISER` and `PROFILES/DEFAULT` (also `ACCURATE` and `ACCURATE_PERCENTAGE` alone).
+What the image does hold is the vocabulary the paths are built from:
+
+| Present in `.rdata` | VA | Note |
+| --- | --- | --- |
+| `OPTIONS_BOOL`, `OPTIONS_BYTES`, `OPTIONS_FLOAT`, ... | `0x18053FBF2` | the type buckets of the profile |
+| `COSMETIC`, `LEVEL`, `STATUS`, ... | `0x1805345E1` region | the ten sort categories ([ui-addons.md](ui-addons.md)) |
+| `AUTO_DEAFEN`, `DEAFEN_IN_PRACTICE`, ... | `0x18053F14E`, `0x18053F712` | row labels, i.e. the `HACK_`/`CHECKBOX_` strings minus prefix |
+| `NX/COLOUR/DROPDOWN/INPUT` | `0x18054AB62` | the only path-shaped fragment found; precedes a pointer table |
+
+So a key path cannot be located by search: the join has to run from the tag side (label map
+-> registration -> read site), which is what the rows in
+[feature-inventory.md](feature-inventory.md) do. UNVERIFIED: how that one path-shaped
+fragment is used (its bytes begin mid-token, so it may be a suffix of a composed key);
+closing it needs the key-name insertion site or a runtime dump of the name->`Tag` map at
+`registry+0x58`.
+
 ## Removed: the superseded "it is only a hash" claim
 
 An earlier draft of this file carried a section headed "Correction: FUN_18007CB60 is an
