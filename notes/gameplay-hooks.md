@@ -510,9 +510,35 @@ are named above; only the selector `0x1801A4BE0` and the tags remain open.
 | 0x1F6 | 502 | `FUN_18008F420` gate | (runtime-assigned) | Gate for the multiplier |
 | 0x0F7 | 247 | `FUN_18002DE50` (bool) | (runtime-assigned) | Second gate for the multiplier |
 
-UNVERIFIED: the names of tags 246, 247, 501 and 502; whether tags 502/247 are the
-"Ignore Speedhack option" named by the changelog; what the `0x1801A4BE0` selector does; and
-the JSON keys.
+### The Ignore Speedhack option is tag 247 (2026-10-28)
+
+The v9.0.0 row "Added Ignore Speedhack option to Respawn Time" is the boolean tag 247
+(`0xF7`), the gate in the middle of the delay path above.
+
+**Angle 1 — the settings tree.** `LEVEL/RESPAWN_TIME/` has the master toggle plus exactly two
+dropdown keys (`notes/settings-contents.md`): `DROPDOWN/IGNORE_SPEEDHACK` (bool, default
+`True`) and `DROPDOWN/SPINNER` (double, default `300.0`). The code reads exactly two
+non-master values, tag 246 (double, divided by 1000.0 as milliseconds) and tag 247 (bool), so
+type and count bind the spinner to 246 and the option to 247. The 300.0 default matching the
+spinner value is the second half of that angle.
+
+**Angle 2 — the single read site.** `_settings.tsv` gives tag 247 one reader,
+`18017f000_FUN_18017f000`, and the whole-`.text` `ba f7 00 00 00` scan finds no other
+registration or read. That function is the respawn-delay scheduler: it reads 247 at
+`0x18017F038`, and only when 247 and the 502 gate are both on does it scale the delay by the
+double at tag 501 instead of the 1.0 default.
+
+**What 501/502 are.** `FUN_18019B350` (`safe_mode::areCheatsEnabled`) reads the same pair: the
+502 bool, and tag 501 as a double compared against `1.0`. `FUN_18019B450`
+(`safe_mode::disableAllCheats`) and the corrective-pitch listener `FUN_18019C6D0` read 502 as
+well. So 501/502 are a cheat-detection pair (their per-user names are not in the image), and
+247 is the respawn option that decides whether that rate is applied to the respawn delay.
+
+UNVERIFIED: the per-user names of 501/502 (the pair is only identifiable as "a value checked
+against 1.0 plus its enable bool, also read by cheat detection and corrective pitch"); whether
+the multiplier is 1/rate or rate, i.e. the exact polarity of "ignore"; what the `0x1801A4BE0`
+selector does; and the JSON key that writes 247 (the key text is user data, absent from the
+image - see [settings-registry.md](settings-registry.md#bounded-the-key-text-is-absent-from-the-whole-file-2026-10-28)).
 
 ## Evidence — Stop Triggers on Death (2026-10-25)
 
