@@ -248,3 +248,37 @@ whose callback `FUN_18015F4F0` patches the host globals `0x623670`, `0x623674`, 
 `0x62368C`) and `CREATOR/HACK_SMOOTH_EDITOR_TRAIL` - and neither names an editor-state flag.
 UNVERIFIED: who reads `PARENT/NO_EDITOR`; and whether `[host + 0x210]` is the host's
 "editor open" field (the host image is not in `samples/`).
+
+## Evidence - the Disable Keybinds in Editor option (2026-10-28)
+
+`KEYBINDS/DISABLE_IN_EDITOR` is a real listener registration, not only a stored key. In
+`FUN_18003E340` (the `core::Keybinds` vtable slot 0) the body builds the string
+`KEYBINDS/DISABLE_IN_EDITOR` (27 characters, `builtin_strncpy(pcVar6, ..., 0x1b)` into a
+`FUN_1803A50B4(0x20)` buffer) and calls `hackpro::extensions::registerListener<bool>` with a
+`std::_Binder` over `core::Keybinds::(hackpro::Tag, bool)`, i.e. callback `FUN_18003D770`.
+The same slot registers `KEYBINDS/VERSION` the same way (bytes `0x494259454b` / `0x444e` /
+`0x53` and `0x4d45522f` / `0x4f` / `0x4556`), so this is the settings-listener half of the
+class, not a one-off.
+
+`FUN_18003D770(param_1, name, value)` is three calls wide and does two writes:
+
+```
+uVar1 = FUN_18008A510();                              ; the hackpro registry
+FUN_18008B490(uVar1, 0x1DB, value);                   ; tag 475
+FUN_180027C30(param_1 + 8, [param_1 + 0x138], value); ; the Keybinds private store
+```
+
+So the option is mirrored twice: into tag 475 through the registry setter, and into the
+`core::Keybinds` private map at `this + 8` under the tag held at `this + 0x138`. The
+duplication is the mechanism: the settings UI reads the public tag, the keybind layer reads
+its private copy.
+
+This binds the v8.0.2-alpha.1 changelog row "Added Disable Keybinds in Editor" to the
+option: the key exists in the image (`.rdata` `0x53EB9D`), it is registered as a boolean
+listener in the class that owns keybinds, and its listener maintains both copies.
+
+UNVERIFIED: where the private copy is consulted. Tag 475 also has its own callback
+(`FUN_180151280`, the editor init/save/exit hooks that write `PARENT/NO_EDITOR` - see the
+tag-475 section above), so tag 475 is written by two independent paths and which of them is
+the option versus the derived editor state is not resolved here. Closing it needs the
+keybind dispatch path read with the private key in hand.
