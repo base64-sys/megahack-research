@@ -527,7 +527,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v7.0 (Full) | Added Transition Customiser | cluster | [ui-addons.md](ui-addons.md) |
 | v7.0 (Full) | Added UI Transition Time Customisation | cluster | [ui-addons.md](ui-addons.md) |
 | v7.0 (Full) | Added Unfocus Mute | cluster | [render-hooks.md](render-hooks.md) |
-| v7.0 (Full) | Added Unfocused FPS Setter | cluster | [render-hooks.md](render-hooks.md) |
+| v7.0 (Full) | Added Unfocused FPS Setter | mapped | [render-hooks.md](render-hooks.md#evidence---the-fps-setter-config-id-484-and-updatecustomfps-2026-10-28) | The only settable-FPS mechanism: `FUN_1801982F0` (called from `FUN_1800B5490`) seeds config 484 (`0x1E4`) from `[GameManager+0x430]`, installs `FUN_180198420` on `GameManager::updateCustomFPS` (RVA `0x18AC40`, order `0xBD8`), and registers the double callback `FUN_1801984D0` for the same id. The detour clamps the field to 240.0f, tests game variable `"0116"` (`.rdata 0x18057AB18`), applies `1/60` or `1/FPS` through `CCDirector` vtable `+0x50`, then mirrors the value into 484; the callback writes a new value back to `+0x430` and calls `FUN_1801498D0`. |
 | v7.0 (Full) | Added Wave Trail Bugfix (checkpoints & startpos) | cluster | [render-hooks.md](render-hooks.md) |
 | v6.3.0 (Full) | Added Crash Logger | cluster | [ui-addons.md](ui-addons.md) |
 | v6.3.0 (Full) | Added Auto Low Detail Mode | cluster | [gameplay-hooks.md](gameplay-hooks.md) |

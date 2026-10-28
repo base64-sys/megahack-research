@@ -1206,3 +1206,58 @@ the wordings.
 
 - UNVERIFIED: whether the v6.x builds shipped the same constants; only the v9.1.3 image is in
   `samples/`, so the wording history is inferred from the changelog text, not from old binaries.
+
+## Evidence - the FPS setter: config id 484 and updateCustomFPS (2026-10-28)
+
+The v7.0 row "Added Unfocused FPS Setter" is the only settable-FPS mechanism in the image.
+It is a two-way binding between a config value and the host field `[GameManager + 0x430]`,
+installed by one function.
+
+**Method.** `_callers.tsv` and `recovered/functions/` for the registration body, `objdump`/raw
+byte reads for the literal at `.rdata 0x18057AB18`, and the instruction bytes of the detour
+for the branch structure.
+
+| Field | Value |
+| --- | --- |
+| Registration function | `FUN_1801982F0` (`0x1801982F0`, 230 bytes), called from `FUN_1800B5490` |
+| Seed | `FUN_180004010(registry, 0x1E4, (double)[host+0x430])` |
+| Target | `GameManager::updateCustomFPS`, host RVA `0x18AC40` |
+| Detour | `FUN_180198420` |
+| Installer | `FUN_1801501D0(context, target, FUN_180198420, "GameManager::updateCustomFPS", 0xBD8, 1)` |
+| Write-back callback | `FUN_1801984D0`, `std::function<void(hackpro::Tag, double const&)>`, registered by `FUN_180074110(registry, 0x1E4)` |
+| Config id | 484 (`0x1E4`), no static `HACK_*` label |
+
+`FUN_180198420(this)` does four things, in order:
+
+1. Clamps the host field: `if ([this+0x430] <= 0.0f) [this+0x430] = 0x42700000` (240.0f).
+2. Tests a game variable: `cVar1 = FUN_180148610(this, "0116")`, where `"0116"` is the literal at
+   `.rdata 0x18057AB18` (`0x18057AB18` == file `0x579F18`).
+3. Sets the frame interval through `CCDirector::sharedDirector()` then vtable slot `+0x50`:
+   `dt = 1.0 / 60.0` (`0.016666666666666666`) when the test is false, `dt = 1.0 / [this+0x430]`
+   when it is true.
+4. Mirrors the field into the config: if `getConfigVar<double>(0x1E4)` differs from
+   `(double)[this+0x430]`, calls `FUN_180004010(registry, 0x1E4)` to write it.
+
+`FUN_1801984D0(_, double* value)` is the other direction: it writes `(float)*value` into
+`[host+0x430]` (skipping when the values are equal or either is NaN) and then calls
+`FUN_1801498D0(host)`, i.e. the host's own apply path.
+
+**Row binding.** Two arguments, neither of them name-based. First, the row's changelog family:
+the only other FPS row is "Added FPS & CPS Statuses", which is the status-label type `fps`
+(`0x18024E949` in `FUN_18024E8D0`) and has nothing to do with frame pacing, so a setter row
+must be this mechanism. Second, mechanism uniqueness: config id `0x1E4` appears in exactly
+these two functions plus the registration, and `updateCustomFPS` is hooked nowhere else
+(`_hook_sites.tsv` filter on RVA `0x18AC40` returns this one site).
+
+**Conclusion.** The "FPS setter" is a `GameManager::updateCustomFPS` detour plus a two-way
+config binding at id 484: the detour applies `1/FPS` (or `1/60`) and publishes the current
+value, and the config callback writes a new value back into `[GameManager+0x430]`.
+
+**Open questions.**
+
+- UNVERIFIED: what game variable `"0116"` means. The detour falls back to 60 FPS when the
+  test is false, and the changelog calls the feature "unfocused", but nothing in this image
+  names `0116`; closing it needs a GD 2.2081 symbol/string anchor or a runtime observation.
+- UNVERIFIED: the settings key that writes config id 484 - it has no static label, so the
+  row is bound by mechanism, not by key.
+- UNVERIFIED: whether `FUN_1801498D0` re-clamps the value it is given.
