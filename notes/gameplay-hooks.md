@@ -2022,3 +2022,53 @@ an apply/restore of a one-byte patch held only for the duration of the save call
 save-shaped creator key is `CREATOR/HACK_ACCURATE_SAVE`, so the row is that toggle.
 UNVERIFIED: what the byte at `libcocos2d + 0x3D5B7` controls (no host image in `samples/`),
 and that `CREATOR/HACK_ACCURATE_SAVE` FNV-hashes to 56 rather than another creator key.
+
+## Evidence - tag 435 arms a respawn delay from showNewBest and is not a popup suppressor (2026-10-28)
+
+The only `PlayLayer::showNewBest` hook in the image belongs to tag 435 (`0x1B3`), and it does
+not touch a popup layer.
+
+| Field | Value |
+| --- | --- |
+| Registration | `FUN_1800AFAE0` lines 1159-1161: `local_58 = FUN_180169de0`, then `FUN_18008f910(uVar1, 0x1b3, &local_60)` |
+| Callback | `FUN_180169DE0`, `.pdata` `0x180169DE0..0x180169EB0` (0xD0 bytes) |
+| Hook target | `PlayLayer::showNewBest`, RVA `0x3A9550` (`_hook_sites.tsv`, registrar `0x180169DE0`, the only entry for that method) |
+| Detour | `FUN_180169EB0`, `.pdata` `0x180169EB0..0x180169F1D` (0x6D bytes) |
+| Static label | none: the 85-entry label map has no value 435 |
+
+Detour body (instruction bytes, `pe_disasm.py absolllute.hackmega_original.dll 0x180169EB0 --size 112`;
+VA `0x180169EB0`, RVA `0x169EB0`, file `0x1692B0`):
+
+```
+0x180169eb5  mov  rsi, rcx
+0x180169eb8  mov  byte [0x18080C378], 1          ; rip+0x6A24B9
+0x180169ebf  call 0x18008A510                    ; registry
+0x180169ec4  mov  edx, 0xF5                      ; tag 245, respawn-time master
+0x180169ecc  call 0x18008F420
+0x180169ed3  je   0x180169edb
+0x180169ed5  ret                                 ; tag 245 set -> do nothing else
+0x180169edb  call 0x180147BA0                    ; host base
+0x180169ee0  lea  rdx, [0x180575A00]             ; "0052"
+0x180169eea  call 0x180148610                    ; game variable read
+0x180169ef1  jne  0x180169f08
+0x180169ef3  movsd xmm1, [0x180534338]           ; 0.5
+0x180169f03  jmp  0x18017F000                    ; respawn-delay scheduler
+0x180169f08  movsd xmm1, [0x180534360]           ; 1.0
+0x180169f18  jmp  0x18017F000
+```
+
+So the detour arms a byte and, unless the respawn-time hack is already handling death, hands
+`PlayLayer::showNewBest` over to the same delay scheduler that tag 245's detour
+(`FUN_18017EFC0`) uses, with `0.5` or `1.0` seconds chosen by game variable `"0052"`. The
+original `showNewBest` is never called on either path; no layer is created, hidden or removed.
+
+**Conclusion.** Tag 435 replaces the new-best call with a delayed respawn, which is respawn
+behaviour rather than popup behaviour. It therefore cannot be the v9.0.4/v6.2.0
+"Added No New Best Popup"/"mod" row, and no other function in `.text` hooks `showNewBest`.
+Both rows stay `cluster`, and the interesting question is now what tag 435 is called, not
+whether it suppresses a popup.
+
+**UNVERIFIED.** What tag 435 is named (no static label and no changelog row names it); what
+`0x18080C378` gates (it is written here; its readers were not scanned); what game variable
+`"0052"` means; whether the `0.5`/`1.0` pair is a same-attempt versus new-attempt delay.
+
