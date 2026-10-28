@@ -273,3 +273,34 @@ builder `0x1801083F0` as well as the registrar.
   `mov dword [rsp+0x20],imm32` is present in some callbacks with `0xffffffe0` (matching the
   `order` column of the untracked `_hook_sites.tsv`) but the same slot also holds other
   values, so it was not tabulated.
+
+## How the static label map stores a tag (2026-10-28)
+
+The label map built by `FUN_180062940` cannot be read by following pointers, and two scans
+prove it: a whole-`.text` capstone pass finds **no** `lea` whose RIP-relative target is
+`.rdata 0x18053F149` (the `HACK_AUTO_DEAFEN` string), and a raw `find` over the complete file
+finds **no** 8-byte value equal to `0x18053F149` anywhere, so the address is never stored as a
+qword either. That bounds the earlier label -> tag joins: a label name is not referenced by
+address at all.
+
+Instead each record copies its label text in 16-byte chunks and stores the tag immediately
+after the NUL. The shape, verified twice:
+
+| Record | Text chunk(s) | Terminator | Tag store |
+| --- | --- | --- | --- |
+| `HACK_AUTO_DEAFEN` | `movups xmm0, [rip+0x4DC69F]` at `0x180062AA3` (source `.rdata 0x18053F149`, length `0x10`, capacity `0x1F` set at `0x180062A93`/`0x180062A9B`) | `0x180062AAD mov byte [rax+0x10], 0` | `0x180062AB1 mov qword [rbp+0x38], 0x117` |
+| `HACK_AUTO_MUSIC_SYNC` | `[rip+0x4DC62D]` at `0x180062AEA` (16 bytes) + `0x180062AF4 mov dword [rax+0x10], 0x434E5953` (`SYNC`) | `0x180062AFB mov byte [rax+0x14], 0` | `0x180062AFF mov qword [rbp+0x60], 0x146` |
+
+So `HACK_AUTO_DEAFEN` = tag `0x117` (279) and `HACK_AUTO_MUSIC_SYNC` = tag `0x146` (326). Both
+totals are corroborated outside the map: [auto-deafen-feature.md](auto-deafen-feature.md) line 10
+and its registration bytes `ba 17 01 00 00` at `0x1800B1DC8`, and [audio-sync-feature.md](audio-sync-feature.md)
+for 326. The music-sync record also shows why a name can be split: a 16-byte chunk plus a
+4-byte tail, which is the same pattern the `LEVEL/...` and `DISPLAY/...` prefixes use.
+
+**Consequence for method.** To read a label's tag, disassemble `FUN_180062940` and take the
+`mov qword [rbp+X], imm` that follows each `mov byte [rax+n], 0`; pointer scans and
+`_xrefs.tsv` both stop at the function name and cannot produce the number.
+
+**Open questions.** UNVERIFIED: whether every one of the 77 records ends with a tag at the same
+relative slot (the two records read here store it at `+0x38` and `+0x60`, i.e. sequential record
+slots, not a uniform offset), and whether any record has a tail longer than one dword.
