@@ -249,6 +249,32 @@ whose callback `FUN_18015F4F0` patches the host globals `0x623670`, `0x623674`, 
 UNVERIFIED: who reads `PARENT/NO_EDITOR`; and whether `[host + 0x210]` is the host's
 "editor open" field (the host image is not in `samples/`).
 
+### Bounded: nothing in the module reads the option (2026-10-28)
+
+The two writers above publish the option, and its only in-module reader is the tag-475 callback
+`FUN_180151280`, which the registrar invokes with `*enabled` and which then exports the state as
+`NO_EDITOR`. Past that point the consumer is not in this image. Four bounded searches establish
+it, and they are the reason the option cannot be closed behaviourally from static code alone.
+
+| Search | Scope | Result |
+| --- | --- | --- |
+| `ba db 01 00 00` then a call within 32 bytes | whole `.text` | 26 sites; only two pass the call-shape filter - `0x18003D781` calls the setter `0x18008B490`, `0x1800AFA60` calls the hook registrar `0x18008F910`. **No site calls a getter** (`0x18002DE50`, `0x18008F420`, `0x18002E4C0`, `0x180003D80`) |
+| `recovered/functions/_settings.tsv` | 192 ids | no row for 475, so `scripts/settings_index.py` found no accessor call with that immediate either |
+| the `NO_EDITOR` immediate `0x4F544944455F4F4E` | whole file | exactly one occurrence, at `0x18015157C` inside the writer `FUN_1801514D0`; the `PARENT` half is assembled from shorter immediates and has no 8-byte occurrence |
+| the `KEYBINDS/DISABLE_IN_EDITOR` literal `.rdata` `0x18053EB9D` | RIP-relative operands in `.text` | exactly two references, both in the builder: `0x18003E5DF` (the option, `movups`) and `0x18003E689` (`KEYBINDS/VERSION`). Nothing reads the key text |
+
+**Conclusion.** The chain inside the module ends at the export: the settings listener stores the
+option in the registry (tag 475) and in the Keybinds private map, the registrar calls the tag-475
+callback with the value, and that callback writes `PARENT/NO_EDITOR`. No fourth step exists -
+nothing calls a getter for 475, nothing reads the key text, and the `NO_EDITOR` immediate occurs
+only in the writer. Whatever enforces "disabled in editor" therefore consumes `NO_EDITOR` from
+outside the module, which is consistent with the string-keyed settings paths being absent from the
+image ([settings-registry.md](settings-registry.md#bounded-the-key-text-is-absent-from-the-whole-file-2026-10-28)).
+
+UNVERIFIED: the consumer. Closing it needs a host-side or runtime observation (watch
+`getConfigVar<bool>` on 475, or the `NO_EDITOR` dictionary read, while pressing a bound key in the
+editor), not another static scan of this file.
+
 ## Evidence - the Disable Keybinds in Editor option (2026-10-28)
 
 `KEYBINDS/DISABLE_IN_EDITOR` is a real listener registration, not only a stored key. In
