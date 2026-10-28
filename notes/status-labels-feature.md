@@ -310,3 +310,45 @@ records) or runtime observation of the label with cheats detected.
 UNVERIFIED: whether the mark is meant to be a separator that other code concatenates against
 (static reading shows only a standalone two-character string), and which settings row writes
 tag `0x2E8` (the profile carries no ids).
+## Evidence - Show Total Attempts is tag 424 and a count the mod maintains itself (2026-10-28)
+
+- **Question** - which changelog row owns tag 424 (`0x1A8`), and what does the option
+  actually switch?
+- **Method** - read the `attempts` branch of the status formatter
+  (`recovered/functions/18024e8d0_FUN_18024e8d0.c`, case 8, lines 360-383), the tag-424
+  callback `FUN_1801726b0` and its detour `FUN_180172720`, and joined both against the
+  attempts keys in [settings-contents.md](settings-contents.md) and the row list in
+  [feature-inventory.md](feature-inventory.md). Ground truth
+  `absolllute.hackmega_original.dll`, base `0x180000000`.
+
+Two value sources sit behind the same label:
+
+| Flag (tag 424) | Value printed | Where it comes from |
+| --- | --- | --- |
+| clear | `*(int *)(layer + 0x3084)` | the host's own attempt counter, read at `0x18024EE4B` |
+| set | `*(int *)([layer + 0x878] + 0x2f8)` | a cached field the mod writes at every `resetLevel` |
+
+`FUN_180172720` (the tag-424 detour on `PlayLayer::resetLevel`, RVA `0x3B8EB0`, installed by
+callback `FUN_1801726b0` at order `0xFFFFFFE0`) computes
+`[+0x2f0] - [+0x2f4]`, stores it at `+0x2f8`, and then formats `"Attempt {}"` with that same
+number into the label object at `[[layer + 0x38d8] + 0x168]`. So while the toggle is on, the
+attempts label is maintained by the mod rather than read from the host.
+
+Bindings:
+
+- `STATUS/ATTEMPTS/DROPDOWN/UNITS` (bool, True) is tag `0x31A`, read in the same branch at
+  `0x18024EE75`; it selects the `"Attempt {}"` prefix over the bare `"{}"` - the same shape as
+  the CPS `UNITS` key on tag `0x2F8`.
+- The only attempts-named toggle in the settings tree is
+  `COSMETIC/HACK_SHOW_TOTAL_ATTEMPTS` ([settings-contents.md](settings-contents.md) line 270),
+  and tag 424 is the only attempts-related boolean the label path reads.
+
+**Conclusion.** Tag 424 is `HACK_SHOW_TOTAL_ATTEMPTS`: when it is on the label shows the count
+the mod recomputes at reset (a running count that a startpos respawn does not rewind), and when
+it is off the label shows the host's own counter. The v9.0.0 row "Added Show Total Attempts" is
+that option.
+
+UNVERIFIED: that `[+0x2f0]` is the level's total attempt counter and `[+0x2f4]` a per-load
+baseline - the host image is not in `samples/`, so the two fields are named by their use here.
+Also UNVERIFIED: whether the v8.0.1-alpha.5 "Attempt Status" row names this same behaviour or
+only the label type.
