@@ -44,3 +44,41 @@ The callback is `FUN_180162d20` (`0x180162d20`), which takes `(param_1, param_2)
 - UNVERIFIED: which JSON key binds to tag 0x02C.
 - UNVERIFIED: the exact behavior of the hook (whether it vetoes or observes share events).
 - UNVERIFIED: how ShareLevelLayer::onShare relates to the (C) mark on levels.
+## Evidence - tag 48 HACK_VERIFY_HACK spoofs one counter around onShare (2026-10-28)
+
+The second label that hooks `ShareLevelLayer::onShare` is tag 48 (`0x030`,
+`HACK_VERIFY_HACK`, label map entry 81, store VA `0x18006478F`). It is registered in the same
+initializer at `0x1800B06F2` (`ba 30 00 00 00`) with callback `FUN_180164F00`, a 110-byte body
+whose only action is to install or remove one hook on host RVA `0x490270` (`FUN_180162E10`,
+order `0xFFFFFFE0`, final argument 1). `notes/hook-registrations.md` line 78 already carried the
+registration row; what was missing is what the detour does.
+
+**The detour** `FUN_180164F70` (RVA `0x164F70`, file `0x164370`, 81 bytes, verified with
+`tools/pe_disasm.py absolllute.hackmega_original.dll 0x180164F70 --size 84`):
+
+```
+0x180164f75  mov  rax, [rcx + 0x278]      ; inner object
+0x180164f7c  mov  r8d, [rax + 0x2dc]      ; current value
+0x180164f83  cmp  r8d, [rax + 0x2e0]      ; compare with the second value
+0x180164f8a  jne  0x180164fb7             ; differ -> tail-jump to the original
+0x180164f8c  inc  r8d
+0x180164f8f  mov  [rax + 0x2dc], r8d      ; bump the current value
+0x180164f99  call 0x1801FECD0             ; original ShareLevelLayer::onShare
+0x180164fa5  mov  ecx, [rax + 0x2e0]
+0x180164fab  mov  [rax + 0x2dc], ecx      ; restore it
+```
+
+`0x180164FB7` is `add rsp,0x20; pop rsi; jmp 0x1801FECD0`, so when the two integers already
+differ the detour is a pure pass-through. The hook therefore makes one comparison inside the
+share path see `current == max + 1` for the duration of the call and then restores the original
+value.
+
+**Conclusion.** Tag 48 is a share-path spoof, not a render or gameplay toggle, and it shares its
+hook target with tag 44 (No (C) Mark). No `Added ...` changelog bullet names it, so it is a
+shipped label outside the 389-row universe; it now has a row in
+[feature-inventory.md](feature-inventory.md) under "Toggles outside the 389".
+
+UNVERIFIED: what the two integers at `[inner+0x2DC]`/`[+0x2E0]` mean (a revision-versus-
+current pair is the shape, but nothing in the image names them), and whether the equality
+test is a duplicate-upload guard. Closing this needs GD 2.2081 `ShareLevelLayer` layout or a
+runtime observation of a share with the toggle on and off.
