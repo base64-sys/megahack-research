@@ -136,3 +136,52 @@ call shape, not the immediate alone.
   pair used by the progress bar.
 - UNVERIFIED: the unit of the velocity factor at `[player + 0x7B8]`, and whether `0x9F4` is a
   speed multiplier or a step length; naming either needs a GD image.
+
+## Evidence - the label-type table and the v7.0 Level Status family (2026-10-28)
+
+`FUN_1800AF1C0` (RVA `0xAF1C0`, `.pdata` `0x1800AF1C0..0x1800AF7C6`) builds the status-label
+type table: an array of 19 `{type string, id_a, id_b}` records passed to
+`FUN_1800B54D0(&DAT_1808014D8, 0x13, ...)`. `FUN_18024E8D0` then dispatches on the same type
+strings, so the two artefacts agree on the vocabulary by construction.
+
+| Type | Definition ids (`FUN_1800AF1C0`) | Formatter compare | What the branch renders |
+| --- | --- | --- | --- |
+| `message` | `0x2D9`, `0x2DA` | `0x18024EDB2 mov ecx, 0x7373656d` | `FUN_18002D710(registry, out, 0x2DC)` - the custom message text |
+| `testmode` | `0x2DF`, `0x2E0` | `0x18024EB9F movabs rcx, 0x65646f6d74736574` | reads `[PlayLayer+0x3230]`, prints the literal `Testmode` |
+| `cheats` | `0x2E5`, `0x2E6` | not read this pass | `.` or empty, gated by tag `0x2E8` and `safe_mode::hasCheatedInAttempt()` |
+| `fps` | `0x2EC`, `0x2ED` | `0x18024E949 xor ecx, 0x7066` | frame counter, suffix gated by tag `0x2EF` |
+| `cps` | `0x2F5`, `0x2F6` | `0x18024E962 xor ecx, 0x7063` | click rate; suffixes gated by `0x2F9`/`0x2FA` |
+| `best_run` | `0x300`, `0x301` | `0x18024EBB2 movabs rcx, 0x6e75725f74736562` | not read this pass |
+| `noclip_acc` | `0x309`, `0x30A` | not read this pass | not read this pass |
+| `noclip_health` | `0x310`, `0x311` | not read this pass | not read this pass |
+| `attempts` | `0x317`, `0x318` | `0x18024EBC5 movabs rcx, 0x7374706d65747461` | tag `0x1A8` picks `[PlayLayer+0x3084]` or `[[+0x878]+0x2F0] - [+0x2F4]` cached at `+0x2F8`; tag `0x31A` adds the `"Attempt {}"` prefix |
+| `jumps` | `0x31E`, `0x31F` | `0x18024EB06 mov ecx, 0x706d756a` | `[PlayLayer+0x3970]`; tag `0x321` selects `"{} Jumps"` over `"{}"` |
+| `percent` | `0x324`, `0x325` | `0x18024EDC9 mov ecx, 0x63726570` | `FUN_1801A4CB0(PlayLayer)` clamped to `[0,100]`; tag `0x1AD` plus decimals `0x1AE` produce `"{{:.{}f}}%"` |
+| `level_time` | `0x329`, `0x32A` | not read this pass | not read this pass |
+| `session` | `0x32E`, `0x32F` | `0x18024EDE0 mov ecx, 0x73736573` | `FUN_180194240(&x)`, then `x/10000/1000.0` into the time formatter `FUN_18027E990` |
+| `clock` | `0x334`, `0x335` | `0x18024EB1C mov ecx, 0x636f6c63` | `_Xtime_get_ticks()` into `FUN_18027E700`, suffix gated by tag `0x337` |
+| `frame` | `0x33B`, `0x33C` | `0x18024EB32 mov ecx, 0x6d617266` | `FUN_180205E80(FUN_1801299D0())`; tag `0x33E` selects `"Frame {}"` |
+| `position` | `0x341`, `0x342` | `0x18024EBD8 movabs rcx, 0x6e6f697469736f70` | per-player x/y pair (see the velocity section for the two-player byte) |
+| `velocity` | `0x346`, `0x347` | `0x18024EBEB movabs rcx, 0x797469636f6c6576` | see the section above |
+| `dead` | `0x34B`, `0x34C` | `0x18024EC21 cmp dword ptr [rax], 0x64616564` | `Alive` / `Dead` |
+| `replay_state` | `0x350`, `0x351` | `0x18024EC99 movabs rcx, 0x735f79616c706572` | replay playback state |
+
+**Conclusion - the six v7.0 rows.** Six of the v7.0 `Level Status ...` changelog rows are label
+types rather than toggles, and each has a definition record and a formatter branch:
+"Level Status Attempts" is `attempts`, "Level Status Clock" is `clock`, "Level Status Custom
+Message" is `message`, "Level Status Jumps" is `jumps`, "Level Status Percentage" is
+`percent`, and "Level Status Session Time" is `session`. The names match the type strings
+one-for-one, and no other row in the universe uses those words for a different mechanism.
+
+**Open questions.**
+
+- UNVERIFIED: what the two ids in each definition record mean. For `jumps` they are
+  `0x31E`/`0x31F` while the formatter's unit toggle is `0x321`, and for `message` they are
+  `0x2D9`/`0x2DA` while the text key is `0x2DC`; the offsets suggest a row-id and an option-id
+  pair, but the writer of the pair was not read.
+- UNVERIFIED: "Level Status Only Total Clicks" and `cps`. The `cps` branch reads the same
+  counters as `fps` and has two suffix tags, but nothing in the branch distinguishes a
+  "total clicks" mode from a rate, so the row stays `cluster`.
+- UNVERIFIED: `testmode`, `best_run`, `noclip_acc`, `noclip_health`, `level_time`,
+  `position` and `replay_state` were not read this pass; they are listed for the type
+  vocabulary only.

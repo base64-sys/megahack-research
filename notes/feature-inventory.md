@@ -504,13 +504,13 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v7.0 (Full) | Added Icon Stealer to Profiles | cluster | [iconic-feature.md](iconic-feature.md) |
 | v7.0 (Full) | Added Icon Swap Main & Secondary Colours | cluster | [iconic-feature.md](iconic-feature.md) |
 | v7.0 (Full) | Added Jump Keybind Customisation | cluster | [input-hooks.md](input-hooks.md) |
-| v7.0 (Full) | Added Level Status Attempts | cluster | [status-labels-feature.md](status-labels-feature.md) |
-| v7.0 (Full) | Added Level Status Clock | cluster | [status-labels-feature.md](status-labels-feature.md) |
-| v7.0 (Full) | Added Level Status Custom Message | cluster | [status-labels-feature.md](status-labels-feature.md) |
-| v7.0 (Full) | Added Level Status Jumps | cluster | [status-labels-feature.md](status-labels-feature.md) |
+| v7.0 (Full) | Added Level Status Attempts | mapped | [status-labels-feature.md](status-labels-feature.md#evidence---the-label-type-table-and-the-v70-level-status-family-2026-10-28) | Label type `attempts` (definition ids `0x317`/`0x318` in `FUN_1800AF1C0`; compare `0x18024EBC5 movabs rcx,0x7374706d65747461`). Tag `0x1A8` selects `[PlayLayer+0x3084]` or `[[+0x878]+0x2F0]-[+0x2F4]` cached at `+0x2F8`; tag `0x31A` adds the `"Attempt {}"` prefix. |
+| v7.0 (Full) | Added Level Status Clock | mapped | [status-labels-feature.md](status-labels-feature.md#evidence---the-label-type-table-and-the-v70-level-status-family-2026-10-28) | Label type `clock` (definition ids `0x334`/`0x335`; compare `0x18024EB1C mov ecx,0x636f6c63`). `_Xtime_get_ticks()` into the time formatter `FUN_18027E700`, suffix gated by tag `0x337`. |
+| v7.0 (Full) | Added Level Status Custom Message | mapped | [status-labels-feature.md](status-labels-feature.md#evidence---the-label-type-table-and-the-v70-level-status-family-2026-10-28) | Label type `message` (definition ids `0x2D9`/`0x2DA`; compare `0x18024EDB2 mov ecx,0x7373656d`). Renders `FUN_18002D710(registry, out, 0x2DC)`, the custom message text. |
+| v7.0 (Full) | Added Level Status Jumps | mapped | [status-labels-feature.md](status-labels-feature.md#evidence---the-label-type-table-and-the-v70-level-status-family-2026-10-28) | Label type `jumps` (definition ids `0x31E`/`0x31F`; compare `0x18024EB06 mov ecx,0x706d756a`). Prints `[PlayLayer+0x3970]`; tag `0x321` selects `"{} Jumps"` over `"{}"`. |
 | v7.0 (Full) | Added Level Status Only Total Clicks | cluster | [status-labels-feature.md](status-labels-feature.md) |
-| v7.0 (Full) | Added Level Status Percentage | cluster | [status-labels-feature.md](status-labels-feature.md) |
-| v7.0 (Full) | Added Level Status Session Time | cluster | [status-labels-feature.md](status-labels-feature.md) |
+| v7.0 (Full) | Added Level Status Percentage | mapped | [status-labels-feature.md](status-labels-feature.md#evidence---the-label-type-table-and-the-v70-level-status-family-2026-10-28) | Label type `percent` (definition ids `0x324`/`0x325`; compare `0x18024EDC9 mov ecx,0x63726570`). `FUN_1801A4CB0(PlayLayer)` clamped to `[0,100]`; tag `0x1AD` plus decimals `0x1AE` produce `"{{:.{}f}}%"`. |
+| v7.0 (Full) | Added Level Status Session Time | mapped | [status-labels-feature.md](status-labels-feature.md#evidence---the-label-type-table-and-the-v70-level-status-family-2026-10-28) | Label type `session` (definition ids `0x32E`/`0x32F`; compare `0x18024EDE0 mov ecx,0x73736573`). `FUN_180194240(&x)` then `x/10000/1000.0` into the time formatter `FUN_18027E990`. |
 | v7.0 (Full) | Added No Editor Trail | cluster | [creator-feature.md](creator-feature.md) |
 | v7.0 (Full) | Added No Hide Player Trigger | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v7.0 (Full) | Added No Main Trail Behind Wave | cluster | [render-hooks.md](render-hooks.md) |
