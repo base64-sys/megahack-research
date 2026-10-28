@@ -173,9 +173,32 @@ Completion".
 | 0x1E7 | 487 | `isHackEnabled` (Map B) | (not in static list — runtime-assigned) | Custom TPS sub-toggle |
 | 0x1E6 | 486 | `FUN_180003D80` (double accessor) | (not in static list) | Custom TPS value (default 240.0)
 
-UNVERIFIED: which JSON keys bind to tags 0x1E6, 0x1E7, 0x1EA; the semantics of
-`PlayLayer+0x32A4` (frame counter) and `+0x3250`/`+0x330`; whether this is
-"TPS Bypass" or "Legacy Mode to Speedhack".
+### The two read sites of tag 490 (2026-10-28)
+
+The two changelog wordings - v7.1 (Full) "Added TPS bypass" and v8.0.0-alpha13b
+"Added TPS Bypass" - are one feature. A capstone scan of `.text` for
+`ba ea 01 00 00` (`mov edx,0x1ea`) returns exactly two sites, and neither is a
+registration in `FUN_1800AFAE0`:
+
+| Site | Instruction | Meaning |
+| --- | --- | --- |
+| `0x1801969AE` | `mov edx,0x1ea`; `call 0x1801083F0` | condition leaf, paired at `0x1801969C6` with tag `0x1E7` (487) and combined at `0x1801969E9` with operator `r8d = 1` |
+| `0x180196CBC` | `mov edx,0x1ea`; `call 0x18008F420` | the read inside the detour `FUN_180196CA0` |
+
+So tag 490 is registered through the composed-condition API
+(`0x1800915B0`, the same path tag 419 uses) rather than by a hook registration,
+which is why the label-map join never proposes it.
+
+Detour detail measured at `0x180196CCD`-`0x180196CE6`: `mov eax,[rsi+0x32A4]`;
+`test eax,eax`; `jle 0x180196DC2` (the `1.0/customTPS` path); `dec eax`;
+`mov [rsi+0x32A4],eax`; `xorps xmm0,xmm0`; `jmp 0x180196E1C` - a pending-frame
+counter that returns a zero delta, i.e. a skip.
+
+Only one frame-delta modifier exists in the image, so both wordings name this
+mechanism. UNVERIFIED: which JSON keys bind to tags 0x1E6, 0x1E7, 0x1EA; the
+semantics of `PlayLayer+0x32A4` (frame counter) and `+0x3250`/`+0x330`; whether
+the separate "Legacy Mode to Speedhack" option is the `0x1E7`-only stepped path
+at `0x180196CEB` rather than the master toggle.
 
 ## Evidence — four labelled tags found by the full-section scan (2026-10-25)
 

@@ -479,7 +479,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v7.1 (Full) | Added Status Hide All | cluster | [status-labels-feature.md](status-labels-feature.md) |
 | v7.1 (Full) | Added Swift Click to Shortcuts | cluster | [input-hooks.md](input-hooks.md) |
 | v7.1 (Full) | Added Switch P1/P2 Inputs | cluster | [input-hooks.md](input-hooks.md) |
-| v7.1 (Full) | Added TPS bypass | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
+| v7.1 (Full) | Added TPS bypass | mapped | [gameplay-hooks.md](gameplay-hooks.md#the-two-read-sites-of-tag-490-2026-10-28) | tag 490 (`0x1EA`, runtime-assigned, no static label); `.text` has exactly two `mov edx,0x1ea` sites, the condition leaf `0x1801969AE` (`FUN_1801083F0`, paired with 0x1E7) and the read `0x180196CBC` in the `GJBaseGameLayer::getModifiedDelta` detour `FUN_180196CA0`; when `[layer+0x32A4] > 0` the detour decrements it and returns a zero delta (`0x180196CCD`-`0x180196CE6`). Same feature as the v8.0.0-alpha13b wording, which is already mapped. |
 | v7.0 (Full) | Added Favourites | cluster | [ui-addons.md](ui-addons.md) |
 | v7.0 (Full) | Added Screenshotter | mapped | [ui-addons.md](ui-addons.md) | Action `0x361` (`FUN_180190C70`) reads config id 866 and picks clipboard (`FUN_18020DE40`), PNG (`FUN_18020DF60`) or both; one screenshot path and one key (`SCREENSHOT/COMBO`), so this wording names the same feature. See [ui-addons.md](ui-addons.md#the-five-screenshot-changelog-wordings-2026-10-28).
 | v7.0 (Full) | Added Extension Load Order & Toggling | cluster | [ui-addons.md](ui-addons.md) |
