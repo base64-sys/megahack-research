@@ -200,6 +200,47 @@ semantics of `PlayLayer+0x32A4` (frame counter) and `+0x3250`/`+0x330`; whether
 the separate "Legacy Mode to Speedhack" option is the `0x1E7`-only stepped path
 at `0x180196CEB` rather than the master toggle.
 
+### The stepped branch, measured (2026-10-28)
+
+The `0x1E7`-only branch is the one the two speedhack changelog rows could name,
+so its arithmetic was read to the instruction. All addresses are VA in the
+shipped image, verified with `tools/pe_disasm.py` from
+`samples/absolllute.hackmega/`:
+
+| Address | Instruction | Meaning |
+| --- | --- | --- |
+| `0x180196CEB` | `call 0x18008A510` | registry |
+| `0x180196CF3` | `mov edx,0x1e7`; `call 0x18008F420` | gate; falls through to the original when clear |
+| `0x180196D08` | `mov edx,0x1e6`; `call 0x180003D80` | the speed/TPS value |
+| `0x180196D15` | `ucomisd xmm0, [0x18054C678]` | compare with `240.0`; equality skips the branch |
+| `0x180196D25` | `ucomisd 0.0, xmm0` | non-positive values also skip |
+| `0x180196D5C` | `addsd xmm6, [rsi+0x3250]` | add the stored remainder to the incoming delta |
+| `0x180196D64` | `movss xmm1, [0x1805343D0]` (`1.0f`) then `minss xmm1, [rsi+0x330]` | step cap |
+| `0x180196D51` | `divsd xmm1(1.0), xmm0` | `1.0 / value` |
+| `0x180196D74` | `mulss xmm1, xmm0` | `step = min(1.0f, [layer+0x330]) * (1.0/value)` |
+| `0x180196D87` | `call 0x180533F50` | IAT thunk to `round` (slot `0x180644BC8`, `objdump -p`) |
+| `0x180196D8C` | `mulsd xmm0, xmm7`; `subsd xmm6, xmm0`; `movsd [rsi+0x3250], xmm6` | emit the rounded multiple, keep the residue |
+
+So the branch emits `round((delta + remainder) / step) * step` and carries the
+residue in `PlayLayer+0x3250`, i.e. it quantises the frame time to whole steps of
+`min(1, scale) / value`. The `1.0` numerator read by `divsd` is `.rdata`
+`0x180534360`; the `240.0` default and comparison constant is `.rdata`
+`0x18054C678`; the step cap `1.0f` is `.rdata` `0x1805343D0`. The earlier
+"round() quantization" line above is therefore correct, and a `floor` reading
+would have been wrong (`0x180533F50` resolves to `round`).
+
+Why the speedhack rows cannot be closed by tags alone: `recovered/functions/_settings.tsv`
+gives tag 486 exactly **two** readers - this detour and
+`18019b350_areCheatsEnabled` - and tag 487 **three**: this detour,
+`areCheatsEnabled` and `18019b450_disableAllCheats`. The same pair is therefore
+both the speed control and an input to cheat detection, and the image has one
+bool (`0x1E7`) selecting one alternative formula. That fits a base speedhack plus
+one "legacy mode" toggle, but it does not say which formula the changelog calls
+legacy, so both rows stay `cluster`. UNVERIFIED: the naming split (which of the
+quantised branch and the plain `1.0/value` branch is "native" and which is
+"legacy"); closing it needs the two settings rows' display names or a runtime
+toggle capture.
+
 ## Evidence — four labelled tags found by the full-section scan (2026-10-25)
 
 The registration scan was originally bounded to `0x1800AFAE0`–`0x1800B2000` and missed 46
