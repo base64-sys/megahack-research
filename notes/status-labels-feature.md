@@ -278,3 +278,35 @@ Second counter" row names.
 `UNITS` = `0x2F8` prints the `" CPS"` suffix. The v7.0 "Level Status Only Total Clicks" row is
 **not** this branch: the formatter always prints the live value first and only appends the
 slash-separated extras, so no "only the total" mode exists in the image.
+## Evidence - the cheat indicator is one field and one gate (2026-10-28)
+
+The v9.0.1 row "Added Cheat Indicator Hide when Legit option" is a single boolean on the
+`cheats` status-field type. Two independent artefacts agree on the whole mechanism:
+
+1. **Settings side.** `settings-contents.md` line 89 records exactly one cheat-indicator key,
+   `STATUS/CHEAT_INDICATOR/DROPDOWN/HIDE_WHEN_LEGIT`, default `False`, and line 226 records
+   the field slot that renders it: `STATUS/FIELDS/1/FORMAT` = `{cheats}`. No other key names
+   the indicator.
+2. **Code side.** In the status formatter `FUN_18024E8D0` the `cheats` case (`case 6`, type
+   test `0x61656863`/`0x7374` = "chea"+"ts" at source line 277) reads exactly one tag,
+   `0x2E8`, and a byte scan of `.text` for `ba e8 02 00 00` finds exactly one site in the
+   image: `0x18024ED72`, the `mov edx,0x2E8` that feeds `FUN_18002DE50` at source line 278.
+   The branch then tests `(tag == 0) || mega::utils::safe_mode::hasCheatedInAttempt()` and
+   emits a two-character SSO string, bytes `.` and ` ` (`*(undefined2 *)param_1 = 0x202e`,
+   length 2, capacity `0xF`); otherwise it emits the empty string of the same shape.
+
+The polarity matches the key name exactly: with `HIDE_WHEN_LEGIT` off (the shipped default)
+the field always prints its mark; with it on the field prints only when the current attempt
+actually ran with cheats enabled (`hasCheatedInAttempt()`), i.e. it hides when the play was
+legit. Tag `0x2E8` therefore has no static `HACK_*` label - it is a status-field option, not
+a hack toggle.
+
+The v8.0.0-alpha7 row "Added Cheat Indicator with breakdown" stays `cluster`: the image has
+one cheat-related field type (`cheats`) and that field renders a two-character mark, not a
+per-cheat breakdown, so the wording describes something this build does not contain. Closing
+that row needs either a second rendering path (none found among the type table's nineteen
+records) or runtime observation of the label with cheats detected.
+
+UNVERIFIED: whether the mark is meant to be a separator that other code concatenates against
+(static reading shows only a standalone two-character string), and which settings row writes
+tag `0x2E8` (the profile carries no ids).
