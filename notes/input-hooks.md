@@ -191,3 +191,60 @@ settings paths plus control flow from the decompiled bodies.
   that branch; the `_Binder` lambda `void (Keybinds::*)(Tag, bool)` is the likely bridge.
 - `ERROR/HOME/LEGACY_SAVE_KEYBINDS` implies keybinds were once saved inside the main save;
   the migration path was not read.
+
+## Evidence - tag 475 is the editor-state flag (2026-10-28)
+
+The input initialiser `FUN_1800AFA10` (an `_initterm` entry, four statements of real work) is the
+smallest of the registrar blocks, and it had no tag attribution until now. It does three things
+in order:
+
+1. `FUN_18014ED70()` - the three name-resolved input dispatcher hooks already recorded above
+   (`CCEGLViewProtocol::handleTouchesBegin`, `CCMouseDispatcher::dispatchScrollMSG`,
+   `CCKeyboardDispatcher::dispatchKeyboardMSG`).
+2. `FUN_18008F910(registry, 0x1DB, &fn)` with `fn = FUN_180151280` - tag **475**.
+3. `FUN_1800BA9D0()` - two more hooks, `MenuLayer::init` (RVA `0x333A90`) and host RVA `0x32ED60`.
+
+A `mov edx,0x1db` capstone scan over `.text` finds fourteen sites; the only one with the
+registration call shape (`mov rcx,rax; mov r8,rsi; call 0x18008F910`) is `0x1800AFA60`, inside
+this initialiser. The other thirteen are unrelated immediates (string/UI code in the
+`0x18023E2xx` range and `0x18003D781`).
+
+**What tag 475 does.** `FUN_180151280(registry, bool *enabled)` installs four hooks at order
+`0xFFFFFFE0` (-32) and then writes one flag:
+
+| Target | RVA | Detour | Installer |
+| --- | --- | --- | --- |
+| `LevelEditorLayer::init` | `0x2D1DD0` | `FUN_180151420` | `FUN_180151640` |
+| `EditorPauseLayer::onSaveAndPlay` | `0xDDEe0` | `FUN_180151440` | `FUN_180151890` |
+| `EditorPauseLayer::onSaveAndExit` | `0xDE260` | `FUN_180151470` | `FUN_180151890` |
+| `EditorPauseLayer::onExitNoSave` | `0xDE370` | `FUN_1801514A0` | `FUN_180151890` |
+
+The detours are flag maintenance, not gameplay changes:
+
+- `FUN_180151420` calls the original `init` and, only when it returned true, calls
+  `FUN_1801514D0(0)`.
+- `FUN_180151440` / `FUN_180151470` / `FUN_1801514A0` call `FUN_1801514D0(1)` and then the
+  original save/exit method.
+
+The final call in the callback is `FUN_1801514D0(~*enabled & 1 | (FUN_18014E990() == 0))`, so the
+flag is also forced when the host field `[FUN_180147BA0() + 0x210]` reads zero.
+
+**What the flag is.** `FUN_1801514D0(bool)` writes a boolean under the key `NO_EDITOR` inside the
+`PARENT` sub-dictionary of the store returned by `FUN_1800D8E70()`: `FUN_1800DBE00(store,
+"PARENT")` looks the sub-dictionary up (creating it if absent) and `FUN_1800DDD00(dict, value,
+"NO_EDITOR")` stores the value. Both keys are SSO immediates, not `.rdata` strings - `PARENT` is
+`0x544E45524150` and `NO_EDITOR` is `0x4F544944455F4F4E` plus the tail byte `0x52` - which is why
+a string search for them finds nothing.
+
+**Conclusion.** Tag 475 is not a gameplay toggle: it is the editor-state tracker that keeps a
+`NO_EDITOR` boolean up to date so other parts of the mod can tell whether the editor is open
+(true outside, false inside and during a save/exit). That is the shape a "disable something in
+the editor" consumer needs, and it is why the block sits in the input initialiser next to the
+three dispatcher hooks.
+
+UNVERIFIED: which changelog row, if any, is tag 475. The bounded search is the settings tree,
+which contains exactly two editor keys - `CREATOR/HACK_EDITOR_EXTENSION` (static label 50,
+whose callback `FUN_18015F4F0` patches the host globals `0x623670`, `0x623674`, `0x623B04` and
+`0x62368C`) and `CREATOR/HACK_SMOOTH_EDITOR_TRAIL` - and neither names an editor-state flag.
+UNVERIFIED: who reads `PARENT/NO_EDITOR`; and whether `[host + 0x210]` is the host's
+"editor open" field (the host image is not in `samples/`).
