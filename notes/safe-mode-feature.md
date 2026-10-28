@@ -305,3 +305,35 @@ asymmetry is therefore **expected and named**, not a defect to chase; see
   toggles are ordinary config values.
 - UNVERIFIED: the exact vtable binding from the `MESSAGE/CHEAT_SAFETY/CONFIRM_DISABLE`
   callback to `FUN_18019A780`.
+
+## Evidence - the Cheat Safety tab exists as a sort category and a key namespace (2026-10-28)
+
+**Question.** The v9.0.2 row "Added Cheat Safety tab (Safe Mode moved here)" is the only
+changelog line about where Safe Mode lives. Can the image and the profile keys show that the
+tab exists?
+
+**Method.** Two independent artefacts: the ten-entry category rank table used by the settings
+sort (`FUN_1800098F0`, recorded in [ui-addons.md](ui-addons.md)), and the key namespace of
+every Safe Mode setting in the profile ([settings-contents.md](settings-contents.md)).
+
+**Evidence.**
+
+| Angle | Value | Source |
+| --- | --- | --- |
+| Category entry | index 7, string `CHEAT_SAFETY` at `.rdata` `0x180534601`, rank `0x38` | `ui-addons.md`, category table row 7 |
+| Rank position | `0x30` UNIVERSAL, `0x38` CHEAT_SAFETY, `0x40` DISPLAY - a distinct category, not an alias | same table |
+| Keys under the namespace | `CHEAT_SAFETY/RULESET` (1), `CHEAT_SAFETY/HACK_AUTO_SAFE_MODE`, `CHEAT_SAFETY/HACK_SAFE_MODE_POPUP` | `settings-contents.md` lines 171, 255-256 |
+| Tags behind those rows | 481 `HACK_AUTO_SAFE_MODE`, 482 `HACK_SAFE_MODE`, 483 `HACK_SAFE_MODE_POPUP` | label map stores `0x1800613BA`, `0x1800626A3`, `0x180062706` |
+
+**Bounded negative.** A search of `settings-contents.md` for `SAFE` returns exactly one key
+outside that namespace, `LEVEL/NOCLIP/DROPDOWN/SAFE_MODE`, which is a Noclip sub-option about
+the player, not a Safe Mode page. So in the shipped build every Safe Mode control is addressed
+under `CHEAT_SAFETY/`.
+
+**Conclusion.** The tab is real in v9.1.3: it is a first-class sort category (so a page has to
+exist to carry it) and it owns the namespace under which all three Safe Mode toggles are
+stored. That is the "Safe Mode moved here" half of the v9.0.2 row.
+
+UNVERIFIED: the page builder that emits the tab body (key text is not in the image, so the
+category string is the only static handle), and that no earlier build had the same category
+(the changelog date is the only evidence of when it appeared).
