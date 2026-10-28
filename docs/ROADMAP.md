@@ -178,8 +178,9 @@ release never had.
 Objective: re-apply the x86-64 map to the ARM64 build and confirm it on device.
 
 - [x] ARM64 `lib` mapped against the x86-64 map, divergences catalogued rather than assumed:
-      3,052 `_ZN` method symbols and zero typeinfo, so the 497-class RTTI inventory does not
-      carry across ([android-abi.md](../notes/android-abi.md),
+      3,052 `_ZN` manglings in `android64` (2,812 distinct dynamic symbols, 1,964 defined) and
+      zero typeinfo, so the 497-class RTTI inventory does not carry across
+      ([android-abi.md](../notes/android-abi.md),
       [android-symbol-parity.md](../notes/android-symbol-parity.md)).
 - [ ] Behaviour of the same features confirmed on device.
 - [ ] Cross-platform implementation compiles from one source tree. Builds and passes nine

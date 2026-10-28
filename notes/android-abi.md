@@ -11,11 +11,18 @@
 
 The two platforms do not share a C++ ABI, and Android has no type information at all.
 
-| Binary | ABI | MSVC type descriptors | `_ZN` symbols | `typeinfo for` |
+| Binary | ABI | MSVC type descriptors | `_ZN` occurrences | `typeinfo for` |
 | ------ | --- | --------------------: | ------------: | -------------: |
 | `absolllute.hackmega_original.dll` | MSVC x64 | 518 | 0 | 0 |
 | `absolllute.megahack.android64.so` | Itanium | 0 | 3,052 | 0 |
 | `absolllute.megahack.android32.so` | Itanium | 0 | 3,051 | 0 |
+
+The `_ZN` column counts **raw occurrences of `_ZN...` tokens in the file**, not dynamic
+symbols. `readelf --wide --symbols` gives 2,812 `_ZN` names in `android64` (1,964 defined,
+848 undefined) and 2,806 in `android32` (1,958 defined, 848 undefined), so the byte count is
+about 240 higher. Those extra occurrences are mangled names stored as data - the
+runtime-resolved hook targets recorded in [android-input-parity.md](android-input-parity.md) -
+which is why a byte scan and a symbol dump disagree on Android while agreeing on Windows.
 
 Two independent confirmations per platform: the Windows build contains MSVC `.?AV`/`.?AU`
 type descriptors and no Itanium symbols at all, while both Android builds contain the exact
@@ -29,7 +36,7 @@ stripping or retention settings.
 no RTTI typeinfo symbols to walk. Android is built with type information disabled, which is
 Geode's default for size. M5 needs a different approach rather than a rerun of the same tool.
 
-**Android still has a usable surface, just a different one.** The 3,052 `_ZN` symbols are
+**Android still has a usable surface, just a different one.** The 3,052 `_ZN` manglings are
 function manglings and do name methods with their owning types:
 
 ```
@@ -44,7 +51,7 @@ So the Android method surface is recoverable; it is the *class* set that is not,
 `cocos2d::` types appear there because Android links cocos2d statically where Windows resolves
 some of it from the host.
 
-**android32 and android64 are near-identical builds** — 3,051 versus 3,052 `_ZN` symbols.
+**android32 and android64 are near-identical builds** — 3,051 versus 3,052 `_ZN` occurrences (2,806 versus 2,812 dynamic symbols).
 The one-symbol difference is not worth chasing without a diff, and no claim is made about it.
 
 ## String parity, which is a better check than class names

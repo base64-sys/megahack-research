@@ -239,11 +239,14 @@ this, every name-resolved input hook in the Android build is attributed to a Win
 - UNVERIFIED: whether the two absent methods exist in the Android GD game binary. The
   absence above is bounded to the Mega Hack `.so` and to its complete file bytes; no
   Android GD image is in `samples/`.
-- Count discrepancy: android64 has 2,812 `_ZN` names in `.dynsym` by
-  `readelf --wide --symbols` here, while [android-abi.md](android-abi.md) records 3,052.
-  The lower figure reproduces on both ABIs (2,812/2,806); the 3,052 was produced by a
-  different query that is not recorded. The ABI conclusion does not depend on the count.
-  UNVERIFIED: the original query.
+- Count discrepancy, closed 2026-10-28: the two figures measure different things and both
+  reproduce. `readelf --wide --symbols` gives 2,812 `_ZN` names in `android64` `.dynsym`
+  (1,964 defined, 848 undefined) and 2,806 in `android32`; a raw byte scan for `_ZN...`
+  tokens over the complete file gives 3,052 and 3,051 occurrences (2,898 and 2,892
+  distinct). The ~240 extra occurrences are the mangled names stored as data - the hook
+  target strings above - so [android-abi.md](android-abi.md) quotes the byte count and this
+  note quotes the symbol count. Neither is wrong; the earlier "unrecorded query" reading was
+  the error.
 
 ## What this changes
 
