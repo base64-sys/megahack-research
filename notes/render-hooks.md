@@ -1248,6 +1248,51 @@ construction. (2) The settings key `COSMETIC/HACK_TRAIL_ALWAYS_ON`
 registration site, so the key and the behaviour can only refer to this pair. UNVERIFIED: the
 FNV assignment from that key to tag 448 is inferred from uniqueness, not read; no runtime capture.
 
+## Evidence - Lock Delta is tag 488 and a replacement getModifiedDelta (2026-10-28)
+
+`DISPLAY/DELTA/` holds exactly one key, `HACK_REAL_TIME` (`notes/settings-contents.md`
+line 285), and the image has exactly one delta-replacing mechanism: tag 488 (`0x1E8`, no
+static label), registered in `FUN_1800AFAE0` (line 2379: `local_58 = FUN_180197020`,
+then `FUN_18008f910(uVar1,0x1e8,&local_60)`).
+
+| Field | Value |
+| --- | --- |
+| Callback | `FUN_180197020` (`0x180197020..0x1801971D6`, 0x1FD bytes, 0 callers) |
+| Hook 1 | `GJBaseGameLayer::resetLevelVariables`, RVA `0x23B040`, detour `FUN_180197220` (`0x180197220..0x180197242`), installer `FUN_180172C30`, order `0xFFFFFFE0` |
+| Hook 2 | `GJBaseGameLayer::getModifiedDelta`, RVA `0x2377B0`, detour `FUN_180197250` (`0x180197250..0x180197266`), same installer and order |
+| Name strings | `0x18057A8D4` (resetLevelVariables), `0x180576166` area (getModifiedDelta) |
+
+The two detours are small enough to quote whole (file offsets are RVA - `0xC00`):
+
+```
+0x180197220  sub rsp,0x28
+0x180197224  call 0x180116560
+0x180197229  mov byte [0x18080CAC0],0
+0x180197230  mov byte [0x18080CA98],0
+0x180197237  mov byte [0x18080CA70],0
+0x18019723E  add rsp,0x28 ; ret
+
+0x180197250  sub rsp,0x28
+0x180197254  call 0x180115B70
+0x180197259  movsd [0x18080CA68],xmm0
+0x180197261  add rsp,0x28 ; ret
+```
+
+So the second detour **replaces** `getModifiedDelta`'s return value with whatever
+`0x180115B70` computes - an engine time value read from two globals - and caches it at
+`0x18080CA68`; the original is never reached. The first detour calls `0x180116560` and
+clears three bytes on every level-variable reset, which is the state a lock of this kind
+needs (the cached delta and its guards stop applying across a reset).
+
+**Conclusion.** Tag 488 is the delta lock: the v7.1 row "Added Lock Delta" names it, and the
+v8.0.0-alpha13b row "Added Real Time to Lock Delta" is a later refinement of the same
+mechanism, which is why the one settings key in the group is `HACK_REAL_TIME` and why the
+row wording gained "Real Time" rather than a second toggle appearing.
+
+UNVERIFIED: what `0x180115B70` computes (it reads `[rip+0x6f05fb]` and `[rip+0x6ebc5d]`
+before the visible prologue ends), what `0x180116560` does, what the three cleared bytes
+gate, and which of the two changelog rows the "real time" wording refers to.
+
 ## Evidence - the FPS setter: config id 484 and updateCustomFPS (2026-10-28)
 
 The v7.0 row "Added Unfocused FPS Setter" is the only settable-FPS mechanism in the image.

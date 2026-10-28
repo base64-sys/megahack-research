@@ -43,8 +43,8 @@
   scenario that reaches a target-dependent site, not another capture of this one
   ([deterministic-capture.md](deterministic-capture.md), "Result").
 - Cluster assignment exists but is only a lead for most rows. Counted from the status
-  column on 2026-10-28: **162 of the 389** changelog rows in
-  [feature-inventory.md](feature-inventory.md) are `mapped` and **227** are `cluster`;
+  column on 2026-10-28: **163 of the 389** changelog rows in
+  [feature-inventory.md](feature-inventory.md) are `mapped` and **226** are `cluster`;
   the authoritative per-row list with tag, registration and hook address is the
   Mapped-rows table there. Four of the `cluster` rows (tags 422, 442, 438, 424) carry
   mechanism evidence but stay `cluster` because their tag→row binding is unresolved.
