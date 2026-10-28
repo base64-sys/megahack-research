@@ -198,6 +198,8 @@ fix bullets, and Copy Hack only in the settings tree.
 | Unlock Shops | tag 34 (`HACK_UNLOCK_SHOPS`, 0x022); registered at `0x1800aff78`, callback `FUN_18015dfa0` replaces `SecretRewardsLayer::onShop` (RVA 0x3D66D0) with a forward to `0x1801AD0F0` carrying this plus the button's virtual index. Named only in fix bullets. See [unlock-bypasses.md](unlock-bypasses.md#vault-shop-and-treasure-room-the-handlers-are-replaced). |
 | Treasure Room | tag 35 (`HACK_TREASURE_ROOM`, 0x023); registered at `0x1800afe8a`, callback `FUN_18015d960` replaces `CreatorLayer::onTreasureRoom` (RVA 0x9EDA0), building the scene and running the 0.5 s fade itself. Named only in fix bullets. See [unlock-bypasses.md](unlock-bypasses.md#vault-shop-and-treasure-room-the-handlers-are-replaced). |
 | Copy Hack | tag 43 (`0x02B`, `HACK_COPY_HACK`, static map `0x180062F43`); registered at `0x1800b00dd`, callback `0x18015e920` installs detour `0x18015e9f0` on `LevelInfoLayer::init` (RVA 0x2F7340) and `0x18015ea50` on `LevelInfoLayer::levelDownloadFinished` (RVA 0x2FBA60); both force the dword at `[level+0x3A8]` to `[level+0x3AC]+1` for the duration of the call and restore it after. No `Added ...` bullet names it and the spoofed fields are unidentified. See [creator-feature.md](creator-feature.md#lead--copy-hacks-two-levelinfolayer-spoofs-2026-10-26). |
+| All Modes Platformer | 241 (`0x0F1`, `HACK_ALL_MODES_PLATFORMER`, store `0x180062A6A`); registered at `0x1800B1CDA`, callback `FUN_180174590` installs detour `FUN_180174600` (`.pdata` `0x180174600..0x1801746E0`) on `GJBaseGameLayer::collisionCheckObjects` (RVA `0x214960`): when the object count is positive and `[layer+0x309E] != 0`, every object with id `+0x3A0` in {`0x29`, `0x1A`} that passes `FUN_1802045D0` also runs `FUN_180129B30`/`FUN_180116E40`, then the original `FUN_180115840` runs. No `Added ...` bullet names it. See [gameplay-hooks.md](gameplay-hooks.md#evidence---the-two-platformer-toggles-that-have-no-changelog-row-2026-10-28). |
+| Force Platformer | 242 (`0x0F2`, `HACK_FORCE_PLATFORMER`, store `0x180063144`); registered at `0x1800B24CB`, callback `FUN_180178710` installs detour `FUN_180178780` (`.pdata` `0x180178780..0x1801787AD`) on `GJBaseGameLayer::loadLevelSettings` (RVA `0x23AD00`): if `FUN_1801ACDB0()` returns a level, writes `1` to `[[layer+0xDB0]+0x155]` before calling the original `FUN_180116080`. No `Added ...` bullet names it. See [gameplay-hooks.md](gameplay-hooks.md#evidence---the-two-platformer-toggles-that-have-no-changelog-row-2026-10-28). |
 
 Adding them to the counts would mix two different universes. If the M3 criterion is later read
 as "every feature named anywhere in the changelog", these nine are the first rows to add — and
@@ -636,4 +638,6 @@ Correction (2026-10-25): the earlier version of this paragraph named `Force Plat
 has a row in the 389**: no `Added Force Platformer` and no `Added Default Song Bypass` bullet
 exists. Mapping them would add entries to "Toggles outside the 389" at best, so they are not
 progress against the milestone. The next rows must be chosen from the remaining changelog
-bullets.
+bullets. Both detours were read on 2026-10-28 and are now recorded in that table and in
+[gameplay-hooks.md](gameplay-hooks.md#evidence---the-two-platformer-toggles-that-have-no-changelog-row-2026-10-28);
+the conclusion above is unchanged.

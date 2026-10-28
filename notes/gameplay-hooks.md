@@ -1788,3 +1788,44 @@ count, drop table or reward state is touched.
   confirms the intended animation timing.
 - UNVERIFIED: which settings row writes tag 461. The label exists in the static map and the tag
   is read in the dispatcher, but the `hackpro.json` row that binds it is not in the image.
+
+## Evidence - the two platformer toggles that have no changelog row (2026-10-28)
+
+The static label map names two shipped platformer toggles that no changelog bullet mentions, so
+they cannot advance M3 (see the correction paragraph in [feature-inventory.md](feature-inventory.md));
+their mechanisms were unread. Both are ordinary tag registrations in `FUN_1800AFAE0` with order
+`0xFFFFFFE0` (-32) and final argument 1.
+
+| Field | All Modes Platformer | Force Platformer |
+| --- | --- | --- |
+| Label / tag | `HACK_ALL_MODES_PLATFORMER`, 241 (`0x0F1`), store `0x180062A6A` | `HACK_FORCE_PLATFORMER`, 242 (`0x0F2`), store `0x180063144` |
+| Registration | `0x1800B1CDA` (`ba f1 00 00 00`, then `mov rcx,rax; mov r8,rsi; call 0x18008F910`) | `0x1800B24CB` (`ba f2 00 00 00`, same call shape) |
+| Callback | `FUN_180174590` (`.pdata` `0x180174590..0x1801745FE`) | `FUN_180178710` (`.pdata` `0x180178710..0x18017877E`) |
+| Host target | `GJBaseGameLayer::collisionCheckObjects`, RVA `0x214960` (resolved with `FUN_18010A370`) | `GJBaseGameLayer::loadLevelSettings`, RVA `0x23AD00` |
+| Detour | `FUN_180174600` (`.pdata` `0x180174600..0x1801746E0`, 0xE0 bytes) | `FUN_180178780` (`.pdata` `0x180178780..0x1801787AD`, 0x2D bytes) |
+| Installer | `FUN_180167330` (also used by tag 438) | `FUN_180172C30` |
+| Name string | `"GJBaseGameLayer::collisionCheckObjects"` | `"GJBaseGameLayer::loadLevelSettings"` |
+
+**All Modes Platformer.** Measured shape: when the object count is positive and
+`[layer+0x309E] != 0`, the detour walks the incoming object vector and, for every object whose id
+at `+0x3A0` is `0x29` (41) or `0x1A` (26), runs a collision test `FUN_1802045D0(player, object)`;
+on a true result it calls `FUN_180129B30(layer, player, object, 1, id)` and
+`FUN_180116E40(layer, player, id, 0, 0)` for that object. It then always falls through to the
+original `FUN_180115840(layer, player, vector, count)`, so vanilla collision handling is
+preserved and the extra pass only adds the two object kinds. The `+0x309E` byte is the same field
+whose meaning is still open at the practice/percentage section above.
+
+**Force Platformer.** Measured shape: `FUN_1801ACDB0()` (the current-level accessor used
+throughout the gameplay hooks) -> if a level exists, write `1` to `[[layer+0xDB0]+0x155]`, then
+call the original `FUN_180116080(layer)`. The detour therefore sets one byte inside the level
+settings object before the host loads them, and does nothing when no level is loaded.
+
+**Conclusion.** 241 is a collision-time pass over two trigger ids behind the `+0x309E` byte, and
+242 is a one-byte override of a level-settings field. Neither reads another tag and neither has a
+second registration site (single `ba f1`/`ba f2` site each in `.text`), so the image is fully
+described by these two detours.
+
+UNVERIFIED: the names of object ids 41 and 26; whether `[layer+0x309E]` is the platformer-mode byte
+(the guard is measured, the meaning is not); which field `[level_settings+0x155]` is (read here as
+the mode selector because the toggle is named Force Platformer); and the direction of both toggles
+- which state the label's "on" enables. No runtime capture.
