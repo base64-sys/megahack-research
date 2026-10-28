@@ -475,6 +475,28 @@ colour-channel or colour-trigger ids, but no name string in the image says so); 
 why 272 covers three ids and 266 covers two; what `[+0x40]`, `[+0x54]`, `[+0x78]`, `[+0x58]`
 are on the returned object; and whether `[layer+0x950]` is the layer's colour-trigger container.
 
+### The v7.1 wording is the same respawn-time modifier (2026-10-28)
+
+Two changelog rows describe this feature: v7.1 (Full) "Added Fast Practice Respawn Time Modifier"
+and v8.0.0-alpha5 "Added Respawn Time modifier". The image has one mechanism, and both names
+point at it:
+
+| Angle | Evidence |
+| --- | --- |
+| Tag 245 master | one registration site, `0x1800B2AE5` in `FUN_1800AFAE0` |
+| Tag 246 value | `recovered/functions/_settings.tsv` line `246` gives exactly one reader, `18017efc0_FUN_18017efc0` |
+| Detour | `FUN_18017EFC0` (0x38 bytes) reads tag 246 with `FUN_180003D80`, divides by `1000.0` and passes the seconds value to the scheduler `FUN_18017F000` |
+| Hook | `FUN_18017EF50` (tag 245's callback) installs `FUN_18017EFC0` on `PlayLayer::destroyPlayer`, RVA `0x3B39D0`, order `-32` |
+
+Bounded negative: the `LEVEL/RESPAWN_TIME/` namespace holds exactly three keys - the master
+`HACK_RESPAWN_TIME`, `DROPDOWN/SPINNER` (double, 300.0) and `DROPDOWN/IGNORE_SPEEDHACK` -
+so no separate "fast practice" key exists, and tags 245/246 are the only respawn-delay
+inputs the image reads. The v7.1 bullet therefore names the same modifier under an older,
+longer name.
+
+UNVERIFIED: whether the v7.1 build shipped a different default (the shipped 300.0 ms and the
+1.0x multiplier are the v9.1.3 values).
+
 ## Evidence — Respawn Time modifier (2026-10-25)
 
 `HACK_RESPAWN_TIME` (tag 245, `0xF5`; static-map entry #57, store VA `0x180063E55`) is

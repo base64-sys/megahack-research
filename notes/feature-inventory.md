@@ -457,7 +457,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v7.1 (Full) | Added Editor Hitbox Bug Fix | cluster | [creator-feature.md](creator-feature.md) |
 | v7.1 (Full) | Added Editor Hitbox Only on Select | cluster | [creator-feature.md](creator-feature.md) |
 | v7.1 (Full) | Added Editor Support for Smart StartPos | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
-| v7.1 (Full) | Added Fast Practice Respawn Time Modifier | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
+| v7.1 (Full) | Added Fast Practice Respawn Time Modifier | mapped | [gameplay-hooks.md](gameplay-hooks.md#the-v71-wording-is-the-same-respawn-time-modifier-2026-10-28) | Same mechanism as the v8.0.0-alpha5 row: tag 245 (`0xF5`, `HACK_RESPAWN_TIME`) registers at `0x1800B2AE5` and its callback `FUN_18017EF50` installs `FUN_18017EFC0` on `PlayLayer::destroyPlayer` (RVA `0x3B39D0`), where tag 246 is read once and divided by 1000.0 into the scheduler. `LEVEL/RESPAWN_TIME/` has no separate fast-practice key. |
 | v7.1 (Full) | Added Force Objects Invisible | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v7.1 (Full) | Added Frame Stepper | mapped | [gameplay-hooks.md](gameplay-hooks.md) | tag 302 (`HACK_FRAME_STEPPER`); registrar `FUN_180173FD0` toggles two UILayer hooks (`onPause` RVA 0x4CDF50, `handleKeypress` RVA 0x4CD830). Tag 357 (0x165, runtime-assigned Map B) is an alternate enable. See gameplay-hooks.md. |
 | v7.1 (Full) | Added Hide Checkpoints | cluster | [render-hooks.md](render-hooks.md) |
