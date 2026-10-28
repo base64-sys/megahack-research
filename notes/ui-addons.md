@@ -761,12 +761,24 @@ Branch identity, twice over:
   function in `_xrefs.tsv`), formats the file name with the `png` literal, reports
   `could not open file {}` (`.rdata` `0x180589927`) on failure, and passes the version string
   `1.6.54` (`.rdata` `0x18058993E`) into the writer at `FUN_18024A9D0`. That is the on-disk PNG.
+- `FUN_18020DD60` is the capture itself, and it is a framebuffer read rather than a name match:
+  `glGetIntegerv(0xBA2, &viewport)` (`0xBA2` = `GL_VIEWPORT`, which fills `width`/`height`),
+  then `glReadPixels(0, 0, width, height, 0x80E0, 0x1401, buffer)` where `0x80E0` is `GL_BGR`
+  and `0x1401` is `GL_UNSIGNED_BYTE`. The buffer is resized to `width * height * 3` bytes by
+  `FUN_1800BD740`, which is the same 3-bytes-per-pixel layout the clipboard DIB branch assumes.
+  Source: `recovered/functions/18020dd60_FUN_18020dd60.c` (167 bytes, one caller, the
+  dispatcher above); the constants are the GL enums, not MH settings.
 
 The settings tree has exactly one screenshot key, `SCREENSHOT/COMBO` (default `0`), and the
 dispatcher reads exactly one config id, so the key and id 866 correspond; the shipped default of
 0 is also the mode that does both. UNVERIFIED: whether `SCREENSHOT/COMBO` is the FNV-assigned id
 866 in the profile itself (the settings tree does not carry ids), and whether the `1.6.54`
-literal is a watermark text, a Geode version, or a parameter of the writer.
+literal is a watermark text, a Geode version, or a parameter of the writer. What is known about
+it: in `FUN_18020DF60` it is the first argument of `FUN_18024A9D0("1.6.54", 0, FUN_18020E5F0, 0)`,
+and that function calls `FUN_18024B300` to obtain an object, writes fields at `+0x1D8`..`+0x200`
+and sets bit `0x20` at `+0x16A`, then calls `FUN_18027D810(obj, 0, 0, 0, 0, 0, 0)`. So the string
+is consumed by an encoder/factory object together with a completion callback, not by a drawing
+call; "watermark" is therefore not supported by anything read so far.
 
 ### The category table is an ordering, not a lookup
 
