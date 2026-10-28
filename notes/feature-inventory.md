@@ -565,7 +565,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v6.2.0 (Full) | Added No Death Effect mod | mapped | [render-hooks.md](render-hooks.md) | tag 399 (`HACK_NO_DEATH_EFFECT`, 0x18F); registered in `FUN_1800afae0` at `0x1800b0df0`, callback `FUN_180169330` (hooks `PlayerObject::playDeathEffect`, RVA 0x37EF10, with a bare-`ret` detour at `0x180169400`). See no-death-effect-feature.md. |
 | v6.2.0 (Full) | Added No Force Glow mod | cluster | [render-hooks.md](render-hooks.md) |
 | v6.2.0 (Full) | Added No New Best Popup mod | cluster | [ui-addons.md](ui-addons.md) |
-| v6.2.0 (Full) | Added No Respawn Flash mod | cluster | [render-hooks.md](render-hooks.md) |
+| v6.2.0 (Full) | Added No Respawn Flash mod | mapped | [no-respawn-flash-feature.md](no-respawn-flash-feature.md#changelog-wordings-and-the-detour-byte-2026-10-28) | Same tag as the v8.0.0-alpha5 wording: tag 398 (`0x18E`, `HACK_NO_RESPAWN_FLASH`), single registration `0x1800B13FB`, callback `FUN_1801714C0` installs detour `0x180171530` on `PlayerObject::playSpawnEffect` (RVA `0x397480`, order `0xFFFFF428`); the detour is the one byte `c3`, so the original never runs. |
 | v6.2.0 (Full) | Added No Wave Pulse mod | cluster | [render-hooks.md](render-hooks.md) |
 | v6.2.0 (Full) | Added No Wave Trail mod | cluster | [render-hooks.md](render-hooks.md) |
 | v6.2.0 (Full) | Added NoClip Accuracy | cluster | [noclip-feature.md](noclip-feature.md) |

@@ -43,3 +43,29 @@ The callback is `FUN_1801714c0` (`0x1801714c0`), which takes `(param_1, param_2)
 
 - UNVERIFIED: which JSON key binds to tag 0x18E.
 - UNVERIFIED: the exact behavior of the hook (whether it vetoes or observes spawn effects).
+
+## Changelog wordings and the detour byte (2026-10-28)
+
+Two changelog lines name this one tag: v6.2.0 (Full) "Added No Respawn Flash mod" and
+v8.0.0-alpha5 "Added No Respawn Flash". There is no second mechanism to find - tag 398 has
+exactly one registration site.
+
+**Boundary.** A whole-`.text` scan for `ba 8e 01 00 00` (`mov edx,0x18E`) returns one site,
+`0x1800B13FB`, which is the registration above; nothing else reads tag 398 by immediate.
+
+**Detour.** The installed detour is `0x180171530` and it is a single byte:
+
+```
+180171530  c3    ret
+180171531  cc cc cc ...        ; int3 padding to the next .pdata record
+```
+
+(`pe_disasm.py absolllute.hackmega_original.dll 0x180171530 --size 40`, run from
+`samples/absolllute.hackmega`; VA `0x180171530`, RVA `0x171530`, file `0x170930`.) The body
+never reaches the cached original, so every `PlayerObject::playSpawnEffect` call is a no-op
+while the toggle is on. The registration passes order `0xFFFFF428` (-3032) and the final
+argument `1`.
+
+UNVERIFIED: whether `playSpawnEffect` is only the spawn ring (the name says so, and no other
+caller of the detour exists), and what the host draws for a respawn when the routine is
+suppressed; closing either needs a runtime capture, not the image.

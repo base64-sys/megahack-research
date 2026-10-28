@@ -128,7 +128,7 @@ Objective: map every shipped toggle to the code that implements it, then prove t
 reconstruction behaves like the release.
 
 - [ ] Every feature in `changelog.md` accounted for: implemented, alias or dead.
-      389 unique `Added …` wordings, **124 mapped**, 265 still `cluster`; the universe
+      389 unique `Added …` wordings, **125 mapped**, 264 still `cluster`; the universe
       excludes features named only in fix bullets (`No Transition`, `Unlock Icons`,
       `Music Unlocker`) and in `New For 2.2 Mods`. Authoritative list:
       [feature-inventory.md](../notes/feature-inventory.md).
