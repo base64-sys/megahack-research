@@ -472,7 +472,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v7.1 (Full) | Added Play Song to Level page | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v7.1 (Full) | Added Reverse Input | cluster | [input-hooks.md](input-hooks.md) |
 | v7.1 (Full) | Added Screen Recorder | cluster | [ui-addons.md](ui-addons.md) |
-| v7.1 (Full) | Added Screenshot to clipboard setting | cluster | [ui-addons.md](ui-addons.md) |
+| v7.1 (Full) | Added Screenshot to clipboard setting | mapped | [ui-addons.md](ui-addons.md#the-screenshot-command-and-its-three-modes-2026-10-28) | Action `0x361` (`FUN_180190C70`) reads config id 866 (`getConfigVar<int>`, the only reader in `_settings.tsv`) and branches three ways: mode 1 calls `FUN_18020DE40` only, mode 2 calls `FUN_18020DF60` only, and the shipped default 0 calls both. `FUN_18020DE40` allocates a `(width*3+3 & ~3)*height+0x28` buffer with `GlobalAlloc`/`GlobalLock` (IAT `0x180642FD0`/`0x180642FE0`) - the clipboard DIB path; `FUN_18020DF60` writes a PNG named from the `png` literal under the `screenshots` folder. The settings tree has one screenshot key, `SCREENSHOT/COMBO` (default 0). |
 | v7.1 (Full) | Added Status Hide All | cluster | [status-labels-feature.md](status-labels-feature.md) |
 | v7.1 (Full) | Added Swift Click to Shortcuts | cluster | [input-hooks.md](input-hooks.md) |
 | v7.1 (Full) | Added Switch P1/P2 Inputs | cluster | [input-hooks.md](input-hooks.md) |

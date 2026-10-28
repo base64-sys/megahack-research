@@ -735,10 +735,38 @@ The `0x359`-`0x361` run is the Utilities page. Only two of its members are attri
 running scene rather than a settings value, e.g. `0x35C` looks the mod's overlay node up in
 `CCScene` and returns if it is already there, otherwise adds `FUN_1801ACC30()` at the highest
 Z (`FUN_18018FF70`); `0x35B` flips a byte on `PlayLayer + 0x31F0` through `FUN_1801A5E00`,
-and `0x361` reads config id `0x362` and takes one of three branches
-(`FUN_18020DD60` / `FUN_18020DE40` / `FUN_18020DF60`). UNVERIFIED: the feature name behind
-each of `0x359`, `0x35A`, `0x35B`, `0x35C`, `0x35D`, `0x35E`, `0x361`; the callbacks are
+and `0x361` is the screenshot command (see the next subsection). UNVERIFIED: the feature name
+behind each of `0x359`, `0x35A`, `0x35B`, `0x35C`, `0x35D`, `0x35E`; the callbacks are
 identified by address and call shape only.
+
+### The screenshot command and its three modes (2026-10-28)
+
+`FUN_180190C70` (`0x180190C70`, 179 bytes) is the body registered for action `0x361`. It reads
+`getConfigVar<int>(registry, 0x362)` once (`FUN_18002E4C0`, the only reader of id 866 in
+`_settings.tsv`), asks `FUN_18020DD60` for the output path and the capture size, then branches:
+
+| Mode (`0x362`) | Calls | Effect |
+| ---: | --- | --- |
+| 1 | `FUN_18020DE40` only | clipboard |
+| 2 | `FUN_18020DF60` only | file |
+| 0 (shipped default) | `FUN_18020DE40` then `FUN_18020DF60` | both |
+
+Branch identity, twice over:
+
+- `FUN_18020DE40` sizes a buffer as `(width * 3 + 3) & ~3) * height + 0x28`, allocates it with
+  `GlobalAlloc` and locks it with `GlobalLock` (IAT slots `0x180642FD0` / `0x180642FE0`, resolved
+  from `call qword ptr [rip+0x43513C]` at `0x18020DE8E` and `[rip+0x435137]` at `0x18020DEA3`).
+  A 3-bytes-per-pixel bottom-up buffer in global memory is the clipboard DIB path.
+- `FUN_18020DF60` builds a path under the `screenshots` folder (SSO literal owned by this
+  function in `_xrefs.tsv`), formats the file name with the `png` literal, reports
+  `could not open file {}` (`.rdata` `0x180589927`) on failure, and passes the version string
+  `1.6.54` (`.rdata` `0x18058993E`) into the writer at `FUN_18024A9D0`. That is the on-disk PNG.
+
+The settings tree has exactly one screenshot key, `SCREENSHOT/COMBO` (default `0`), and the
+dispatcher reads exactly one config id, so the key and id 866 correspond; the shipped default of
+0 is also the mode that does both. UNVERIFIED: whether `SCREENSHOT/COMBO` is the FNV-assigned id
+866 in the profile itself (the settings tree does not carry ids), and whether the `1.6.54`
+literal is a watermark text, a Geode version, or a parameter of the writer.
 
 ### The category table is an ordering, not a lookup
 
