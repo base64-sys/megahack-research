@@ -38,6 +38,42 @@ config values, while the lifecycle hooks only provide timing/progress. This
 matches the nxUI model where rows are layout handles and text comes from the
 definition manager.
 
+## Evidence - the two noclip status records are in the table but not in the dispatcher (2026-10-28)
+
+- **Question** - "Added Noclip Death Viewer" (v9.0.0) and the counter half of "Added Noclip
+  Death Counter & Death Limit" (v7.0) name a noclip readout. Which type record is it, and
+  which function renders it?
+- **Method** - read the type-table ids in `FUN_1800AF1C0`, list the `STATUS/*` keys in
+  `notes/settings-contents.md`, then decode every type-string immediate in the status
+  formatter `FUN_18024E8D0` and compare the counts.
+
+**The table has 19 records and two of them are the noclip pair.** `FUN_1800AF1C0` stores
+`0x309` and `0x30A` into one record (offsets `0x26`/`0x27` of its local array) and `0x310` and
+`0x311` into the next, so there are exactly two noclip records. The decoded vocabulary of the
+other seventeen is message, testmode, cheats, fps, cps, best_run, attempts, jumps, percent,
+level_time, session, clock, frame, position, velocity, dead and replay_state.
+
+**The settings side names one of them.** `notes/settings-contents.md` line 99 has
+`STATUS/NOCLIP_DEATHS/DROPDOWN/UNITS` and line 243 has
+`STATUS/FIELDS/4/FORMAT = {noclip_deaths}`. There is no `STATUS/NOCLIP_ACC` or
+`STATUS/NOCLIP_HEALTH` key, so `noclip_deaths` is one of the two records and the other has no
+shipped key in this profile dump.
+
+**The formatter does not dispatch either of them.** Decoding the type-string immediates of
+`FUN_18024E8D0` yields exactly the seventeen names above - the same list, in the same order,
+with no noclip entry, and the literal "noclip" does not occur in the function. So 19 records
+minus 17 dispatched types = the two noclip records, which are built into the settings tree but
+never rendered by the formatter.
+
+**Conclusion.** "Noclip Death Viewer" and the counter half of "Noclip Death Counter & Death
+Limit" are the noclip type records, and their renderer is outside `FUN_18024E8D0`; neither row
+can be bound from the formatter. Both stay `cluster`.
+
+UNVERIFIED: which function renders ids `0x309`/`0x30A` and `0x310`/`0x311`; which of the two is
+`noclip_deaths`; and whether "Death Viewer" means this label at all rather than a separate
+end-level list. Closing it needs the renderer (a second dispatch over the same type strings) or
+a runtime capture of the label.
+
 ## Open questions
 
 - UNVERIFIED: which functions read each `STATUS/FIELDS/*` key and format the
