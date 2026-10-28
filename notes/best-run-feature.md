@@ -222,3 +222,35 @@ behaviour each site implements matches its key name one-for-one.
 - UNVERIFIED: what `DAT_18080BF48` and `[layer+0x31F0]` are. The first is compared against
   every node's start percentage and the second suppresses the restricted lookup, which is
   consistent with "current start percent" and "practice mode" but is not proven.
+
+## Evidence - the Best Run Accurate Percentage toggle is tag 0x303 (2026-10-28)
+
+The two older rows about an accurate-percentage toggle in the Best Run label name the
+same option: v8.0.3-alpha.1 "Added Best Run Accurate Percentage toggle" and v9.0.1
+"Added Accurate Percentage toggle in Best Run".
+
+**Method.** The three Best Run keys in the profile are known from
+[settings-contents.md](settings-contents.md) lines 86-88
+(`STATUS/BEST_RUN/DROPDOWN/ACCURATE_PERCENTAGE` default False, `/ONLY_CURRENT` default
+True, `/PREFIX` default True). Two of them were already bound to tags 772 and 773; this
+pass closes the third by reading the branch that both neighbours sit in.
+
+**Evidence.**
+
+| Angle | Value |
+| --- | --- |
+| Only accessor site for `0x303` in `.text` | `0x18024F2AC` (`mov edx,0x303`; `mov rcx,rsi`; `call 0x18002DE50` = `getConfigVar<bool>`), verified with `tools/pe_disasm.py absolllute.hackmega_original.dll 0x18024F2A4 --size 96` (RVA `0x24F2A4`, file `0x24E6A4`) |
+| Branch identity | the same block calls `FUN_180155600(&local_f0, layer)` - the Best Run map walk bound to tag 772 - and reads tag `0x305` (PREFIX) further down at `0x18024FA0D`, so the block formats the `best_run` label |
+| Behaviour when set | reads int tag `0x1AE` (decimals) at `0x18024F2C9` and rounds both values with `floor(x * 10^n) / 10^n` before formatting through `FUN_1802505B0` with `"{{:.{}f}}%"` |
+| Behaviour when clear | passes the start/best pair through unrounded and formats `"{0}-{0}"` |
+
+**Conclusion.** `STATUS/BEST_RUN/DROPDOWN/ACCURATE_PERCENTAGE` is tag 771 (`0x303`). The
+three Best Run dropdown keys are consecutive tags: 771 accurate percentage, 772 only
+current, 773 prefix, which is now corroborated key-for-key. Both changelog rows describe
+this one option, so both are `mapped`.
+
+UNVERIFIED: whether the tag also alters the *value* (the best percentage) or only its
+rounding; the code read here rounds `local_f0`/`local_e8` and applies the decimal format,
+which `notes/best-run-feature.md` records as rounding only. Closing it needs a runtime
+comparison of a run whose best percentage has more decimals than the vanilla two.
+
