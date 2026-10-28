@@ -117,3 +117,36 @@ session/global switch would live.
   match inlined literals as well as symbols.
 - Editing the script with PowerShell regex replacements broke indentation and produced an
   `IndentationError`. Use the editor for structural changes; regex is for the content only.
+
+## File offsets: the 0xC00 trap in scratch scanners (2026-10-28)
+
+A capstone sweep is only as good as the address it claims to report. The `.text` section has
+RVA `0x1000` but **file offset `0x400`** (file = RVA - `0xC00`). Slicing the file as
+`data[0x1000:0x1000+size]` and then labelling that slice from VA `0x180001000` therefore
+reports every instruction `0xC00` too high, which looks exactly like a decoding failure.
+
+**Demonstration.** A sweep built that way printed `int3` padding at `0x180182B79`. The same
+address read with `tools/pe_disasm.py absolllute.hackmega_original.dll 0x180182B60 --size 96`
+(from `samples/absolllute.hackmega/`) shows real code:
+
+```
+0000000180182b6c  e8 9f 79 f0 ff   call 0x18008a510      ; settings context
+0000000180182b71  ba 69 01 00 00   mov  edx, 0x169       ; tag 361
+0000000180182b79  e8 42 b9 ea ff   call 0x18002e4c0      ; integer accessor
+```
+
+So the recorded address was right and the sweep's base was wrong. A second symptom is a
+sweep that finds **no** accessor calls at all in a region that plainly contains them: the
+call targets it computes are shifted by the same `0xC00`, so they never match the accessor
+addresses.
+
+**Safe recipes.**
+
+- Ask `scripts/pe_rva.py <dll> <va>` for the offset instead of computing one by eye; it also
+tells you which section a VA is in (`.text`/`.rdata` use `-0xC00`, `.data` uses `-0xE00`).
+- In a scratch script, slice with the section's **file** offset and label the slice with the
+  section's **RVA**, e.g. `data[0x400:0x400+0x532FE6]` labelled from `0x180001000`.
+- Byte-pattern scans (`bytes.find`) are safer than linear sweeps because they never decode:
+  report `section_rva + index` as the VA, and confirm one hit with `pe_disasm.py` before
+  quoting a count.
+- Never quote "exactly one site" from a sweep without one spot-check at that address.
