@@ -141,7 +141,63 @@ JSON keys / UI rows bind to these three tags.
 | `+0xDA8` | pointer | Player 2 node |
 | `+0x422` | char | Player 2 enabled flag |
 
-### Open questions
+### Evidence - the five unlabelled hitbox tags have one consumer each (2026-10-28)
+
+**Question.** Tags 207, 208, 209, 210 and 229 serve four settings keys
+(`AXIS_ALIGNED_BOX`, `HIDE_USED`, `PLAYER_ROTATION`, `SECTION`), so the label maps alone
+cannot bind them. Can the consumers narrow it?
+
+**Method.** Whole-`.text` capstone scan: collect every `mov edx, imm` with imm in
+{`0xCF`, `0xD0`, `0xD1`, `0xD2`, `0xE5`}, then resolve every RIP-relative reference to the
+cache bytes those tags write.
+
+**The cache writer.** `FUN_1802022C0` (`0x1802022C0..0x180202602`, `.pdata`) reads eleven
+hitbox-family tags in one run through `FUN_18002DE50` (the Tag getter) and stores each
+result as a one-byte global:
+
+| Tag | `mov edx` | Store | Cache byte |
+| --- | --- | --- | --- |
+| 195 `SOLIDS` | `0x180202514` | `0x18020250E` | `0x1808195A0` |
+| 198 `HAZARDS` | `0x180202527` | `0x180202521` | `0x1808195A1` |
+| 201 `SPECIALS` | `0x18020253A` | `0x180202534` | `0x1808195A2` |
+| 204 `PASSABLE` | `0x18020254D` | `0x180202547` | `0x1808195A3` |
+| **207** | `0x18020254D` | `0x18020255A` | `0x1808195A4` |
+| **208** | `0x180202560` | `0x18020256D` | `0x1808195A5` |
+| **210** | `0x180202573` | `0x180202580` | `0x1808195A6` |
+| **209** | `0x180202586` | `0x180202593` | `0x1808195A7` |
+| 211 `FILL` | `0x180202599` | `0x1802025A6` | `0x1808195A8` |
+| 212 opacity | `0x1802025AC` (double getter `FUN_180003D80`) | `0x1802025BD` (`cvtsd2ss`) | `0x1808195AC` |
+| **229** | `0x1802025C5` | `0x1802025D2` | `0x1808195B0` |
+
+Note the read order: 210 is loaded before 209, so cache address order is not tag order.
+
+**Consumers.** Each of the five has exactly one read besides the writer (a scan for
+RIP-relative operands equal to the cache byte):
+
+| Tag | Read site | Containing function | What the branch does |
+| --- | --- | --- | --- |
+| 207 | `0x180202D64` | `0x180202BD0..0x18020306E` | `cmp byte [cache207],1; jne` fallback, then `cmp byte [obj+0x40],1` (object is rotated) plus a non-zero-scale test, and `lea rdx,[obj+0x20]` — the rotated quad — replaces the axis-aligned rect |
+| 208 | `0x1802037B7` | `0x1802037B0..0x18020382A` | `cmp byte [cache208],1; jne` return 0; then tests `[layer+0xDA0]` player 1 through vtable `+0x560` and, when `[layer+0x422]==1`, `[layer+0xDA8]` player 2; returns 1 only when one of them reports true |
+| 209 | `0x1802030E9` | `0x180203070..0x1802031B2` | reached only when `[layer+0x309C]==1`, `[[layer+0x38A0]+0x340] != 0` and the imported call `0x180532410` returned non-zero; then `cmp byte [cache209],0; je`, and a per-object `[obj+0x475]==1` test decides whether the object is skipped |
+| 210 | `0x180203ACB` | `0x1802039A0..0x180203C1B` | `mov rax,[obj+0x2E0]; test rax,rax; je` draw; when the pointer is non-null, `cmp byte [cache210],0; je 0x180203BD7`, and `0x180203BD7` is the function epilogue — so flag set plus a non-null `[obj+0x2E0]` suppresses the draw entirely |
+| 229 | `0x180202C01` | `0x180202BD0..0x18020306E` | `and r9b, byte [cache229]` — the incoming boolean parameter is masked with the flag and the result selects between two colour/vector constant sets for the submitted geometry |
+
+**Conclusion.** The five tags are not interchangeable aliases: each consumer behaves
+differently (rotated-quad selection, player-state veto, layer/section gate, used-object
+suppression, colour selection). A behavioural binding is therefore possible in principle,
+but none is proven yet: 207's rotated quad applies to any object with `[obj+0x40]==1`,
+210 suppresses on a non-null `[obj+0x2E0]` whose meaning is a GD field absent from this
+image, and 209's gate depends on the identity of the imported `0x180532410`. The
+`.pdata`-backed immediate scan also produced many false hits in the 0x1F9xxx and 0x3xxxxx
+ranges (constants and instruction interiors), so only the eleven-site cache writer above
+is quoted as evidence.
+
+UNVERIFIED: which of `AXIS_ALIGNED_BOX` / `HIDE_USED` / `PLAYER_ROTATION` / `SECTION` is
+207, 209 and 210. Closing this needs either the semantics of `GameObject+0x2E0`,
+`GameObject+0x40`, `GameObject+0x475` and `PlayLayer+0x309C`/`+0x38A0`, or a runtime
+capture that toggles one key at a time.
+
+## Open questions
 
 - UNVERIFIED: which JSON keys bind to tags 0xC1 (193), 0xD9 (217), 0xDA (218).
 - UNVERIFIED: the exact colour encoding (observed values are integers).
