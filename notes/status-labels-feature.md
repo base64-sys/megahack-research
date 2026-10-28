@@ -78,5 +78,15 @@ Candidates are the v9.0.0 row "Show Total Attempts" and, less likely because of 
 the v8.0.1-alpha.5 row "Attempt Status". The subtraction argues against a stored total being
 displayed unchanged, so "total" is not established.
 
+**What the arithmetic says (2026-10-28).** All three dwords live in the same structure
+(`[layer+0x878]`), two of them are subtracted and the result is cached in the third. A cache of
+a difference is the signature of a *recomputed* count, not of a stored total being printed
+unchanged: a "show the stored total" feature would read `+0x2F0` and format it. That is a
+positive argument against the v9.0.0 "Show Total Attempts" wording and in favour of a
+per-attempt-window counter, i.e. the v8.0.1-alpha.5 "Attempt Status" candidate, but it does
+not name the fields.
+
 UNVERIFIED: what the three dwords at `+0x2F0`/`+0x2F4`/`+0x2F8` hold; whether
 `[layer+0x38D8]+0x168` is a host label or one the mod created; which row the tag belongs to.
+Closing this needs a runtime read of `+0x2F0`/`+0x2F4` across a reset, or a host-side
+reference to the same structure (`GeometryDash.exe` is not in this repo).

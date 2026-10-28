@@ -1561,8 +1561,13 @@ Registration and detour re-checked 2026-10-26 with `scripts/tag_callback_map.py`
 0x1801672DD  jne   0x1801672B0           ; next object
 0x1801672DF  cmp   byte [rcx+0x3D2], 1
 0x1801672E6  jne   0x1801672B0           ; next unless the flag is set
-0x1801672EB  call  [rax+0x460]           ; one per-object call
+0x1801672E8  mov   rax, [rcx]            ; the object's vtable
+0x1801672EB  call  [rax+0x460]           ; one per-object virtual call
 ```
+
+The `mov rax,[rcx]` at `0x1801672E8` was missing from the first version of this listing and is what
+makes the call a vtable slot rather than a call through the object id; `tools/pe_disasm.py
+absolllute.hackmega_original.dll 0x1801672B0 --size 72` is the check.
 
 Object ids `0x1F`/`0x16` with a flag at `+0x3D2` are the same two fields the Collect Coins in
 Practice note identifies as the coin pair (there the detour keeps entries whose `+0x3D2` is
@@ -1572,9 +1577,20 @@ clear), so this pass runs over the coins the collision check just marked and cal
 The only v9.0.8 row about coins is "Coin Shower", and tag 438 sits one below tag 439 (No End
 Shake, mapped to v9.0.8), which fits that release group.
 
+**Slot `+0x460` cannot be named from this image.** A whole-`.text` capstone scan for any
+`call qword ptr [reg+0x460]` (index register free, displacement `0x460`) returns exactly one
+site, `0x1801672EB` — the detour itself. The host never calls that slot through a
+displacement in Mega Hack's own code, so there is no second call site to identify it by and no
+vtable in the image belongs to the coin class (`GeometryDash.exe` is not in this repo).
+What the slice does prove is the *shape*: once per collision pass, one virtual call on every
+object that the pass just marked at `+0x3D2`, over ids `0x1F`/`0x16`.
+
 UNVERIFIED: what slot `+0x460` does (a pickup or particle effect is the plausible reading and
-was not observed); whether `+0x3D2 == 1` means collected; and the row binding, since no
-settings key or label in the image names this mechanism.
+was not observed); whether `+0x3D2 == 1` means collected; and the row binding. The binding is
+not closed: no settings key, no label in the 247-string table, and no naming call site exist,
+so the case for v9.0.8 "Coin Shower" rests on the coin ids, the one-call-per-marked-object
+shape and tag adjacency to 439 (No End Shake, mapped to the same release) — three supporting
+facts and no proof.
 
 ## Evidence - tag 372 and Pause During Complete (2026-10-26)
 
