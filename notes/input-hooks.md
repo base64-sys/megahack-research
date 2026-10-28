@@ -120,23 +120,42 @@ shows them as `undefined`: `void core::Keybinds::forward(NXObject*)` and
 
 **Capture path — `forward` (`0x18003DD90..0x18003E1CB`).**
 
-1. `FUN_1800DC300(NXObject*)` extracts the key description; if its `+0x10` is null the call
-   returns (no key).
+1. `FUN_1800DC300(NXObject*)` is `return obj + 0x28`: it hands back the object's `std::string`
+   (SSO layout, so the size sits at `+0x10` and the capacity at `+0x18` relative to that
+   address). A zero length returns early.
 2. If `KEYBINDS/SET` is true: fetch `KEYBINDS/SHORTCUT` as `std::vector<unsigned int>`; an
    empty vector raises `MESSAGE/KEYBINDS/EMPTY` through `hackpro::extensions::showMessage`,
    otherwise the vector is copied and handed to `FUN_18003D7B0`.
-3. Otherwise, if `KEYBINDS/REMOVE` is true: look the key up with `FUN_18007CB60`, erase the
-   entry (`FUN_1800282A0`) and consume the event (`FUN_1800DDB50(obj, 0x539)`); a miss raises
-   `MESSAGE/KEYBINDS/UNBINDABLE` through `showError`. `FUN_18003D7B0` raises the same message
-   when the key is already bound elsewhere.
+3. Otherwise, if `KEYBINDS/REMOVE` is true: look the name up in the Keybinds' own map at
+   `this + 8`, replace its vector with an empty one (`FUN_1800282A0`) and consume the event
+   (`FUN_1800DDB50(obj, 0x539)`); a miss raises `MESSAGE/KEYBINDS/UNBINDABLE` through
+   `showError`. `FUN_18003D7B0` raises the same message when the name has no entry.
 
-**Dispatch path.** `forward` is called by exactly three functions, `0x180022E90`,
-`0x180022F90`, `0x180023080`, and each has the same shape: look the key up with
-`FUN_18007CB60`, abort (`FUN_180009020`) when the key is not bound, take the singleton from
-`0x18003D220`, and only call `forward` when the gate `FUN_18003DC20` returns true.
+`FUN_18003D7B0` then writes the pending vector into the entry, clears `KEYBINDS/SET` and
+empties `KEYBINDS/SHORTCUT`. `FUN_1800282A0` is a `std::vector` assign, not a bespoke routine:
+its callers include the exported `setConfigVar<std::vector<unsigned int>>` (`0x180075310`), so
+the stored value type is `std::vector<unsigned int>`.
+
+The store is registry-shaped rather than a plain map: `FUN_18007CB60` reads its mask at `+0x88`,
+sentinel at `+0x60` and buckets at `+0x70`, and `FUN_1800282A0` writes through the Tag-keyed
+half at `+0xb0`/`+0xc0`/`+0xd8`. That is the same container pair and node layout that
+[settings-registry.md](settings-registry.md) documents for the global registry, including the
+`std::vector<unsigned int>` value at node `+0x18`/`+0x20` — so `core::Keybinds` owns a private
+registry at `this + 8`, holding only the bindable names, rather than adding a member map.
+
+**Where the name comes from.** The map is keyed by the object's name string, and the three
+callers of `forward` show what kind of object that is. `0x180022E90`, `0x180022F90` and
+`0x180023080` each resolve that same string through `FUN_18007CB60(p, &out, name)` with
+`p = FUN_18008A510()`. `FUN_18008A510` is the accessor that `tagFor` (`0x180072DF0`) uses for
+the registry and `FUN_18007CB60` is `tagFor`'s worker, the name -> `Tag` lookup
+([settings-registry.md](settings-registry.md), "tagFor"). So the name is a **registered hack
+name**, and the empty optional is treated as an invariant violation (`FUN_180009020`), not as a
+normal miss. When capture mode is off the same three call
+`FUN_18008B490(registry, tag, param_2)`, which is the "run this hack" branch.
+
 `0x18003DC20` is exactly `getConfigVar<bool>("KEYBINDS/SET") ||
-getConfigVar<bool>("KEYBINDS/REMOVE")` — the capture-mode predicate — so the three callers are
-the key-event entry points and `forward` runs only while the UI is waiting for a key. The
+getConfigVar<bool>("KEYBINDS/REMOVE")` — the capture-mode predicate — so the sequence is:
+resolve the row's hack name, and either capture a key for it (`forward`) or execute it. The
 singleton is also reached from the mod bootstrap `0x180002320` and from `0x180044090`, which is
 the only other caller of the bind routine `0x18003D7B0`.
 
@@ -153,18 +172,22 @@ the only other caller of the bind routine `0x18003D7B0`.
 
 **Conclusion.** The v6.0.0 "keybinding system" is the `core::Keybinds` singleton: a
 `hackpro::extensions::Delegate` with a four-slot vtable, a `keybinds.json` store, a capture
-mode (`KEYBINDS/SET` + `KEYBINDS/SHORTCUT`), a removal mode (`KEYBINDS/REMOVE`) and three
-dispatch entry points. Two independent angles agree on the identity: RTTI plus vtable extents
-from the image structures, and the settings paths plus control flow from the decompiled
-bodies.
+mode (`KEYBINDS/SET` + `KEYBINDS/SHORTCUT`), a removal mode (`KEYBINDS/REMOVE`) and three row
+handlers that bind a key vector to a registered hack name or run the hack. Two independent
+angles agree on the identity: RTTI plus vtable extents from the image structures, and the
+settings paths plus control flow from the decompiled bodies.
 
 **Open questions.**
 
-- UNVERIFIED: the concrete type behind `NXObject*` and what `FUN_1800DC300` reads at `+0x10`.
-- UNVERIFIED: the storage format of `FUN_18007CB60` (the key -> tag map) and how
-  `hackpro::Tag` reaches a feature; the `_Binder` lambda `void (Keybinds::*)(Tag, bool)`
-  suggests a per-tag callback is registered with the extension host.
-- UNVERIFIED: whether the three dispatch functions are hooks or callbacks; none appears in
-  `_hook_sites.tsv`, and none has a `.pdata` neighbour named after a GD method.
+- UNVERIFIED: what the third argument `param_2` of the three row handlers means (it reaches
+  `FUN_18008B490` as the third argument), and whether the handlers fire per UI row or per key
+  event; no caller exists in `_callers.tsv`, so they are entered indirectly.
+- UNVERIFIED: who pre-populates the Keybinds map at `this + 8`. The lookup precedes any
+  insert on the capture path, so an entry must exist before the first bind; the `VIEW` mode in
+  `0x18003E340` and the `keybinds.json` reader are the two candidate sources, and neither was
+  traced to an insert.
+- UNVERIFIED: the path that turns a stored key vector into a hack execution. The three
+  handlers run the hack when capture mode is off, but no read of the Keybinds map was found on
+  that branch; the `_Binder` lambda `void (Keybinds::*)(Tag, bool)` is the likely bridge.
 - `ERROR/HOME/LEGACY_SAVE_KEYBINDS` implies keybinds were once saved inside the main save;
   the migration path was not read.
