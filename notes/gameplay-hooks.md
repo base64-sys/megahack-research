@@ -2101,3 +2101,35 @@ whether it suppresses a popup.
 `0x18080C378` gates (it is written here; its readers were not scanned); what game variable
 `"0052"` means; whether the `0.5`/`1.0` pair is a same-attempt versus new-attempt delay.
 
+
+## Evidence - the EndLayer extras are three labels from one detour (2026-10-28)
+
+Question: the v9.0.0 row "Added EndLayer extras (StartPos, Checkpoints, Noclip)"
+names three things and no tag, so what does it add?
+
+`FUN_180152010` is the detour for `EndLevelLayer::showLayer` (host RVA `0x134CA0`),
+registered by `0x180151FC0` at order `0xFFFFF428`
+(`_hook_sites.tsv`; `_settings.tsv` lists exactly two tags read by it, 72 and 497).
+Its body creates three `CCLabelBMFont` labels in the end-level summary container,
+and the strings are the row's parenthetical, one for one:
+
+| Label id | Format string | Value | Gate |
+| --- | --- | --- | --- |
+| `checkpoints-label` | `"Checkpoints: {}"` | checkpoint count from the `[[layer+0x3888]]` array | inside the `tag 497 == 0` branch |
+| `startpos-label` | `"StartPos: {}%"` | `(int)FUN_18015C3D0()` | inside the same branch, and `[layer+0x3188] != 0` (a startpos exists) |
+| `noclip-label` | `"Noclip: {:.2f}%"` | `FUN_180199560()` | `isHackEnabled(72)` = `HACK_NOCLIP` |
+
+The `deaths-label` (`"Deaths: {}"`, `FUN_1801994E0()`) is built in the same
+`tag 497 == 0` branch; it is the ordinary summary row documented separately, not
+one of the three extras.
+
+**Two angles.** (1) Content: the three format strings name exactly the three
+items in the row, and each label id occurs once in `_xrefs.tsv`, all owned by
+`FUN_180152010` - so there is no second end-level label builder. (2) Context:
+`EndLevelLayer::showLayer` is the only place a layer's summary labels are built
+before it is shown, and this detour is that hook.
+
+UNVERIFIED: what `FUN_18015C3D0` returns (read here as a startpos percentage
+because it is cast to int and formatted with `%`), and what `[layer+0x3188]`
+holds (read as the startpos object because the same field is tested as a
+non-null pointer elsewhere in the module).
