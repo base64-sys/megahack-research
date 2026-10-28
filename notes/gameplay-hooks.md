@@ -2023,6 +2023,35 @@ save-shaped creator key is `CREATOR/HACK_ACCURATE_SAVE`, so the row is that togg
 UNVERIFIED: what the byte at `libcocos2d + 0x3D5B7` controls (no host image in `samples/`),
 and that `CREATOR/HACK_ACCURATE_SAVE` FNV-hashes to 56 rather than another creator key.
 
+## Evidence - No Hide Player Trigger has no hook of its own (2026-10-28)
+
+**Question.** The v7.0 bullet "Added No Hide Player Trigger" is still `cluster`. Does the
+image contain a hook that suppresses a level's hide-player trigger?
+
+**Method.** Read every registration in `recovered/functions/_hook_sites.tsv` whose target is
+a visibility method, then check the one tag that names the feature.
+
+| Registrar | Target | RVA | Detour | Owner |
+| --- | --- | ---: | --- | --- |
+| `0x1801582C0` | `PlayLayer::updateVisibility` | `0x3AF3A0` | `0x180158740` | installed unconditionally (`FUN_1801582c0()` from the hitbox setup), [show-hitboxes-feature.md](show-hitboxes-feature.md) |
+| `0x1801582C0` | `LevelEditorLayer::updateVisibility` | `0x2D8E70` | `0x180158830` | same call, editor counterpart |
+| `0x180167A60` | `PlayerObject::toggleVisibility` | `0x38B440` | `0x180167B10` | tag 386 `HACK_HIDE_PLAYER`, [render-hooks.md](render-hooks.md#evidence---hide-player-verified-2026-10-25) |
+| `0x1801713E0` | `PlayLayer::updateVisibility` | `0x3AF3A0` | `0x180171450` | tag 413 `HACK_NO_PULSE`, [no-pulse-feature.md](no-pulse-feature.md) |
+
+Those four rows are the complete visibility surface: an `updateVisibility` pass on the play
+layer and on the editor layer, one hitbox hook on each, and one player-setter hook.
+
+**What the player-setter hook does.** `0x180167B10` is two instructions - `xor edx,edx` then
+`jmp 0x1801A9B70` - so it discards the caller's requested visibility and always forwards
+`false`; the callback also calls the same setter on both player slots with `!*param_2`. The
+toggle therefore keeps the player invisible; it does not filter triggers.
+
+**Conclusion.** Nothing in the image suppresses a hide-player trigger: the only hook that
+manipulates player visibility is tag 386, and its polarity is the opposite of "no hide
+player trigger". The row stays `cluster`. UNVERIFIED: whether the trigger path is host-side
+only (the host's handling of the hide-player object type; the host image is not in
+`samples/`), and whether v7.0 shipped the feature at all.
+
 ## Evidence - tag 435 arms a respawn delay from showNewBest and is not a popup suppressor (2026-10-28)
 
 The only `PlayLayer::showNewBest` hook in the image belongs to tag 435 (`0x1B3`), and it does
