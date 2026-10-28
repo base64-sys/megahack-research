@@ -150,6 +150,30 @@ settings tag to promote against.
 
 ## Evidence - the particle preview chain (2026-10-28)
 
+**Owner of `FUN_1801220C0` (2026-10-28).** The builder is a virtual method of
+`iconic::PreviewLayer`, established from the image's own class structures rather than from the
+decompiler's naming:
+
+| Fact | Value | How it was read |
+| --- | --- | --- |
+| Function pointer slot | `0x180571840` holds `0x1801220C0` (file `0x570C40`) | raw 8-byte scan of the complete file for the VA; exactly one hit |
+| Vtable base | `0x1805717F8` (`0x180571840` = base + 9 x 8, so slot 9) | the qword before the entry block is the COL pointer |
+| COL | `0x180571BA0`: signature `1`, type descriptor RVA `0x7F7340`, class hierarchy RVA `0x571BB8` | dword read of the COL |
+| Type name | `.?AVPreviewLayer@iconic@@` at `0x1807F7350` | TD name is inline at `TD + 0x10` |
+| Base classes | `iconic::PreviewLayer` : `cocos2d::CCNode` : `CCObject` : `CCCopying` | four entries of the class hierarchy at `0x180571BB8` |
+| Slot meaning | slot 9 is `init`: factory `FUN_180121ED0` allocates `0x1E0`, runs ctor `FUN_180121F60` (which stores `iconic::PreviewLayer::vftable`), then `call [rax + 0x48]` and destroys the object if it returns false | `recovered/functions/180121ed0_FUN_180121ed0.c` |
+
+So `FUN_1801220C0` is `iconic::PreviewLayer::init`. Neither the ctor `FUN_180121F60` nor the
+destructor `FUN_180124940` reads a config tag, and `create` is called from `FUN_1800ACF80`,
+which adds three children to `[param_1 + 0x280]` (`FUN_18011FF30`, `FUN_18011C970`, the
+preview) and reads no tag either. The preview is therefore assembled unconditionally by its
+caller.
+
+UNVERIFIED: how `FUN_1800ACF80` is entered. It has no row in `_callers.tsv`, no row in
+`_hook_sites.tsv` and none in `_init_table.tsv`, so it is reached through a vtable slot or a
+`std::function` holder; the pointer to it is the next thing to find.
+
+
 Two changelog rows name particle customisation - v7.0 (Full) "Added Icon Particle
 Customisation" and v9.0.0 "Added Particle customisation" - and neither has a settings tag.
 This section records the only particle-building chain in the image, so the next pass starts
@@ -191,8 +215,10 @@ owns the preview, not by a boolean. Both rows stay `cluster` until that owner is
 
 **Open questions.**
 
-- UNVERIFIED: which class owns `FUN_1801220C0`. It has no direct caller, so it is reached
-  through a vtable or a callback table; the owner would name the page and the selection state.
+- Answered 2026-10-28: `FUN_1801220C0` is vtable slot 9 (`init`) of
+  `iconic::PreviewLayer` (COL `0x180571BA0`, type name `.?AVPreviewLayer@iconic@@`); see
+  "Owner of `FUN_1801220C0`" above. The remaining gap is the entry point of
+  `FUN_1800ACF80`, not the class.
 - UNVERIFIED: what `FUN_180240DE0` is (read here as the particle-node constructor taking the
   plist and a variant index). Its name and argument list are not established.
 - UNVERIFIED: whether the preview is read-only or writes the chosen particle set into the
