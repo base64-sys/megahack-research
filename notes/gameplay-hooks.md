@@ -741,11 +741,11 @@ assembled inside `0x18015AFD0` (it builds a 19-character string beginning `absol
 `0x1805465F4`); and whether `[rbp-0x28]` in the Auto Pickup Coins loop is the pointer-list
 length or an independent count.
 
-## Lead — Trigger Value Bypass replaces the popup's value control (2026-10-25)
+## Evidence — Trigger Value Bypass clears the popup's slider bounds (2026-10-25; host side 2026-10-28)
 
-Not enough to promote the row yet: the hook and its whole body are read, but the site that
-lifts the value bound is not located, so this stays a lead and the inventory row stays
-`cluster`.
+The hook, its body and the bound it removes are now all located, so the inventory row is
+`mapped`. The user-visible effect has not been observed at runtime; see the closing
+`UNVERIFIED`.
 
 | Field | Value |
 | --- | --- |
@@ -778,10 +778,81 @@ Measured body shape:
 re-copies the same string and double and forwards through a thread-guarded function pointer —
 guard `[0x180818B48]`, pointer `[0x180818B40]`, `call rbx` at `0x1801FE806`.
 
-UNVERIFIED: which bound the vanilla `createValueControlAdvanced` enforces and where it is
-applied; what the guarded pointer at `[0x180818B40]` resolves to; what the two dictionaries at
-`this+0x328`/`+0x330` hold and why emptying them belongs to the bypass. Finding the clamp site
-is the acceptance criterion for promoting this row.
+The guarded pointer is the GD original, not a mod replacement. The slow path inside
+`0x1801FE660` calls `0x18010DDC0` (module base resolver), adds RVA `0x475FD0`, and stores the
+result at `[0x180818B40]`; the `call rbx` at `0x1801FE806` therefore enters
+`SetupTriggerPopup::createValueControlAdvanced`. That closes the pointer question.
+
+### Host bound
+
+GD 2.2081 `SetupTriggerPopup::createValueControlAdvanced` (`0x140475FD0..0x140476B8F`) takes
+`float sliderMin` and `float sliderMax` as its 9th and 10th arguments — the 2.2081 bindings
+name them in `bindings/2.2081/GeometryDash.bro:18296`. After building the control it stores
+both in the popup's per-property dictionaries:
+
+| Host instruction | Meaning |
+| --- | --- |
+| `0x140476832` `movss xmm0,[rbp+0x108]`, `0x14047683A` `call CCFloat::create`, `0x140476846` `mov rcx,[rdi+0x328]`, `0x14047684D` `call CCDictionary::setObject` | `m_minSliderValues[property] = CCFloat(sliderMin)` |
+| `0x140476853` `movss xmm0,[rbp+0x110]`, `0x140476862` `call CCFloat::create`, `0x14047686E` `mov rcx,[rdi+0x330]`, `0x140476875` `call CCDictionary::setObject` | `m_maxSliderValues[property] = CCFloat(sliderMax)` |
+
+The import slots are `0x140516498` (`cocos2d::CCFloat::create(float)`) and `0x140516130`
+(`cocos2d::CCDictionary::setObject(CCObject*, long long)`). The two floats are the only
+stack-passed `float` parameters in the signature, so their identity as `sliderMin`/`sliderMax`
+does not depend on guessing a stack index.
+
+Two independent angles identify the members. The read site treats `[this+0x328]` as the lower
+bound and `[this+0x330]` as the upper bound (compare directions below), and the 2.2081
+bindings declare `m_minSliderValues`, `m_maxSliderValues`, `m_shouldLimitValues` as three
+consecutive members (`GeometryDash.bro:18380-18382`). The limit map is independently located
+at `[this+0x338]` by its access shape at `0x140479BB7` (keyed by the property int, returns a
+`bool`), which fixes the two dictionaries immediately before it. The inline
+`setMinSliderValue`/`setMaxSliderValue` bodies (`inline/SetupTriggerPopup.cpp:106-108`,
+`204-206`) are the same `CCFloat::create` + `setObject` shape, so the host's two stores are
+those two setters inlined.
+
+The limit is enforced in the per-property clamp path at `0x140479BD2..0x140479C46`. That range
+sits inside the `.pdata` record `0x140479BB7..0x14047A5A4`, but the code immediately before it
+(`0x140479B93`) restores registers and falls through into `0x140479BB7`, so no conventional
+function name is claimed for the block; the instructions are cited directly.
+
+- `0x140479BB7` `lea rcx,[rdi+0x338]` + `0x140479BC8` call `0x1400CDBF0` tests
+  `m_shouldLimitValues[property]`; if false it jumps to the normal update at `0x140479C4B`.
+  Only properties the popup limited with `toggleLimitValue` reach the comparisons, so the
+  bypass is effective exactly where a popup both set bounds and enabled the limit.
+- `0x140479BD2`/`0x140479BEA` read `m_minSliderValues[property]`; if present and
+  `min > value` (`comiss xmm2,xmm6` at `0x140479BFF`, `ja` at `0x140479C02`) it commits
+  `min`.
+- `0x140479C04`/`0x140479C19` read `m_maxSliderValues[property]`; if present and
+  `value > max` (`comiss xmm6,xmm2` at `0x140479C2E`, `jbe` at `0x140479C31`) it commits
+  `max`.
+- The out-of-range path tail-jumps to `0x14047C010`, which sets the slider/control to that
+  bound and then `valueChanged` (`0x140478250`); the in-range path tail-jumps vtable
+  `+0x468`. `0x14047C010` also reads `m_valueControls` at `[this+0x2D0]`, so the same
+  routine refreshes the control.
+
+### The same two fields define the slider mapping
+
+`triggerValueFromSliderValue` (`0x14047C120`) reads `[this+0x328]` as the minimum
+(default `0.0`, `xorps xmm6,xmm6` at `0x14047C159`) and `[this+0x330]` as the maximum
+(default `1.0`, constant `0x140622C24`, loaded at `0x14047C178`) and returns
+`min + (max - min) * sliderValue` (`0x14047C185..0x14047C196`).
+`triggerSliderValueFromValue` (`0x14047C1B0`) reads the same two fields and returns
+`clamp((value - min) / (max - min), 0, 1)` (`0x14047C21D..0x14047C235`). This read site
+independently fixes which offset is min and which is max, without relying on the class
+layout. Empty dictionaries therefore also hand the slider the default 0-1 scale, so the
+detour changes both the accepted range and the slider mapping - which is what "bypass"
+describes here.
+
+The detour calls `cocos2d::CCDictionary::removeAllObjects` (import slot `0x180643E78`) on
+`[this+0x328]` and `[this+0x330]` at `0x18016471D` and `0x180164729`, immediately after the
+host call returns. Both `objectForKey` lookups then return null, the `je` branches at
+`0x140479BE8`/`0x140479C17` skip the clamp, and the control accepts the value unchanged.
+That is the mechanism the row name describes.
+
+UNVERIFIED: the user-visible effect has not been observed — a trigger value outside the
+authored slider range accepted with tag 54 on and clamped with it off. What would close it:
+a runtime/UI test that opens a trigger popup with a known `sliderMin`/`sliderMax`, enters an
+out-of-range value, and compares tag 54 on/off.
 
 ## Evidence — Jumpscare (2026-10-25)
 

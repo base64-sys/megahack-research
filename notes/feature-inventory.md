@@ -13,7 +13,7 @@
 | `mapped` | The feature has its own evidence: a note that names it, its settings key(s) and default, and/or its implementing function(s) with VAs. |
 | `alias` / `dead` | A restatement of an earlier feature / absent from this build, with the evidence for that call. |
 
-All 389 rows below were `cluster` at the 2026-10-23 baseline. **One hundred and six are now
+All 389 rows below were `cluster` at the 2026-10-23 baseline. **One hundred and seven are now
 `mapped`**; the [Mapped rows](#mapped-rows) table below is the authoritative list, with
 tag, registration site and hook address for each one.
 
@@ -60,7 +60,7 @@ routine (RVA `0x23FDE0`) whenever a start position was loaded. **Slider Bypass**
 `SliderTouchLogic::ccTouchMoved` outright, feeding the raw touch coordinate to the slider
 instead of a clamped value, and **Main Level Bypass** raises a private flag around
 `LevelPage::onPlay`/`updateDynamicPage` so `GameStatsManager::getStat(0x38, 0)` answers 999.
-The other 283 rows remain `cluster`.
+The other 282 rows remain `cluster`.
 
 Four of those rows now carry mechanism evidence without being promoted (2026-10-26):
 "Player on Top" and "Player 1 on Top" (tags 422 and 442, both on `PlayLayer::resetLevel`),
@@ -177,6 +177,7 @@ reported as progress.
 | No End Shake | tag 439 (`0x1B7`, unlabelled); registered at `0x1800B0EDE`, callback `FUN_180169A40` installs detour `0x180169AB0` on `PlayLayer::showCompleteEffect` (RVA `0x3A8F30`, installer `0x1800AB850`). The detour forwards to the original via the delayed-bind trampoline `0x1801A5AC0` (`lea rcx,[base+0x3a8f30]` at `0x1801A5B24`) and then writes `dword [layer+0x520]=0` - the only non-frame reference to that field in `.text`. Key `COSMETIC/HACK_NO_END_SHAKE`. UNVERIFIED: that the field is the end-of-level shake rather than the completion flash. See [render-hooks.md](render-hooks.md#evidence---no-end-shake-2026-10-26). |
 | Frozen Animations | tag 433 (`0x1B1`, runtime-assigned, no static label); registered at `0x1800B0A38`, callback `FUN_180167490` hooks `CCAnimatedSprite::runAnimation` (RVA 0x40CF0) and `CCAnimatedSprite::tweenToAnimation` (0x40D60); the detours `0x180167560`/`0x1801675C0` destroy the by-value animation-name argument and return. See [render-hooks.md](render-hooks.md#evidence---frozen-animations-and-no-dash-fire-2026-10-26). |
 | No Dash Fire | tag 436 (`0x1B4`, runtime-assigned, no static label); registered at `0x1800B0D79`, callback `FUN_180169260` hooks `PlayerObject::updateDashAnimation` (RVA 0x396D20); detour `0x1801692D0` hides `[player+0x660]` via vtable `+0x140(0)` and returns without calling the original. See [render-hooks.md](render-hooks.md#evidence---frozen-animations-and-no-dash-fire-2026-10-26). |
+| Added Trigger Value Bypass | tag 54 (`0x036`, `HACK_TRIGGER_VALUE_BYPASS`); registered at `0x1800B067B`, callback `FUN_180164530` hooks `SetupTriggerPopup::createValueControlAdvanced` (GD RVA `0x475FD0`). The host stores `sliderMin`/`sliderMax` as `CCFloat` values in `m_minSliderValues`/`m_maxSliderValues` (`[this+0x328]`/`[this+0x330]`) keyed by property; the detour clears both after the call (`removeAllObjects` at `0x18016471D`/`0x180164729`), so the limit check at `0x140479BD2..0x140479C46` finds no entry and skips the clamp. See [gameplay-hooks.md](gameplay-hooks.md#evidence--trigger-value-bypass-clears-the-popups-slider-bounds-2026-10-25-host-side-2026-10-28). |
 
 ## Toggles outside the 389
 
@@ -381,7 +382,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v8.0.0-alpha9 | Added Replay Last Checkpoint | mapped | tag 316 (`0x13C`, `HACK_REPLAY_LAST_CHECKPOINT`); registered at `0x1800b2a6e`, callback `FUN_18017ecb0` hooks `EndLevelLayer::onReplay` (RVA 0x134E80); detour `0x18017ed20` reroutes to host RVA 0x1354C0 with `edx=0` when the second argument is null and `[playlayer+0x31f0] == 1`, otherwise to the cached original. See [gameplay-hooks.md](gameplay-hooks.md#evidence--replay-last-checkpoint-2026-10-25). |
 | v8.0.0-alpha9 | Added 0% Practice Complete | mapped | [gameplay-hooks.md](gameplay-hooks.md) | tag 296 (`HACK_0_PRACTICE_COMPLETE`, static map entry #0); read via `hackpro::Config` vtable (`FUN_1800917B0` at 0x180544FF0). No gameplay code reads it directly; accessed through exported `isHackEnabled` API. See gameplay-hooks.md. |
 | v8.0.0-alpha9 | Added Uncomplete Level | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
-| v8.0.0-alpha9 | Added Trigger Value Bypass | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
+| v8.0.0-alpha9 | Added Trigger Value Bypass | mapped | [gameplay-hooks.md](gameplay-hooks.md#evidence--trigger-value-bypass-clears-the-popups-slider-bounds-2026-10-25-host-side-2026-10-28) | tag 54 (`0x036`, `HACK_TRIGGER_VALUE_BYPASS`); registered at `0x1800b067b`, callback `FUN_180164530` hooks `SetupTriggerPopup::createValueControlAdvanced` (RVA `0x475FD0`) and clears `m_minSliderValues`/`m_maxSliderValues` after the host call. |
 | v8.0.0-alpha9 | Added Hide Pause Menu | mapped | [render-hooks.md](render-hooks.md#evidence--hide-pause-button-and-hide-pause-menu-2026-10-25) | tag 410 (`0x19A`, `HACK_HIDE_PAUSE_MENU`); registered at `0x1800b0b9d`, callback `FUN_180167fa0` hooks `PauseLayer::customSetup` (RVA 0x37C870); detour calls `0x1801a2c30` then tail-jumps vtable slot `+0x140` with `edx=0`. |
 | v8.0.0-alpha9 | Added Hide UI | mapped | [render-hooks.md](render-hooks.md#evidence--hide-ui-2026-10-25) | tag 53 (`0x35`, `HACK_HIDE_UI`, static map `0x180063372`); registered at `0x1800b0330`, callback `FUN_18015fa70` hooks `EditorUI::init` (RVA 0xDF390); detour `0x18015fb20` calls vtable `+0x140` with `edx=0` (hide) when its gate returns true. |
 | v8.0.0-alpha9 | Added Restart, Practice & folder shortcuts | cluster | [ui-addons.md](ui-addons.md) |
@@ -634,5 +635,5 @@ Correction (2026-10-25): the earlier version of this paragraph named `Force Plat
 (`0x0F2`, `HACK_FORCE_PLATFORMER`) and 49 (`0x031`, `HACK_DEFAULT_SONG_BYPASS`) — but **neither
 has a row in the 389**: no `Added Force Platformer` and no `Added Default Song Bypass` bullet
 exists. Mapping them would add entries to "Toggles outside the 389" at best, so they are not
-progress against the milestone. The next rows must be chosen from the 284 remaining changelog
+progress against the milestone. The next rows must be chosen from the remaining changelog
 bullets.

@@ -104,7 +104,7 @@ them, do not retro-fit a declaration), regenerate the level fixture, run `prefli
 per variant, grade each trace, then compare. Expect the census to change; that is the point.
 
 If a game launch is not available in the session, the parallelisable work is static and safe:
-M3 criterion 1 (284 of 389 changelog features are still `cluster`, 106 mapped —
+M3 criterion 1 (282 of 389 changelog features are still `cluster`, 107 mapped —
 `notes/feature-inventory.md`) and M3 criterion 2 (per-feature VAs, settings keys and defaults).
 
 ## 5. Run book (the parts that cost time to learn)
