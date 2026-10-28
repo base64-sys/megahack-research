@@ -210,8 +210,21 @@ uses), builds the object key `"deaths-label"` from the immediates `0x6C2D7368746
 (`"deaths-l"`) and `0x6C656261` (`"abel"`), formats through `0x18000AE30`, and creates a
 `CCLabelBMFont` with `"goldFont.fnt"` (`0x180572B9F`) scaled from `0x180545688`.
 
-UNVERIFIED: which tag gates that deaths label, so the v7.0 "Noclip Death Counter & Death
-Limit" row stays `cluster`; the JSON keys that write tags 77/78/84/86; the exact meaning of
+The gate is now measured (2026-10-28). The builder is `FUN_180152010`
+(`scripts/func_bounds.py` on `0x180152A4B` gives the extent `0x180152010..0x180152BE2`), the
+same function that draws the Noclip Accuracy label for tag 497 (`0x1F1`). It reads exactly two
+config tags: `FUN_18008F420(registry, 0x1F1)` and, later, `FUN_18008F420(registry, 0x48)`
+(`HACK_NOCLIP`). The deaths label is built inside the `tag 0x1F1 == 0 && PlayLayer != 0` branch,
+next to `"checkpoints-label"`, in the `"summary-container"` child of `[param_1 + 0x240]`; after
+that block, `tag 0x48 != 0` draws the `"Noclip: {:.2f}%"` accuracy label instead.
+
+So the counter has **no tag of its own**: it is the ordinary end-level summary row, shown
+whenever the Noclip Accuracy display (tag 497) is off. That is why the v7.0 "Noclip Death
+Counter & Death Limit" row stays `cluster` — the death *limit* half (tags 87 enable, 86
+threshold, compared against `0x1801994E0()`) is solid, but calling the summary label a noclip
+counter would overstate what the image shows.
+
+UNVERIFIED: the JSON keys that write tags 77/78/84/86; the exact meaning of
 `byte [layer+0x422]` (read here as the two-player flag, consistent with the P2 hitbox draw) and
 of `[layer+0x3788]`; and the direction of the limit predicates — the code skips the tint block
 when the accumulated flag is 1, but "within limit" versus "limit exceeded" is not settled by
