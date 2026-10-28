@@ -181,3 +181,44 @@ row already cites as "configurable decimals".
   (`FUN_18002DE50`) in the status-label path and has no entry in the mapped rows here.
 - The `else` branch of `FUN_180165110` (taken when decimals is not 2 and tag 429 is clear) was
   not read past the branch, so "what happens when Accurate Percentage is off" is unrecorded.
+
+## Evidence - the Best Run sub-options are tags 0x304 and 0x305 (2026-10-28)
+
+**Question.** The settings tree has three `STATUS/BEST_RUN/DROPDOWN` keys -
+`ONLY_CURRENT`, `PREFIX` and `ACCURATE_PERCENTAGE`. Which tags read them, and does the
+image implement them?
+
+**Method.** An image-wide byte scan for `ba <imm32>` followed within 24 bytes by a `call`
+to a tag accessor (`0x18002DE50`/`0x18008F420` bool, `0x18002E4C0` int, `0x180003D80`
+double), with the immediate restricted to the `0x2E0`-`0x320` band so the status-label
+family is isolated. Each hit was then read in its containing function.
+
+| Tag | hex | Accessor | Only site | What it gates |
+| --- | --- | --- | --- | --- |
+| 772 | `0x304` | `FUN_18002DE50` (bool) | `0x18015561B` | `FUN_180155600`: whether the best-run lookup is restricted to the current start percent |
+| 773 | `0x305` | `FUN_18002DE50` (bool) | `0x18024FA0D` | status formatter line 516: wraps the value in `"Best Run: {}"` |
+
+`FUN_180155600(layer)` walks the map at `DAT_18080BF10`, whose nodes hold
+`{start, best}` percentage pairs (`+0x10`, `+0x18`). When `[layer+0x31F0]` is clear and
+tag 772 is set, it selects the node whose start equals `DAT_18080BF48`, i.e. the run that
+began at the current start percentage; otherwise it scans for the node with the largest
+`best - start` delta. That is "only from current %" in both directions. Tag 773 is read
+once, in the formatter, and only chooses whether the `"Best Run: {}"` wrapper is applied
+to the rendered percentage.
+
+**Conclusion.** `STATUS/BEST_RUN/DROPDOWN/ONLY_CURRENT` = tag 772 (`0x304`) and
+`STATUS/BEST_RUN/DROPDOWN/PREFIX` = tag 773 (`0x305`). The two changelog bullets that name
+those keys - v9.0.4 "Best Run options \"Only from Current %\" and \"Show Prefix\"" and
+v8.0.2-alpha.1 "Best Run option to only show current startpos runs" - are this mechanism.
+Two angles agree: each tag has exactly one accessor site in the whole image, and the
+behaviour each site implements matches its key name one-for-one.
+
+**Open questions.**
+
+- UNVERIFIED: which tag `STATUS/BEST_RUN/DROPDOWN/ACCURATE_PERCENTAGE` reads. The
+  best-run branch of the formatter reads only `0x303` (decimal gate) and `0x1AE`
+  (decimals), so the key may drive the mapped v9.0.0 Accurate Percentage tag instead of a
+  tag of its own. Closing it needs the best-run settings row or a runtime `Tag`-map dump.
+- UNVERIFIED: what `DAT_18080BF48` and `[layer+0x31F0]` are. The first is compared against
+  every node's start percentage and the second suppresses the restricted lookup, which is
+  consistent with "current start percent" and "practice mode" but is not proven.
