@@ -1138,7 +1138,30 @@ parent through `+0x1C0`. Alternatives that the image does not exclude: `setOrder
 
 UNVERIFIED: what `[player+0x7B0]` is (it answers `+0x140` with an embedded interface used to
 read a colour at `0x180136ABA`, and carries a float at `+0x1B4` written at `0x1801739F7`, which
-fits a sprite node but does not name it); the identity of slot `+0x50`; and which of the two
-rows each tag belongs to, since 422 and 442 touch the same four nodes and would have to be
-separated by runtime observation or by the changelog wording alone. No settings key names
-either mechanism.
+fits a sprite node but does not name it); and the identity of slot `+0x50`.
+
+### Binding the two rows (2026-10-28)
+
+The tag-to-row question is settled by the two mechanisms against the two row wordings, which
+is the only channel left once the label table is excluded:
+
+- The complete static label namespace is the 247 strings referenced by `FUN_180062940`
+  (the label map behind the `HACK_*`/`CHECKBOX_*`/`SHORTCUT_*`/`SPINNER_*` names). A filter of
+  `_xrefs.tsv` for the rows owning `FUN_180062940` returns no `*PLAYER_ON_TOP*`, `*ATTEMPT*`,
+  `*SHOWER*`, `*ACCURATE*` or `*BEST*` entry, so neither `Player on Top` row has a label and
+  no settings key can name either mechanism. That is a bounded negative, not an assumption.
+- Tag 422 writes the **same** absolute value to **both** player nodes (`+0x7B0` for
+  `[PlayLayer+0xDA0]` and `[PlayLayer+0xDA8]`), twice, ending at `0x1869F`/99999 for each:
+  both players are lifted above everything else. That is "Player on Top" as a plural.
+- Tag 442 reorders the two nodes in their parents at their current integer, in the order
+  player 2 then player 1, so the last node touched is player 1's: player 1 ends above player 2
+  while the rest of the order is untouched. That is "Player 1 on Top" as a refinement.
+
+The two changelog wordings are also the only `Player ... on Top` rows in the 389-row universe
+(one at v9.0.0, one at v9.0.9), so there is no third row either mechanism could belong to.
+Binding: **tag 422 = v9.0.0 "Player on Top", tag 442 = v9.0.9 "Player 1 on Top"**.
+
+UNVERIFIED: the runtime draw order. The binding above is a reading of the two detours against
+the two wordings; a session that photographs the draw order with each tag on and off is what
+would confirm it. Nothing in the image contradicts the binding, and no alternative pairing
+makes both names true.
