@@ -879,3 +879,46 @@ The function returns `false` (i.e. "not less") when the category is unknown, and
 falls back to a `std::string` comparison of the two keys. So `"UTILITY"` here means " Utilities
 rows sort last", and the earlier lead that this function might bind action ids to row labels
 is ruled out.
+
+## Evidence - the four copy/password rows have no clipboard path (2026-10-28)
+
+**Question.** Do "Added Show Password to Copy Level Screen" (v7.0), "Added SongID Copy"
+(v7.0), "Added Copy LevelID Fix" (v6.2.0) and "Added Level Password finder" (v6.1.0) use a
+Mega Hack clipboard writer?
+
+**Method.** Two independent boundaries. First, the import table entry for every clipboard
+API was located with `objdump -p`, then every reference to those four IAT slots in `.text`
+was resolved with capstone (rip-relative memory operands, whole section from RVA `0x1000`).
+Second, `_hook_sites.tsv` was searched for a copy, password, SongID or share method.
+
+| IAT slot | Import | Referencing instructions |
+| --- | --- | --- |
+| `0x180643130` | `CloseClipboard` | `0x18020DF2B` |
+| `0x180643138` | `EmptyClipboard` | `0x18020DEFD` |
+| `0x180643188` | `OpenClipboard` | `0x18020DEF3` |
+| `0x1806431A0` | `SetClipboardData` | `0x18020DF0B` |
+
+All four live inside `FUN_18020DE40`, the screenshot clipboard branch documented above
+(`### The screenshot command and its three modes (2026-10-28)`). Nothing else in the module
+touches the clipboard: the whole-section scan returns exactly four instructions, and no
+`GlobalAlloc`/`GlobalLock` pair outside that function is followed by `SetClipboardData`.
+
+The hook table has no `onCopy`, no password method and no SongID method. The only
+level-info entries are `LevelInfoLayer::init` (three registrars), `playStep4`,
+`onPlay`, `levelDownloadFinished` and `ShareLevelLayer::onShare` (two registrars, tags 44
+and 48), none of which is a copy action.
+
+**Conclusion.** Mega Hack never writes the clipboard except when taking a screenshot, so none
+of these four rows can be a copy-to-clipboard feature implemented inside this module. What is
+left is host-side or reveal behaviour: "Show Password" most plausibly makes an existing
+password field visible, "Copy LevelID Fix" most plausibly repairs GD's own copy button, and
+"SongID Copy" / "Level Password finder" name UI affordances that this module does not
+implement. All four therefore stay `cluster`, and closing any of them needs a host-side
+anchor (GD 2.2081 `LevelInfoLayer`/`ShareLevelLayer` layout) or a runtime observation.
+
+**UNVERIFIED.**
+
+- Whether GD 2.2081's own copy button uses a clipboard path of its own; the host image is not
+  in `samples/`, so this module's silence says nothing about the game's.
+- Whether "SongID Copy" is a button added by the UI initialiser `FUN_1800A8020`; no label in
+  the static label maps names a song id, a password or a copy affordance.

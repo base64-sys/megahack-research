@@ -528,9 +528,9 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v7.0 (Full) | Added Pasting to the UI & Extensions | cluster | [ui-addons.md](ui-addons.md) |
 | v7.0 (Full) | Added Percentage Only to Pause Menu | cluster | [ui-addons.md](ui-addons.md) |
 | v7.0 (Full) | Added Replay Last Checkpoint to Endscreen | mapped | tag 316 (`0x13C`, `HACK_REPLAY_LAST_CHECKPOINT`); registered at `0x1800b2a6e`, callback `FUN_18017ecb0` hooks `EndLevelLayer::onReplay` (RVA 0x134E80); detour `0x18017ed20` reroutes to host RVA 0x1354C0 with `edx=0` when the second argument is null and `[playlayer+0x31f0] == 1`, otherwise to the cached original. See [gameplay-hooks.md](gameplay-hooks.md#evidence--replay-last-checkpoint-2026-10-25). |
-| v7.0 (Full) | Added Show Password to Copy Level Screen | cluster | [ui-addons.md](ui-addons.md) |
+| v7.0 (Full) | Added Show Password to Copy Level Screen | cluster | [ui-addons.md](ui-addons.md#evidence---the-four-copypassword-rows-have-no-clipboard-path-2026-10-28) | Not a clipboard feature: the module's only four clipboard-API references all sit inside the screenshot branch `FUN_18020DE40`, and no hook targets a copy or password method, so the row names host-side or reveal behaviour. See the note.
 | v7.0 (Full) | Added Show Level Layout | cluster | [render-hooks.md](render-hooks.md) |
-| v7.0 (Full) | Added SongID Copy | cluster | [ui-addons.md](ui-addons.md) |
+| v7.0 (Full) | Added SongID Copy | cluster | [ui-addons.md](ui-addons.md#evidence---the-four-copypassword-rows-have-no-clipboard-path-2026-10-28) | Not a clipboard feature: the module's only four clipboard-API references all sit inside the screenshot branch `FUN_18020DE40`, and no hook targets a copy or password method, so the row names host-side or reveal behaviour. See the note.
 | v7.0 (Full) | Added StartPos Switcher | mapped | [startpos-switcher-feature.md](startpos-switcher-feature.md) | tag 130 (`HACK_STARTPOS_SWITCHER`); gate `FUN_180185710` controls next/prev switching via `FUN_1801857F0`/`FUN_180185910`. Tags 0xA6/0xA7 (166/167) are runtime-assigned Map A. See startpos-switcher-feature.md. |
 | v7.0 (Full) | Added Transition Customiser | mapped | [ui-addons.md](ui-addons.md#the-two-v70-wordings-and-the-single-substitution-path-2026-10-28) | The substituted fade itself: the `CCTransitionFade::create` detour `FUN_18018B7F0` branches on tag 449 and otherwise reads tag 472 (`0x1D8`, opacity, read site `0x18018B81A`) and calls `FUN_18018B930(duration, opacity, scene)`. Paired with the v7.0 "UI Transition Time Customisation" bullet, which is the duration half. |
 | v7.0 (Full) | Added UI Transition Time Customisation | mapped | [ui-addons.md](ui-addons.md#the-two-v70-wordings-and-the-single-substitution-path-2026-10-28) | Tag 470 (`0x1D6`, duration) has exactly one site in the whole `.text` — the read at `0x18018B82E` inside `FUN_18018B7F0` — so this bullet names the only time input the transition customiser has. The v9.0.0 row merges both halves under "(with duration)". |
@@ -564,7 +564,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v6.2.0 (Full) | Added Coins Show as Uncollected mod | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
 | v6.2.0 (Full) | Added Col1, Col2, & Wave Trail to RGB Icons | cluster | [render-hooks.md](render-hooks.md) |
 | v6.2.0 (Full) | Added ColourID Bypass | cluster | [ui-addons.md](ui-addons.md) |
-| v6.2.0 (Full) | Added Copy LevelID Fix | cluster | [ui-addons.md](ui-addons.md) |
+| v6.2.0 (Full) | Added Copy LevelID Fix | cluster | [ui-addons.md](ui-addons.md#evidence---the-four-copypassword-rows-have-no-clipboard-path-2026-10-28) | Not a clipboard feature: the module's only four clipboard-API references all sit inside the screenshot branch `FUN_18020DE40`, and no hook targets a copy or password method, so the row names host-side or reveal behaviour. See the note.
 | v6.2.0 (Full) | Added Demon List integration | cluster | [ui-addons.md](ui-addons.md) |
 | v6.2.0 (Full) | Added FPS Counter | mapped | [status-labels-feature.md](status-labels-feature.md#evidence---the-fps-and-cps-label-types-and-their-three-settings-keys-2026-10-28) | Older wording of the `fps` label type; one `fps` record in the type table and one `fps` branch at `0x18024E949`, so no separate counter mechanism exists in the image. |
 | v6.2.0 (Full) | Added Level Restart button | cluster | [ui-addons.md](ui-addons.md) |
@@ -593,7 +593,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v6.2.0 (Full) | Added Vertical Sync & Fullscreen toggle | cluster | [render-hooks.md](render-hooks.md) |
 | v6.1.0 (Full) | Added RGB Icons mod | cluster | [iconic-feature.md](iconic-feature.md) |
 | v6.1.0 (Full) | Added Multiscaler | cluster | [render-hooks.md](render-hooks.md) |
-| v6.1.0 (Full) | Added Level Password finder | cluster | [ui-addons.md](ui-addons.md) |
+| v6.1.0 (Full) | Added Level Password finder | cluster | [ui-addons.md](ui-addons.md#evidence---the-four-copypassword-rows-have-no-clipboard-path-2026-10-28) | Not a clipboard feature: the module's only four clipboard-API references all sit inside the screenshot branch `FUN_18020DE40`, and no hook targets a copy or password method, so the row names host-side or reveal behaviour. See the note.
 | v6.1.0 (Full) | Added DLL Injector | cluster | [ui-addons.md](ui-addons.md) |
 | v6.1.0 (Full) | Added No Wave Pulse hack | mapped | [render-hooks.md](render-hooks.md#evidence---the-v6x-modhack-wordings-of-the-wave-toggles-2026-10-28) | Same toggle again under the v6.1.0 name (tag 394); the three-site bound is the same one recorded on the v6.2.0 row. |
 | v6.1.0 (Full) | Added No Flip Portal hack | cluster | [gameplay-hooks.md](gameplay-hooks.md) |
