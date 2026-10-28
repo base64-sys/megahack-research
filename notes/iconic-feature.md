@@ -147,3 +147,54 @@ settings tag to promote against.
   are not yet tied to individual toggles.
 - UNVERIFIED: whether `ICONIC/DISABLE` disables the whole feature or only the
   preview.
+
+## Evidence - the particle preview chain (2026-10-28)
+
+Two changelog rows name particle customisation - v7.0 (Full) "Added Icon Particle
+Customisation" and v9.0.0 "Added Particle customisation" - and neither has a settings tag.
+This section records the only particle-building chain in the image, so the next pass starts
+from a measured shape instead of a name.
+
+**Method.** A string search for `particles` in `recovered/functions/_xrefs.tsv` gives one
+format literal, `{}-particles-{}`; the byte search over the DLL gives its exact VA and the two
+plist names. `_callers.tsv` then walks the chain upwards to its root.
+
+| Literal | VA (`.rdata`) |
+| --- | --- |
+| `{}-particles-{}` | `0x1805854F3` |
+| `dashEffect.plist` | `0x180575B0B` |
+| `dragEffect.plist` | `0x180575B37` |
+| `game_bg_01_001.png` | `0x180571B60` |
+
+The chain (all three functions in `.text`, extents from the decompiled headers):
+
+| Function | Size | Role |
+| --- | --- | --- |
+| `FUN_1801220C0` (`0x1801220C0`) | 947 bytes, **0 callers** | builds the preview layer: `game_bg_01_001.png` layers, clipping node, then calls the kind dispatcher |
+| `FUN_1801ED6C0` (`0x1801ED6C0`) | 140 bytes, 1 caller | `switch (kind)`, forwards to the node factory |
+| `FUN_1801EE0F0` (`0x1801EE0F0`) | 702 bytes, 1 caller | creates the particle node and names it |
+
+`FUN_1801EE0F0(kind, variant, path_prefix)` reads:
+
+- `kind == 0xD` -> plist `dashEffect.plist`, id suffix `dash`;
+- `kind == 0xC` -> plist `dragEffect.plist`, id suffix `base`;
+- then `FUN_180240DE0(plist, variant)` returns the node, and
+  `FUN_18000AE30(out, fmt, suffix, variant)` formats `{}-particles-{}` - the id becomes
+  `dash-particles-<variant>` or `base-particles-<variant>` - which is stored with
+  `cocos2d::CCNode::setID`.
+
+**Conclusion.** Particle customisation is a *preview* surface: a layer builds a small stage,
+then asks the dispatcher for a dash or base particle node named
+`<kind>-particles-<n>`. Nothing in the chain reads a config tag (no `mov edx,<tag>` followed by
+a registry call appears in any of the three bodies), so the feature is driven by the UI that
+owns the preview, not by a boolean. Both rows stay `cluster` until that owner is identified.
+
+**Open questions.**
+
+- UNVERIFIED: which class owns `FUN_1801220C0`. It has no direct caller, so it is reached
+  through a vtable or a callback table; the owner would name the page and the selection state.
+- UNVERIFIED: what `FUN_180240DE0` is (read here as the particle-node constructor taking the
+  plist and a variant index). Its name and argument list are not established.
+- UNVERIFIED: whether the preview is read-only or writes the chosen particle set into the
+  profile; no `setConfigVar` call appears in the three bodies, but the UI callback that
+  receives the selection was not traced.

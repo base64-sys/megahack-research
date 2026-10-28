@@ -306,7 +306,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v9.0.0 | Added Mini Icons in Normal Mode | cluster | [iconic-feature.md](iconic-feature.md) |
 | v9.0.0 | Added Extra Colour customisation | cluster | [cosmetic-feature.md](cosmetic-feature.md) |
 | v9.0.0 | Added Trail customisation | cluster | [iconic-feature.md](iconic-feature.md) |
-| v9.0.0 | Added Particle customisation | cluster | [iconic-feature.md](iconic-feature.md) |
+| v9.0.0 | Added Particle customisation | cluster | [iconic-feature.md](iconic-feature.md#evidence---the-particle-preview-chain-2026-10-28) | Lead: the only particle-building chain is `FUN_1801220C0` -> `FUN_1801ED6C0` -> `FUN_1801EE0F0`, which builds `dashEffect.plist`/`dragEffect.plist` nodes named `{}-particles-{}`; none of the three reads a config tag, so the owner of the preview (0 callers on `FUN_1801220C0`) still has to be identified. |
 | v9.0.0 | Added Ghost Trail customisation | cluster | [iconic-feature.md](iconic-feature.md) |
 | v9.0.0 | Added multi-lingual support | mapped | [ui-addons.md](ui-addons.md) | language-key-driven: `FUN_180197DA0` registers `FUN_180197EA0` on `GameManager::setGameVariable` (RVA 0x182EB0) which toggles hack 0x1ED (493) on key "0025" and sets config 0x1EE (494) on key "0170". Listener `FUN_180197F40` updates UI. See ui-addons.md. |
 | v9.0.0 | Added extensions v3 support | cluster | [ui-addons.md](ui-addons.md) |
@@ -499,7 +499,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v7.0 (Full) | Added Granular Scaling to UI | cluster | [render-hooks.md](render-hooks.md) |
 | v7.0 (Full) | Added Icon Custom Gradients | cluster | [iconic-feature.md](iconic-feature.md) |
 | v7.0 (Full) | Added Icon Level ColourID Customisation | cluster | [iconic-feature.md](iconic-feature.md) |
-| v7.0 (Full) | Added Icon Particle Customisation | cluster | [iconic-feature.md](iconic-feature.md) |
+| v7.0 (Full) | Added Icon Particle Customisation | cluster | [iconic-feature.md](iconic-feature.md#evidence---the-particle-preview-chain-2026-10-28) | Same chain as the v9.0.0 row (`FUN_1801220C0` -> `FUN_1801ED6C0` -> `FUN_1801EE0F0`, `dashEffect.plist`/`dragEffect.plist`, `{}-particles-{}`); no tag in the chain, so both rows wait on the preview's owner. |
 | v7.0 (Full) | Added Icon Reverse Music Flash | cluster | [iconic-feature.md](iconic-feature.md) |
 | v7.0 (Full) | Added Icon Stealer to Profiles | cluster | [iconic-feature.md](iconic-feature.md) |
 | v7.0 (Full) | Added Icon Swap Main & Secondary Colours | cluster | [iconic-feature.md](iconic-feature.md) |
