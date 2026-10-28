@@ -79,10 +79,47 @@ needs the Android toolchain and cannot be done from this repository alone.
 
 ## Reproducing
 
-The compiler and CMake paths are machine-specific and deliberately not committed. On a
-machine with any C++20 compiler, the same two commands with that compiler produce the same
-targets. The build directory must stay outside `reconstruction/`; a stray `CMakeCache.txt`
-or object tree inside it would be untracked build output.
+The compiler path is machine-specific and deliberately not committed. On a machine with any
+C++20 compiler, the same two commands with that compiler produce the same targets. The build
+directory must stay outside `reconstruction/`; a stray `CMakeCache.txt` or object tree inside
+it would be untracked build output.
+
+### The preset, and why a bare configure fails (2026-10-28)
+
+`reconstruction/CMakePresets.json` now commits the one configuration detail that is not
+machine-specific: the compiler *name*. `cmake --preset mingw` asks CMake to resolve `g++` from
+`PATH`, so it needs no absolute path, and it pins `Ninja`, `Release` and a git-ignored
+`reconstruction/build` tree. That last detail is deliberate: `scripts/env_check.py` reports a
+built test binary at `reconstruction/build/test_reconstruction.exe`, so following the preset is
+what turns its reconstruction line green (`8 passed, 0 warning(s)` after this pass).
+
+A bare `cmake -S reconstruction -B <dir> -G Ninja` fails on this machine, and the failure is
+worth recording because it looks like a source problem:
+
+- CMake 4.4 detects **MSVC 19.44.35229.0** (`...\2022\BuildTools\VC\Tools\MSVC\14.44.35207\bin\Hostx64\x64\cl.exe`)
+  and reports `Check for working CXX compiler: ... - broken` at `CMakeLists.txt:2 (project)`.
+- The compile line it builds is `cl.exe /nologo /TP -D_MBCS /DWIN32 /D_WINDOWS /EHsc ...`; it
+  fails because this shell has no `vcvars` environment, so `cl.exe` cannot find its own headers
+  and libraries. Nothing in `reconstruction/` is at fault.
+- Once a build directory has cached that choice, overriding `-DCMAKE_CXX_COMPILER` in the
+  *same* directory is not enough: the cached MSVC platform flags reappear and MinGW's `g++.exe`
+  is handed `/DWIN32` and `/EHsc` as if they were file names. Use a fresh directory, or the
+  preset, whose `binaryDir` is fixed.
+
+Verified this pass with the preset, on the toolchain in the table above:
+
+```
+-- Configuring done (2.5s)
+[8/10] Linking CXX static library libhackpro_core.a
+[9/10] Linking CXX shared library megahack.skeleton.dll
+[10/10] Linking CXX executable test_reconstruction.exe
+ok    boolean setter intercepts action tags and leaves stored state untouched
+All core infrastructure reconstruction tests passed successfully!
+```
+
+The same tree also builds without CMake at all (`g++ -std=c++20 -O2 -I reconstruction/include`
+over the four translation units), which is how the nine checks were re-confirmed before the
+preset was added; the preset is the reproducible route, the direct compile is the fallback.
 
 ## Open questions
 

@@ -87,6 +87,8 @@ node_modules/
 /harness/build/
 /harness/observer/build/
 /reconstruction/geode/build/
+# Preset build tree for reconstruction/CMakePresets.json (`cmake --preset mingw`).
+/reconstruction/build/
 
 # --- Long-run wrapper scratch --------------------------------------------------
 .oc/
