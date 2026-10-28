@@ -90,3 +90,49 @@ UNVERIFIED: what the three dwords at `+0x2F0`/`+0x2F4`/`+0x2F8` hold; whether
 `[layer+0x38D8]+0x168` is a host label or one the mod created; which row the tag belongs to.
 Closing this needs a runtime read of `+0x2F0`/`+0x2F4` across a reset, or a host-side
 reference to the same structure (`GeometryDash.exe` is not in this repo).
+
+## Evidence - velocity and death label types (2026-10-28)
+
+`FUN_18024E8D0` (RVA `0x24E8D0`, `.pdata` `0x18024E8D0..0x18024FB1D`) is the status-label
+formatter. It dispatches on a packed four-byte label type stored in the label record, and two
+of those type strings are exactly the v9.1.0-beta.1 "Velocity & Death options to Status
+labels" wording.
+
+| Type | Compare site | What the branch renders |
+| --- | --- | --- |
+| `jump` | `0x18024EB06 mov ecx, 0x706d756a` | jump count, gated by tag `0x321` |
+| `velocity` | `0x18024EBEB movabs rcx, 0x797469636f6c6576` | `({:.2f}, {:.2f})`, or `({:.2f}, {:.2f}), ({:.2f}, {:.2f})` when `[PlayLayer+0x422] == 1` |
+| `dead` | `0x18024EC21 cmp dword ptr [rax], 0x64616564` | the string `"Alive"`, or `"Dead"` when `[PlayLayer+0x324A] != 0` |
+
+(All three VAs from a capstone linear scan of `.text` for the immediate/`movabs` operands;
+`FUN_18024E8D0` bounds from `scripts/func_bounds.py`.)
+
+**Velocity.** Per player the value is `[player + 0x9F4] * [player + 0x7B8]` (a float speed
+times a double factor), unless `[player + 0xB70] == 1`, in which case the already-computed
+double at `[player + 0xAF8]` is used. The x/y pair printed alongside comes from
+`[player + 0x9A0]`. Player 1 is `[PlayLayer + 0xDA0]` and player 2 is `[PlayLayer + 0xDA8]`;
+the two-player branch is selected by `[PlayLayer + 0x422]`, the same byte the `position` type
+uses.
+
+**Death.** The type string is `dead`, the branch prints one of two literals and reads nothing
+else, so the option is a label *type* (the row's "Death" option), not a toggle with its own
+tag: `[PlayLayer + 0x324A]` is the death flag the vanilla player already maintains.
+
+**Conclusion.** Both halves of the v9.1.0-beta.1 row are accounted for by label types in
+`FUN_18024E8D0`, with field-level evidence and no settings key of their own. The row is a
+UI/formatting addition, so it has no tag to bind.
+
+**Method note - immediate scans collide with OpenGL constants.** A scan for the immediate
+`0x303` returns six sites; five are `glBlendFunc(0x302, 0x303)` / `setBlendFunc({0x302,
+0x303})` pairs (`0x1801729CF`, `0x180172A21`, `0x18019AE90`, `0x1801DD9C2`, `0x1801E2762`), and
+only `0x18024F2AC` passes it to `FUN_18002DE50`, the Tag-lookup accessor (FNV-1a-64 into the
+map at `registry + 0xB0/0xC0/0xD8`, called by `getConfigVar`). The discriminator must be the
+call shape, not the immediate alone.
+
+**Open questions.**
+
+- UNVERIFIED: the settings row that writes tag `0x303` (the decimal-place gate on the generic
+  percentage branch at `0x18024F2AC`), and whether it is the same key as the `0x1AD`/`0x1AE`
+  pair used by the progress bar.
+- UNVERIFIED: the unit of the velocity factor at `[player + 0x7B8]`, and whether `0x9F4` is a
+  speed multiplier or a step length; naming either needs a GD image.
