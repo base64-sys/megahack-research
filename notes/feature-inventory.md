@@ -250,7 +250,7 @@ fix bullet, so a row universe built from `Added …` alone will always miss some
 | v9.0.4 | Added No Spider Dash | mapped | [render-hooks.md](render-hooks.md#evidence---three-runtime-assigned-cosmetic-tags-2026-10-25) | tag 434 (`0x1B2`, runtime-assigned, no static label); registered at `0x1800b15d7`, callback `FUN_1801719c0` hooks `PlayerObject::playSpiderDashEffect` (RVA 0x395170), detour `0x180171a30` is a bare `ret`. Key `COSMETIC/HACK_NO_SPIDER_DASH` in [settings-contents.md](settings-contents.md). |
 | v9.0.4 | Added Same Dual Colour to Iconic | cluster | [iconic-feature.md](iconic-feature.md) |
 | v9.0.4 | Added Session Time | cluster | [status-labels-feature.md](status-labels-feature.md) |
-| v9.0.4 | Added Show Hitboxes Player Collison Blocks | cluster | [show-hitboxes-feature.md](show-hitboxes-feature.md) |
+| v9.0.4 | Added Show Hitboxes Player Collison Blocks | mapped | [show-hitboxes-feature.md](show-hitboxes-feature.md#tag-206-draws-the-player-box) | tag 206 (`CHECKBOX_HITBOXES_PLAYER`, `0xCE`, label store `0x180064B8A`); `FUN_180204150` reads it at `0x180204177` (the only `mov edx,0xce` site) and, when set, builds one rect with `0x180203C20` and submits it through `0x180202BD0` at scale 1.0 for player 1 (`[layer+0xDA0]`) and, when `[layer+0x422]==1`, player 2 (`[layer+0xDA8]`). Unrotated, so it is not the Player Rotation row. |
 | v9.0.4 | Added info button to mobile interface dropdowns | cluster | [ui-addons.md](ui-addons.md) |
 | v9.0.2 | Added Cheat Safety tab (Safe Mode moved here) | cluster | [safe-mode-feature.md](safe-mode-feature.md) |
 | v9.0.2 | Added Disable All Cheats button | cluster | [ui-addons.md](ui-addons.md) |

@@ -419,6 +419,15 @@ bool 206 at `0x18020417F`. When set it builds a rect with `0x180203C20` and subm
 
 No other tag is read in this function, so the player box is a single-key feature.
 
+**Row binding (2026-10-28).** This is the v9.0.4 row "Added Show Hitboxes Player Collison
+Blocks". Two angles: the checkbox's own name (`CHECKBOX_HITBOXES_PLAYER`, tag 206) is the only
+player-specific entry in the 21-row `OPTIONS_BOOL` map, and the body draws one unrotated rect
+per active player. It is therefore *not* the v9.1.0-beta.1 "Player Rotation option" row, which
+the same note leaves on tag 207 (the rotated quad `[obj+0x20]`); that row stays `cluster`.
+A whole-`.text` scan for the immediate `0xce` returns exactly two sites - the label-map store
+`0x180064B8A` and the `mov edx,0xce` fed to `FUN_18002DE50` here - so the player box has one
+switch and no second mechanism.
+
 ### Death-hitbox path, measured
 
 Gate `FUN_180203EE0` (0x180203EE0..0x180203F52, no `.pdata`):
