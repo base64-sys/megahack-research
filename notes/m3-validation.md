@@ -43,19 +43,19 @@
   scenario that reaches a target-dependent site, not another capture of this one
   ([deterministic-capture.md](deterministic-capture.md), "Result").
 - Cluster assignment exists but is only a lead for most rows. Counted from the status
-  column on 2026-10-28: **110 of the 389** changelog rows in
-  [feature-inventory.md](feature-inventory.md) are `mapped` and **279** are `cluster`;
+  column on 2026-10-28: **111 of the 389** changelog rows in
+  [feature-inventory.md](feature-inventory.md) are `mapped` and **278** are `cluster`;
   the authoritative per-row list with tag, registration and hook address is the
   Mapped-rows table there. Four of the `cluster` rows (tags 422, 442, 438, 424) carry
   mechanism evidence but stay `cluster` because their tag→row binding is unresolved.
-  The 110th is the v9.1.0-beta.6 Crash Game utility, promoted on its action id and three-stage confirm chain; the 109th is the v9.1.0 Icon Stealer, promoted on its profile-page button chain; the 108th
+  The 111th is the v9.1.0-beta.5 Better Calculation percentage, promoted on the single tag-431 read site; the 110th is the v9.1.0-beta.6 Crash Game utility, promoted on its action id and three-stage confirm chain; the 109th is the v9.1.0 Icon Stealer, promoted on its profile-page button chain; the 108th
 was the v6.0.0 keybinding system, promoted on the `core::Keybinds` class, its
   `keybinds.json` store and the `KEYBINDS/*` capture flow ([input-hooks.md](input-hooks.md#evidence--the-keybinding-system-is-corekeybinds-2026-10-28)).
 - The keyword check found **185 of 389** rows whose linked note never mentioned the
   feature at the 2026-10-23 baseline (method below). That number is a dated snapshot: it
   predates every promotion since, the original tokeniser was not kept, and it has not
   been re-run, so it should not be quoted as the current gap.
-- Per-feature settings-key and default mapping for the remaining 279 `cluster` rows
+- Per-feature settings-key and default mapping for the remaining 278 `cluster` rows
   remains open. The mapped rows have tags and code VAs, but their JSON keys and shipped
   defaults are not all confirmed.
 - Alias/dead classification for features absent from the current build remains open.
