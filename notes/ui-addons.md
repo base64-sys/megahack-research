@@ -607,3 +607,31 @@ virtual slots `+0xD0`/`+0xE0`/`+0x368`; whether the receiving setter re-clamps (
 the bound would be lifted by the *absence* of the pre-clamp only); and what `0x1801FF740`
 does to `[this+0x90]`. The vanilla `ccTouchMoved` is host code and is not called here, so
 its arithmetic cannot be compared inside this image.
+
+### The scale-slider listener on the same tag (2026-10-28)
+
+Tag 38 has a **second** registrant besides `FUN_18015d320`. `FUN_180163400`
+(`.pdata` `0x180163400..0x1801634B3`) builds a `std::_Func_impl_no_alloc<void(bool)>` whose
+target is `FUN_180163560`, then calls `FUN_1801083F0(local_48, 0x26)` and registers the
+result with `FUN_1800915B0`. Tag `0x26` is 38, so this is a settings listener, not a hook
+action: `FUN_180163560(bool)` installs two hooks when true and removes both when false.
+
+| Field | Value |
+| --- | --- |
+| Callback | `FUN_180163560`, `.pdata` `0x180163560..0x180163627` (199 bytes) |
+| Hook 1 | `GJScaleControl::ccTouchMoved`, RVA `0x12A770`, detour `0x180163A20` |
+| Hook 2 | `EditorUI::scaleObjects`, RVA `0x121450`, detour `0x180163670` |
+| Order | `0xBD8` on both, sixth argument 1 |
+
+The pairing is confirmed by a capstone RIP-relative scan: the only code reference to
+`0x180163560` is `0x18016342F: lea rax, [rip+0x12A]` inside `FUN_180163400`.
+
+This is the mechanism behind the v9.1.0 changelog line "Slider Bypass now supports scale
+slider" and the older fix "Resolved an issue where the Slider Bypass did not work with object
+scaling": the scale slider is clamped by host code, so the bypass needs its own
+`ccTouchMoved` replacement plus `scaleObjects`, not the `SliderTouchLogic` hook. The Android
+build installs the same pair by name (`GJScaleControl::ccTouchMoved`, detour `0x4CEDD0`),
+see [android-input-parity.md](android-input-parity.md#the-last-three-name-hooks-scale-slider-and-editor-steppers).
+
+UNVERIFIED: the identity of `FUN_1801083F0`/`FUN_1800915B0` beyond "tag argument then
+registration", and whether the listener fires on a settings change as well as at load.

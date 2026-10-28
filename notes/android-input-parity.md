@@ -121,13 +121,26 @@ The same shape occurs twice more, with the same resolver and the same `0x4C81D0`
 | `MenuGameLayer::ccTouchBegan` | `0x533730` | `0x5339D8` | `0x22665D` | `BL 0x487CCC` |
 | `LevelAreaLayer::onClickDoor` | `0x534460` | `0x534848` | `0x209FB1` | `BL 0x487CCC` |
 
-**Conclusion.** Three of the six name-only input targets are installed through the normal
-Geode path: the build resolves the mangled name from `libcocos2dcpp.so`, passes the demo
-detour and the demangled label to a helper that calls `createConvention`, `Hook::create` and
-`claimHook`. The name string is therefore the hook channel, not an unused label. The other
-three (`GJScaleControl::ccTouchMoved`, `EditorOptionsLayer::onButtonRows`,
-`EditorOptionsLayer::onButtonsPerRow`) have the same string shape but were not traced this
-pass. UNVERIFIED: their registration sites and detours.
+The three remaining name-only targets have the same shape. Their helper is not `0x4C81D0`
+but two sibling helpers, `0x4CF444` and `0x4D0474`, which were disassembled and both call
+imported `geode::hook::createConvention` (`0x921A50`) and then `0x4868FC`, the helper that
+reaches `Hook::create` and `claimHook`:
+
+| Target | Registration site | Helper | Detour (`ADR`) | Display name | `w4` | `w5` |
+| --- | --- | --- | --- | --- | --- | --- |
+| `GJScaleControl::ccTouchMoved` | `0x4CE8F0` | `0x4CF444` | `0x4CEDD0` | `0x20DB75` | `0xBD8` | 1 |
+| `EditorOptionsLayer::onButtonRows` | `0x4CFE10` | `0x4D0474` | `0x4D0044` | `0x20DB92` | `0xFFFFF428` (`-0xBD8`) | 1 |
+| `EditorOptionsLayer::onButtonsPerRow` | `0x4CFEC8` | `0x4D0474` | `0x4D025C` | `0x20630A` | `0xFFFFF428` (`-0xBD8`) | 1 |
+
+The mangled names those sites resolve are `0x215174`, `0x20297B` and `0x1F574C`; the
+registration sites were found by scanning all of `.text` for `ADRP`+`ADD` pairs landing on
+those strings. The two Editor sites share one callback: the two `BL 0x4D0474` calls are
+guarded by the same enable byte, and the disabled path removes both detours.
+
+**Conclusion.** All six name-only input targets are installed through the normal Geode path:
+the build resolves the mangled name from `libcocos2dcpp.so`, passes the detour and the
+demangled label to a helper that calls `createConvention`, `Hook::create` and `claimHook`. The
+name string is therefore the hook channel, not an unused label.
 
 ## Feature attribution of the three traced detours
 
@@ -153,22 +166,76 @@ The Android build does not use the Windows settings table: `android64` contains 
 `HACK_*` literal, `HACK_NOCLIP` at `0x211796` (raw-byte search of the whole image), so
 feature state on Android is not addressed by `HACK_SLIDER_LIMIT`-style tags.
 
+## The last three name hooks: scale slider and editor steppers
+
+**Method.** Same capstone pass as above, plus a Windows-side RIP-relative reference scan
+(`capstone`, x86-64) so that each Android detour could be compared with the Windows detour
+that the tag registration installs. The scan computes the target of every `LEA`/`MOV` whose
+memory operand uses `RIP`; it is what connects a callback function pointer to the function
+that registers it, since the pointer is a displacement, not a literal in `.data`.
+
+**`GJScaleControl::ccTouchMoved` is the scale-slider half of Slider Bypass (tag 38).**
+
+- Windows: `recovered/functions/180163a20_FUN_180163a20.c` is the detour for RVA `0x12A770`,
+  installed by `FUN_180163560` together with a second hook on `EditorUI::scaleObjects`
+  (RVA `0x121450`). `FUN_180163560` takes one `bool`, installs both hooks when it is true and
+  removes both when it is false — the shape of a settings listener.
+- Windows: the reference scan finds `0x18016342F: lea rax, [rip+0x12A]` = `0x180163560`
+  inside `FUN_180163400`. That function builds a `std::_Func_impl_no_alloc<void(bool)>` whose
+  target pointer is `FUN_180163560`, then calls `FUN_1801083f0(local_48, 0x26)` before
+  registering the callback with `FUN_1800915b0`. Tag `0x26` is 38, `HACK_SLIDER_LIMIT`
+  ([hook-registrations.md](hook-registrations.md) line 68) — the same tag whose action
+  `FUN_18015d320` installs `SliderTouchLogic::ccTouchMoved`. Two listeners on one tag explain
+  the v9.1.0 changelog line "Slider Bypass now supports scale slider".
+- Android: detour `0x4CEDD0` performs the same edit as the Windows detour — touch-id guard
+  `[x0+0x1B0] == [x1+0x38]`, the slider at `[x0+0x1A8]`, the label at `[x0+0x1E8]`, the mode
+  halfword `[x0+0x1CA] == 2`, `CCNode::convertTouchToNodeSpace` (`0x9228B0`) minus the node x,
+  `Slider::getThumb` (`0x9228C0`) positioned through its `+0xB8` virtual, `Slider::getValue`
+  (`0x9228D0`), `GJScaleControl::skewFromValue` (`0x9228E0`), rounding to two decimals
+  (`×100.0` = `0x4059000000000000`, `frintm`, `÷100.0`), then the label's `+0x10` virtual and
+  `GJScaleControl::updateLabelXY` (`0x9228F0`). The Windows detour rounds with
+  `floor(v*100)/100` between `FUN_18014e670` and `FUN_180146be0`, and tail-calls the original
+  `(*param_1+0x10)` when the touch-id guard fails; Android tail-branches to vtable `+0x378`.
+
+**The two `EditorOptionsLayer` hooks are Toolbox Button Bypass (tag 47).**
+
+- Windows `_hook_sites.tsv` lines 119-120 pair the same two host methods: `onButtonRows`
+  (RVA `0x291A00`) → `0x180164020` and `onButtonsPerRow` (RVA `0x291970`) → `0x1801641B0`,
+  installer `0x180164340`, callback `0x180163F50`, tag 47
+  ([hook-registrations.md](hook-registrations.md) line 77).
+- Android detour `0x4D0044` (`onButtonRows`) and `0x4D025C` (`onButtonsPerRow`) are the same
+  algorithm on different fields: read the clicked button's tag through the sender's
+  `[vtable+0x40]` virtual; if the tag is 1 (the "+" button) add one to the stored count,
+  otherwise replace it with `max(1, count-1)` (`csel`/`csinc` pair at `0x4D0094`–`0x4D00B4`
+  and `0x4D02AC`–`0x4D02CC`); there is **no upper clamp**, which is the bypass itself. The
+  new value is formatted with `"{}"` (`0x1F347D`, two bytes + NUL) and pushed through the
+  label's `[vtable+0x390]` virtual (`setString`). `onButtonRows` uses count `+0x444` and label
+  `+0x450`; `onButtonsPerRow` uses `+0x440` and `+0x448`.
+- The Windows fields for the same two functions are `+0x3F4`/`+0x400` and `+0x3F0`/`+0x3F8`
+  ([ui-addons.md](ui-addons.md#evidence--toolbox-button-bypass-2026-10-25)), so all four
+  Android fields are exactly `+0x50` from their Windows counterparts. Two unrelated classes
+  keeping a constant layout delta is independent support for the pairing.
+
+**Conclusion.** The last three name-resolved Android hooks are the scale-slider listener of
+Slider Bypass (tag 38) and the two Toolbox Button Bypass stepper replacements (tag 47). With
+this, every name-resolved input hook in the Android build is attributed to a Windows feature.
+
 ## Open questions
 
-- UNVERIFIED: the three untraced name-resolved targets above
-  (`GJScaleControl::ccTouchMoved`, `EditorOptionsLayer::onButtonRows`,
-  `EditorOptionsLayer::onButtonsPerRow`); the next question is which feature callback each
-  detour implements, not whether the string is used.
-- The `0xBD8` argument at the SliderTouchLogic site is a handler-metadata value. Its meaning
-  (`priority`? `after`?) is not established; the Windows equivalent is the `-32` argument in
-  the `Hook` registration, but the units need not match.
+- The `0xBD8` / `-0xBD8` argument at these sites is a handler-metadata value. Its meaning
+  (`priority`? `after`?) is not established, and the sign differs between the Slider site and
+  the two Editor sites while the Windows registrations use `0xBD8` for all three. UNVERIFIED:
+  what the helper does with `w4`; closing it needs `0x4CF444`/`0x4D0474` traced into
+  `Hook::create`'s argument layout.
 - UNVERIFIED: that host RVA `0x2C57E0` (the Windows No Transition forward) is
   `LevelAreaLayer::onEnterTower`. Closing this needs a GD 2.2081 symbol anchor; the Android
   import name and the `0x220` offset next to `onClickDoor` are consistent with it but are
   not that anchor.
-- `SliderTouchLogic::ccTouchMoved` is now attributed to Slider Bypass on both platforms.
-  `GJScaleControl::ccTouchMoved` is still unattributed on Android; a Toolbox Button Bypass
-  binding would need its registration site, not the name alone.
+- UNVERIFIED: whether the tag-38 scale-slider listener (`FUN_180163400`, callback
+  `FUN_180163560`) is registered when the tag changes as well as at load. The
+  `FUN_1800915b0` call in `FUN_180163400` is not identified; the Android counterpart's
+  enable/disable branches are consistent with a listener, but neither build was observed at
+  runtime.
 - UNVERIFIED: whether the two absent methods exist in the Android GD game binary. The
   absence above is bounded to the Mega Hack `.so` and to its complete file bytes; no
   Android GD image is in `samples/`.
