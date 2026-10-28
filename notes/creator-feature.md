@@ -59,8 +59,9 @@ exactly 1/30 s and then runs the unmodified `postUpdate`. That is a smoothing in
 suppression: the trail refresh is pinned to 30 Hz instead of whatever GD computes per frame.
 
 UNVERIFIED: the field's declaration/type (`+0x3898` is inferred from this single store), what
-GD writes there normally, and whether `MULTIPLE_EDITOR_TRAILS` (tag 55, `0x37`) is what sets
-`+0x3898` when this toggle is off — the adjacency of the two tags in the static map is not
+GD writes there normally, and which code writes `+0x3898` when this toggle is off. The multiple-trail option is
+**not** tag 55 (`0x37`, `HACK_SMOOTH_EDITOR_TRAIL`); it is tag 62 (`0x3E`), see the section
+below — the adjacency of the two tags in the static map is not
 evidence of a shared field.
 
 ## Open questions
@@ -127,3 +128,47 @@ UNVERIFIED: what `[level+0x3A8]` and `[level+0x3AC]` are (the pair is only prove
 32-bit fields inside one qword); why the vanilla code treats a difference of one as special;
 whether the effect is exposing the Copy button, making a non-copyable level copyable, or
 something else entirely; and which changelog wording, if any, corresponds to this toggle.
+
+## Evidence - Multiple Editor Trails is tag 62 in the updateDebugDraw detour (2026-10-28)
+
+- **Question** - which code implements the v9.0.4 "Multiple Editor Trails" toggle, and what does its
+  `TRANSPARENCY` option do?
+- **Method** - byte scan for `ba <imm32>` with a config-accessor `call` within 24 bytes (immediates
+  capped at `0x400`), then `func_bounds.py` for the containing function, the decompiled body from
+  `recovered/functions/`, and `_hook_sites.tsv` for the hook that installs it. This scan shape is
+  drift-free: it anchors on the opcode rather than sweeping the section (see
+  [finding-code.md](finding-code.md)).
+
+| Field | Value |
+| --- | --- |
+| Tag | 62 (`0x3E`), no static label |
+| Read site | `0x180160FE2 mov edx,0x3e` -> `call 0x18002DE50` (`getConfigVar<bool>`) |
+| Reader | `FUN_180160FA0`, `.pdata` `0x180160FA0..0x180161205` (603 bytes, no direct callers) |
+| Hook | registrar `0x1801607F0` -> `LevelEditorLayer::updateDebugDraw`, RVA `0x2E6C70`, detour `FUN_180160FA0`, order `-32`, installer `FUN_1800ABBD0` |
+| Settings key | `CREATOR/MULTIPLE_EDITOR_TRAILS/DROPDOWN/TRANSPARENCY` (bool, default True) |
+
+The body walks a container of 0x48-byte trail records at `DAT_18080C180..DAT_18080C188`, decodes each
+with `FUN_1801613F0`, and submits its geometry through `FUN_180202A50` (plus `FUN_180202AD0` on one
+branch) with the alpha it computes in `local_9C`:
+
+```
+if (tag62 == 0) alpha = 1.0
+else           alpha = (index + 1) * (1.0 / record_count)
+```
+
+So with the option on, successive trails are drawn progressively more opaque instead of all at full
+alpha - the `TRANSPARENCY` half of the key. The second submission is gated by the host game variable
+read through `FUN_180148610(host, "0149")` (`.rdata` `0x1805753F2`), i.e. by a GD setting rather than
+by the mod's own toggle.
+
+**Conclusion.** Two angles agree: the editor draw path reads exactly one mod tag and turns it into a
+per-trail alpha ramp, and the settings tree has exactly one multiple-trail key, whose dropdown is
+named `TRANSPARENCY`. The v9.0.4 row is therefore this mechanism.
+
+**Correction.** The Smooth Editor Trail section previously speculated that `MULTIPLE_EDITOR_TRAILS`
+was tag 55 (`0x37`). Tag 55 is `HACK_SMOOTH_EDITOR_TRAIL` (label-map entry 67) and carries no
+multiple-trail meaning; the option is tag 62. Corrected in place above.
+
+**UNVERIFIED.** What `DAT_18080C180`/`DAT_18080C188` are (a vector of 0x48-byte trail records whose
+writer was not read), what `[layer+0x3770]` is, and whether the `-0x71c71c71c71c71c7` division is
+only the compiler's division by 0x48 for the record count.
