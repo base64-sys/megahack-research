@@ -1990,3 +1990,35 @@ editor or gameplay entry point with a single detour, and the seed feature is a t
 UNVERIFIED: what the free-scroll detour returns; what the custom-item post-processing does with
 the copied object; the meaning of the `(17,12)` stats key and of `[PlayLayer+0x31F1]`; what tag
 310 adds; and whether the 1,000-entry table is what randomises object or decoration placement.
+
+## Evidence - Accurate Save is tag 56 and a one-byte patch around saveLevel (2026-10-28)
+
+**Question** - which tag implements the v8.0.1-alpha.8 "Accurate Save" row, and what does it
+change? **Method** - strict byte-shape registration scan, `_hook_sites.tsv` attribution, then
+the detour read from `recovered/functions/`.
+
+| Field | Value |
+| --- | --- |
+| Tag | 56 (`0x38`), no static label |
+| Registration | `0x1800B0066` in `FUN_1800AFAE0`; the strict shape `ba 38 00 00 00 48 89 c1 49 89 f0 e8` occurs once in `.text` |
+| Callback | `FUN_18015E560` (110 bytes, `.pdata` `0x18015E560..0x18015E5CE`) |
+| Target | `EditorPauseLayer::saveLevel`, RVA `0xDD840` |
+| Detour | `FUN_18015E5D0` (`0x18015E5D0..0x18015E700`) |
+| Installer | `FUN_18015E770` (`createConvention` then `FUN_180108E70`), order `0xFFFFFFE0`, final argument 1 |
+| Settings key | `CREATOR/HACK_ACCURATE_SAVE` ([settings-contents.md](settings-contents.md) line 279) |
+
+**What the detour does.** It resolves `libcocos2d.dll` (`FUN_18010A140`), takes the module
+singleton from `FUN_1802048F0` (`&DAT_1808195E8`), builds a one-byte SSO string `0x66`
+("f"), calls `FUN_180204A60(singleton, cocos_base + 0x3D5B7, &bytes)`, runs the original
+`saveLevel` through the lazy trampoline `FUN_18010F2E0` (which resolves host RVA `0xDD840`),
+then calls `FUN_180204F60(singleton, cocos_base + 0x3D5B7)`. Both helpers FNV-1a the
+address, carry `Patch` locals, and `FUN_180204F60` has the byte-writing idiom, so the pair is
+an apply/restore of a one-byte patch held only for the duration of the save call.
+
+**Bounded negative.** `_hook_sites.tsv` has exactly one entry for `EditorPauseLayer::saveLevel`
+(registrar `0x18015E560`), so no other feature touches the editor save path.
+
+**Conclusion.** Tag 56 is the only setting that brackets the editor's save, and the only
+save-shaped creator key is `CREATOR/HACK_ACCURATE_SAVE`, so the row is that toggle.
+UNVERIFIED: what the byte at `libcocos2d + 0x3D5B7` controls (no host image in `samples/`),
+and that `CREATOR/HACK_ACCURATE_SAVE` FNV-hashes to 56 rather than another creator key.
