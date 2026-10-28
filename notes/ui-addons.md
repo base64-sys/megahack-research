@@ -693,11 +693,73 @@ game state; it is a diagnostic utility whose entire effect is the fault.
 **Open questions.**
 
 - UNVERIFIED: how an action id becomes a Utilities row label. `"UTILITY"` at `.rdata`
-  `0x180534616` is referenced only by `FUN_1800098F0`, which is not yet read; the row id ->
-  label binding for `0x360` therefore rests on the registration and on its neighbour, not on
-  a definition entry.
+  `0x180534616` is referenced only by `FUN_1800098F0`, which turned out to be a row
+  **sort comparator**, not a label binder (see "the action-listener registry" below), so the
+  row binding for `0x360` still rests on the registration and on its neighbour.
 - UNVERIFIED: which button the three confirmations render. `hackpro::extensions::showMessage`
   is called with mode `2` and one of the `MESSAGE/UTILITY/CRASH/*` keys; the yes/no labels come
   from the language table, which is not in this image.
 - UNVERIFIED: whether `0x43` is meaningful (a deliberate marker) or arbitrary filler written
   through the null pointer.
+
+## Evidence - the action-listener registry (2026-10-28)
+
+`FUN_180090F30` is `registerActionListener`: it hashes the id with FNV-1a-64 into the map at
+`registry + 0x1D0` and stores a `std::function<void(hackpro::Tag)>`. `_callers.tsv` lists 13
+callers. Eleven of them pass a literal id and account for the 20 sites below; the exceptions
+are `FUN_180072E80` (the exported `registerActionListener` wrapper) and `FUN_180191480`,
+which registers a *run* of ids in a loop from `0x18` upward with a different callback
+signature (`Tag, const std::string&`). This is a **second id namespace** next to the settings
+tags, and it is a static set, not a sample.
+
+| Registrar (VA) | Action ids | Callback passed |
+| --- | --- | --- |
+| `FUN_1800AFAE0` | `0x360` | `FUN_18018C450` (`hookpro::Crash::listener`) |
+| `FUN_1801601F0` | `0x3F`, `0x40`, `0x41` | three listeners built in place |
+| `FUN_18018C920` | `0x35F` | `FUN_18018C9E0` (sends `ToggleDevToolsEvent`) |
+| `FUN_18018FA70` | `0x35D`, `0x35E` | `FUN_18018FBD0` and a second one |
+| `FUN_18018FEB0` | `0x35C` | `FUN_18018FF70` |
+| `FUN_180190180` | `0x35B` | `FUN_180190240` |
+| `FUN_1801908C0` | `0x35A` | `FUN_180190980` |
+| `FUN_180190BB0` | `0x361` | `FUN_180190C70` |
+| `FUN_180190D60` | `0x359` | `FUN_180190E20` |
+| `FUN_18019B050` | `0x1E0` | local listener |
+| `FUN_18019CA80` | `0x368`, `0x36A`, `0x36B`, `0x36C`, `0x36F`, `0x374`, `0x375` | per-id wrappers |
+
+Method: `recovered/functions/` scanned for `FUN_180090f30(registry, <literal>, …)`; the
+registrar identities come from `_callers.tsv` (`180090f30_FUN_180090f30 13 ...`) and the
+callback names from each body. This is a static set, not a sample.
+
+The `0x359`-`0x361` run is the Utilities page. Only two of its members are attributed so far:
+`0x35F` (dev tools event) and `0x360` (the Crash Game null write). The others touch the
+running scene rather than a settings value, e.g. `0x35C` looks the mod's overlay node up in
+`CCScene` and returns if it is already there, otherwise adds `FUN_1801ACC30()` at the highest
+Z (`FUN_18018FF70`); `0x35B` flips a byte on `PlayLayer + 0x31F0` through `FUN_1801A5E00`,
+and `0x361` reads config id `0x362` and takes one of three branches
+(`FUN_18020DD60` / `FUN_18020DE40` / `FUN_18020DF60`). UNVERIFIED: the feature name behind
+each of `0x359`, `0x35A`, `0x35B`, `0x35C`, `0x35D`, `0x35E`, `0x361`; the callbacks are
+identified by address and call shape only.
+
+### The category table is an ordering, not a lookup
+
+`FUN_1800098F0` is called only from `FUN_1800090B0` and returns a bool: it compares two
+definition keys by category first, then lexicographically. The categories are the ten strings
+pointed at by the table at `.rdata` `0x180534008`, read from the file:
+
+| Slot | Pointer | Text | Rank |
+| ---: | --- | --- | ---: |
+| 0 | `0x1805345CD` | `HOME` | 0 |
+| 1 | `0x1805345D2` | `BYPASS` | 8 |
+| 2 | `0x1805345D9` | `CREATOR` | 0x10 |
+| 3 | `0x1805345E1` | `COSMETIC` | 0x18 |
+| 4 | `0x1805345EA` | `LEVEL` | 0x20 |
+| 5 | `0x1805345F0` | `STATUS` | 0x28 |
+| 6 | `0x1805345F7` | `UNIVERSAL` | 0x30 |
+| 7 | `0x180534601` | `CHEAT_SAFETY` | 0x38 |
+| 8 | `0x18053460E` | `DISPLAY` | 0x40 |
+| 9 | `0x180534616` | `UTILITY` | 0x48 |
+
+The function returns `false` (i.e. "not less") when the category is unknown, and otherwise
+falls back to a `std::string` comparison of the two keys. So `"UTILITY"` here means " Utilities
+rows sort last", and the earlier lead that this function might bind action ids to row labels
+is ruled out.
