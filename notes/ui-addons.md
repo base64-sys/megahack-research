@@ -121,6 +121,33 @@ UNVERIFIED: which JSON keys bind to tags 0x1D6 and 0x1D8; the behaviour of
 `FUN_18018B930`; whether the toggle is "disable all transitions" or "use
 default transition".
 
+### The two v7.0 wordings and the single substitution path (2026-10-28)
+
+**Method.** A `mov edx,imm` scan of the whole `.text` for both customiser tags, then the
+instruction context of every hit (scratch `scan45.py` / `ctx45.py`).
+
+| Tag | Site | Verdict |
+| --- | --- | --- |
+| 0x1D6 (470) | `0x18018B82E` only | the duration read inside `FUN_18018B7F0` (`call 0x18002E4C0`); the only time input in the image |
+| 0x1D8 (472) | `0x18018B81A` | the opacity read in the same detour (`call 0x180003D80`, then `cvtsd2ss xmm6, xmm0`) |
+| 0x1D8 (not a tag) | `0x18002F63F`, `0x180032779` | pass `0x1d8` as an argument to the thunk `0x1803A50F0` (`jmp 0x1803B1FB4`), with an object in `rcx`; no registry call follows |
+| 0x1D8 (not a tag) | `0x1800EF6F0` | `add rdx, qword ptr [rbp + 0x130]` — an addend, not an id |
+
+**Conclusion.** The family has exactly two customisable inputs. The two v7.0 bullets name
+those halves: "Transition Customiser" is the substituted fade itself (the 449 bypass plus the
+opacity in `xmm6`), and "UI Transition Time Customisation" is the duration input at
+`0x18018B82E`, which exists nowhere else. The v9.0.0 row "Transition Customiser (with
+duration)" is the later merge of the two under one name, so all three rows describe one
+mechanism.
+
+**Bounded negative.** No second transition path exists: the only other transition hooks are
+tag 449's own five, and those zero the duration arguments rather than read a tag
+(`0x180189F50`, `0x180189F60`).
+
+UNVERIFIED: the settings keys that bind 470 and 472; whether "UI" in the v7.0 wording means
+menu transitions specifically — the detour covers every `CCTransitionFade::create` call, not
+only UI ones.
+
 ## Evidence — Interface tab / hide UI changes (recovered 2026-10-23 via REA/Ghidra 12.1.2)
 
 `FUN_1801985A0` (`0x1801985A0`) registers `FUN_1801985F0` (`0x1801985F0`)
