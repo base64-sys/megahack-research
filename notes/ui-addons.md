@@ -635,3 +635,69 @@ see [android-input-parity.md](android-input-parity.md#the-last-three-name-hooks-
 
 UNVERIFIED: the identity of `FUN_1801083F0`/`FUN_1800915B0` beyond "tag argument then
 registration", and whether the listener fires on a settings change as well as at load.
+
+## Evidence - Crash Game and the Utilities action map (2026-10-28)
+
+The v9.1.0-beta.6 changelog row "Added Crash Game to Utilities" is not a tag and not a hook:
+it is an **action listener** registered against an action id in the same registry the
+settings callbacks use.
+
+**Method.** `scripts/build_xref_index.py --grep crash` over `recovered/functions/` gives three
+message keys and their only owning functions; `_callers.tsv` names the registrar
+`FUN_180090F30` as `registerActionListener`; `_rtti.tsv` supplies the enclosing symbol of the
+three lambda function objects; the final body is confirmed from instruction bytes with
+`samples/absolllute.hackmega/tools/pe_disasm.py`.
+
+| Stage | Function (VA) | Shows | Callback object |
+| --- | --- | --- | --- |
+| entry | `FUN_18018C450` (RVA `0x18C450`) = `hookpro::Crash::listener(hackpro::Tag)` | `MESSAGE/UTILITY/CRASH/0` (`.rdata` `0x180579E9C`) | `<lambda_0>` |
+| confirm 1 | `FUN_18018C5B0` = `<lambda_0>::operator()` | `MESSAGE/UTILITY/CRASH/1` (`0x180579EB4`) | `<lambda_1>` |
+| confirm 2 | `FUN_18018C740` = `<lambda_1>::operator()` | `MESSAGE/UTILITY/CRASH/2` (`0x180579ECC`) | inner `<lambda_1>` |
+| confirm 3 | `FUN_18018C8D0` (RVA `0x18C8D0`, file `0x18BCD0`) | nothing | - |
+
+The chain is read from the function-object vtables, not from the decompiler's naming: the
+three `std::_Func_impl_no_alloc<...>` vtables at `.rdata` `0x180579CA8`, `0x180579D68` and
+`0x180579E08` have `0x18018C5B0`, `0x18018C740` and `0x18018C8D0` in their call slot, and the
+mangled RTTI names on those vtables are the nested `<lambda_0>` / `<lambda_1>` / inner
+`<lambda_1>` of `Crash::listener`.
+
+**The last body is a deliberate null write:**
+
+```
+0x18018C8D0  c7 04 25 00 00 00 00 43 00 00 00   mov dword ptr [0], 0x43
+0x18018C8DB  c3                                 ret
+```
+
+(`pe_disasm.py absolllute.hackmega_original.dll 0x18018C8D0 --size 16`; file offset
+`0x18BCD0` = RVA - `0xC00`.) A write to address zero is an access violation, so the third
+confirmation is the crash itself; `0x43` is the byte value `'C'`.
+
+**Registration.** In the big settings dispatcher `FUN_1800AFAE0` the listener is bound with
+`FUN_180090F30(registry, 0x360, &fn)` where the function object holds `FUN_18018C450`:
+`recovered/functions/1800afae0_FUN_1800afae0.c` around line 2360 (`local_58 = FUN_18018c450;`
+then `FUN_180090f30(uVar1,0x360,&local_60);`). `FUN_180090F30` hashes the id with FNV-1a-64
+into the map at `registry + 0x1D0`, so **`0x360` (864) is an action id, not a settings tag**
+and not a `HACK_*` label; it cannot be matched against `_settings.tsv`.
+
+The neighbour is a different utility: `FUN_18018C920` registers action `0x35F` with
+`FUN_18018C9E0`, which loads `absolllute.megahack` from `geode::Loader` and sends Geode's
+`ToggleDevToolsEvent` (`local_a0 = ToggleDevToolsEvent::vftable`, then
+`EventCenterThreadLocal::send`, falling back to `EventCenter::get` + `FUN_18018D0B0`). So the
+`0x35F`/`0x360` pair is "toggle dev tools" / "crash game" in the same Utilities page.
+
+**Conclusion.** "Crash Game to Utilities" is action id `0x360`, implemented by
+`hookpro::Crash::listener` (`0x18018C450`) as a three-stage confirmation chain ending in
+`mov dword ptr [0], 0x43`. It installs no hook, reads no settings key, and modifies no
+game state; it is a diagnostic utility whose entire effect is the fault.
+
+**Open questions.**
+
+- UNVERIFIED: how an action id becomes a Utilities row label. `"UTILITY"` at `.rdata`
+  `0x180534616` is referenced only by `FUN_1800098F0`, which is not yet read; the row id ->
+  label binding for `0x360` therefore rests on the registration and on its neighbour, not on
+  a definition entry.
+- UNVERIFIED: which button the three confirmations render. `hackpro::extensions::showMessage`
+  is called with mode `2` and one of the `MESSAGE/UTILITY/CRASH/*` keys; the yes/no labels come
+  from the language table, which is not in this image.
+- UNVERIFIED: whether `0x43` is meaningful (a deliberate marker) or arbitrary filler written
+  through the null pointer.
