@@ -1165,3 +1165,44 @@ UNVERIFIED: the runtime draw order. The binding above is a reading of the two de
 the two wordings; a session that photographs the draw order with each tag on and off is what
 would confirm it. Nothing in the image contradicts the binding, and no alternative pairing
 makes both names true.
+
+## Evidence - the v6.x "mod"/"hack" wordings of the wave toggles (2026-10-28)
+
+The changelog names the same two toggles three times before v8: "Added No Wave Trail mod"
+(v6.2.0), "Added No Wave Pulse mod" (v6.2.0) and "Added No Wave Pulse hack" (v6.1.0). Both
+features are already mapped under their v8.0.0 wordings (tags 397 and 394), so the question is
+whether the older wordings describe a second mechanism. They do not.
+
+**Method.** For each tag, a whole-`.text` capstone pass lists every instruction with that
+immediate, and each site's call shape identifies its role.
+
+| Tag | Label | Store | Behaviour registration | Toggle row |
+| --- | --- | --- | --- | --- |
+| 397 (`0x18D`) | `HACK_NO_WAVE_TRAIL` | `0x180063B54 mov qword [rbp+0x768],0x18d` | `0x1800B17B3 mov edx,0x18d; mov rcx,rax; mov r8,rsi; call 0x18008F910` | `0x180120779 mov r8d,0x18d; call 0x180120A40` |
+| 394 (`0x18A`) | `HACK_NO_WAVE_PULSE` | `0x180063AF2 mov qword [rbp+0x740],0x18a` | `0x1800B173C mov edx,0x18a; … call 0x18008F910` | `0x180120768 mov r8d,0x18a; call 0x180120A40` |
+
+Three sites per tag and no fourth: the label map store in `FUN_180062940`, the one behaviour
+registration in the dispatcher `FUN_1800AFAE0`, and one UI row.
+
+The UI row is the same helper in both cases: `FUN_180120A40(page, parent, tag)` resolves the
+tag's own label with `FUN_18007CCF0(registry, &name, tag)`, passes it to `hackpro::define`,
+builds a `GJ_button_05.png` / `GJ_button_01.png` toggle with callback `FUN_180121160`, seeds its
+state from `FUN_18008F420(registry, tag)` (vtable `+0x3C0`) and stores the tag on the button
+(vtable `+0x40`) before adding it to the page (`FUN_1801ED080`). Both calls sit inside the page
+builder `FUN_18011FFE0` (`0x180120768`/`0x180120779`, within its `.pdata` extent
+`0x18011FFE0..0x1801207F0`), so the two toggles are adjacent rows on one page.
+
+**Conclusion.** Tags 397 and 394 each have exactly one behaviour registration and one toggle
+row; there is no second code path a v6.x "mod" could have used. The v6.1.0 / v6.2.0 wordings are
+therefore the same two features under older names, and the earlier rows are duplicates. The
+behaviour itself is documented elsewhere and is not restated here: No Wave Trail (397) is
+`FUN_1801721F0`, which hooks `HardStreak::updateStroke`
+([no-wave-trail-feature.md](no-wave-trail-feature.md)); No Wave Pulse (394) is
+`FUN_180172160`, which hooks `PlayerObject::update`
+([no-wave-pulse-feature.md](no-wave-pulse-feature.md)). This section only settles the identity of
+the wordings.
+
+**Open questions.**
+
+- UNVERIFIED: whether the v6.x builds shipped the same constants; only the v9.1.3 image is in
+  `samples/`, so the wording history is inferred from the changelog text, not from old binaries.
