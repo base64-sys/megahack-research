@@ -174,12 +174,49 @@ level cell, and the three node ids it touches (`level-name`, `level-place`,
 `UNIVERSAL/HACK_COMPACT_LISTS` is the only compact-list key in the settings tree, and the row
 "Added Compact Lists" is the only changelog wording about list layout.
 
-**Conclusion.** Tag 473 is Compact Lists. Tag 465 (`0x1D1`, `FUN_18018C040` on
-`GJListLayer::init` and `CustomListView::loadCell`) hooks the same area but only calls a virtual
-`+0x28` with a zero argument on `[this+0x198]`; it does not change any cell content, so it stays
-unattributed.
+**Conclusion.** Tag 473 is Compact Lists. Tag 465 hooks the same area but changes no cell
+content; it is the list-background toggle in the next section.
 
 UNVERIFIED: which virtual slots `+0xA0`, `+0xE0`, `+0x140` and `+0x28` are (read as setScale,
 setPositionX, setVisible and setAnchorPoint/setPosition respectively), what list type ids 5, 6
 and `0x10` mean in GD 2.2081, and whether the 25.0f offset is a width derived from the hidden
 `level-place` node.
+
+## Evidence - Transparent Lists is tag 465 and hides the list background (2026-10-28)
+
+The second list hook group in `_hook_sites.tsv` is registrar `0x18018C040`, callback
+`FUN_18018C040` (`0x18018C040`, 208 bytes, zero callers), which installs two hooks at order
+`0xFFFFFFE0` and removes them again on the disable path:
+
+| Target | Host RVA | Detour | Installer |
+| --- | --- | --- | --- |
+| `GJListLayer::init` | `0x27F8D0` | `FUN_18018C110` | `FUN_18018C1A0` |
+| `CustomListView::loadCell` | `0xAB610` | `FUN_18018C170` | `FUN_18018C2F0` |
+
+Both detours end in the same call, `(**(code **)(*(obj + 0x198) + 0x28))(obj + 0x198, 0)` -
+one virtual slot on the node the list layer keeps at `+0x198`, with a zero argument.
+`FUN_18018C110` runs the original `init` first and only touches the node when `init`
+returned true; `FUN_18018C170` resolves the owning list through `[cell+0x218]` and applies
+the same call to its `+0x198` node after calling the original loader. So the list's own
+background node is neutralised once at creation and again for every cell that loads.
+
+**Naming.** Three angles point at the v9.0.0 row "Added Transparent Lists":
+
+1. Tag adjacency inside one feature family: 463 (`0x1CF`, Custom Background master),
+   464 (`0x1D0`, its refresh listener) and 465 (`0x1D1`) are consecutive runtime tags
+   registered from the same region, and the row "Added Custom Background" is documented as
+   the successor to Transparent BG (`cosmetic-feature.md`, tag map above).
+2. Capability: this is the only code in the image that touches a list's own background
+   node, and the only changelog wording about list transparency is that row.
+3. Bounded negative: tag 473's cell detours (Compact Lists, mapped 2026-10-28) are the only
+   other list hooks, and they change label scale and position rather than a node at `+0x198`.
+
+The older combined row v6.1.0 "Added Transparent BG & List mods (by WEGFan)" names the same
+two mechanisms - the background half is tag 463 and the list half is tag 465 - so it is a
+predecessor wording of two already-mapped toggles.
+
+UNVERIFIED: which virtual slot `+0x28` is (read as a visibility or opacity setter on the
+`+0x198` node, host class layout absent), what the node at `[list+0x198]` is in GD 2.2081,
+and which settings key writes tag 465 (`_settings.tsv` has no accessor for it, so the value
+reaches the callback through the registration path only).
+
