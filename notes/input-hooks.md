@@ -82,3 +82,89 @@ intercept.
   feature hooks or incidental registrations; their callback bodies are not yet read.
 - UNVERIFIED: the exact behaviour of helper `FUN_180150B10` (keyboard dispatcher) and
   `FUN_180198EF0` (handleButton); only their call shape is recorded.
+
+## Evidence — the keybinding system is `core::Keybinds` (2026-10-28)
+
+**Question.** The v6.0.0 row "Added keybinding system" has no binding yet. Which class
+implements it, how is a binding captured, and where is it stored?
+
+**Method.** (1) `scripts/rtti_index.py --grep Keybinds` for the class and its base; (2) a
+resolve of the complete object locator to the vtable and its slots, then `.pdata` extents via
+`scripts/func_bounds.py`; (3) `scripts/build_callgraph.py` / `_callers.tsv` for the callers of
+the singleton accessor and of `forward`; (4) `recovered/functions/_xrefs.tsv` and a raw-byte
+scan for the settings paths, which are mostly SSO strings built with `movabs` and therefore
+absent from a de-duplicated string list.
+
+**Class identity.**
+
+| Field | Value |
+| --- | --- |
+| RTTI name | `core::Keybinds` (`.?AVKeybinds@core@@` at `0x1806E1990`, TD `0x1806E1980`, COL `0x18053EC00`, class-hierarchy descriptor `0x18053EC18`) |
+| Base | `hackpro::extensions::Delegate` (`_rtti_hierarchy.tsv`) |
+| Vtable | `0x18053EBD8` (first function `0x18003E340`) |
+| Singleton | object `0x180800C20`, accessor `0x18003D220` (magic static, `atexit` `0x18003D2F0`) |
+| Storage | `keybinds.json` (`0x53EC5C`), read by the vtable slot `0x18003FC70` with `basic_ifstream` |
+
+The mangled lambda names carry the two real member signatures even though the decompiler
+shows them as `undefined`: `void core::Keybinds::forward(NXObject*)` and
+`void (core::Keybinds::*)(hackpro::Tag, bool)` (`_rtti.tsv` `0x18053EA88`, `0x18053ED08`).
+
+**Vtable slots** (`.pdata`, `func_bounds.py`):
+
+| Slot | VA | Extent | What it reads / does |
+| --- | --- | --- | --- |
+| 0 | `0x18003E340` | `0x18003E340..0x18003EE59` | reads `KEYBINDS/DISABLE_IN_EDITOR` and `KEYBINDS/VERSION`; dispatches the `KEYBINDS/SET`, `/REMOVE` and `/VIEW` modes |
+| 1 | `0x18003F860` | no `.pdata` record | leaf virtual with no stack, so it has no unwind entry; the recovered body is a bare `ret` |
+| 2 | `0x18003F870` | `0x18003F870..0x18003FB43` | reads and writes the three mode flags `KEYBINDS/SET`, `KEYBINDS/VIEW`, `KEYBINDS/REMOVE` through `getConfigVar<bool>`/`setConfigVar<bool>` |
+| 3 | `0x18003FC70` | `0x18003FC70..0x18003FEE6` | reads `keybinds.json` through `basic_ifstream` |
+
+**Capture path — `forward` (`0x18003DD90..0x18003E1CB`).**
+
+1. `FUN_1800DC300(NXObject*)` extracts the key description; if its `+0x10` is null the call
+   returns (no key).
+2. If `KEYBINDS/SET` is true: fetch `KEYBINDS/SHORTCUT` as `std::vector<unsigned int>`; an
+   empty vector raises `MESSAGE/KEYBINDS/EMPTY` through `hackpro::extensions::showMessage`,
+   otherwise the vector is copied and handed to `FUN_18003D7B0`.
+3. Otherwise, if `KEYBINDS/REMOVE` is true: look the key up with `FUN_18007CB60`, erase the
+   entry (`FUN_1800282A0`) and consume the event (`FUN_1800DDB50(obj, 0x539)`); a miss raises
+   `MESSAGE/KEYBINDS/UNBINDABLE` through `showError`. `FUN_18003D7B0` raises the same message
+   when the key is already bound elsewhere.
+
+**Dispatch path.** `forward` is called by exactly three functions, `0x180022E90`,
+`0x180022F90`, `0x180023080`, and each has the same shape: look the key up with
+`FUN_18007CB60`, abort (`FUN_180009020`) when the key is not bound, take the singleton from
+`0x18003D220`, and only call `forward` when the gate `FUN_18003DC20` returns true.
+`0x18003DC20` is exactly `getConfigVar<bool>("KEYBINDS/SET") ||
+getConfigVar<bool>("KEYBINDS/REMOVE")` — the capture-mode predicate — so the three callers are
+the key-event entry points and `forward` runs only while the UI is waiting for a key. The
+singleton is also reached from the mod bootstrap `0x180002320` and from `0x180044090`, which is
+the only other caller of the bind routine `0x18003D7B0`.
+
+**Settings paths** (raw bytes in `.rdata`; the `SET`, `REMOVE` and `VIEW` suffixes are
+`movabs`-built):
+
+| Path | Where |
+| --- | --- |
+| `KEYBINDS/VERSION`, `KEYBINDS/DISABLE_IN_EDITOR` | `.rdata` `0x53EBB8`, `0x53EB9D`; read in `0x18003E340` |
+| `KEYBINDS/SHORTCUT` | `.rdata` `0x53EB74` |
+| `KEYBINDS/SET`, `KEYBINDS/REMOVE`, `KEYBINDS/VIEW` | SSO strings in `0x18003E340` and `0x18003DD90` |
+| `MESSAGE/KEYBINDS/EMPTY`, `MESSAGE/KEYBINDS/UNBINDABLE` | `.rdata` `0x53EB86`, `0x53EB58` |
+| `ERROR/HOME/LEGACY_SAVE_KEYBINDS` | `.rdata` `0x53FB6F` |
+
+**Conclusion.** The v6.0.0 "keybinding system" is the `core::Keybinds` singleton: a
+`hackpro::extensions::Delegate` with a four-slot vtable, a `keybinds.json` store, a capture
+mode (`KEYBINDS/SET` + `KEYBINDS/SHORTCUT`), a removal mode (`KEYBINDS/REMOVE`) and three
+dispatch entry points. Two independent angles agree on the identity: RTTI plus vtable extents
+from the image structures, and the settings paths plus control flow from the decompiled
+bodies.
+
+**Open questions.**
+
+- UNVERIFIED: the concrete type behind `NXObject*` and what `FUN_1800DC300` reads at `+0x10`.
+- UNVERIFIED: the storage format of `FUN_18007CB60` (the key -> tag map) and how
+  `hackpro::Tag` reaches a feature; the `_Binder` lambda `void (Keybinds::*)(Tag, bool)`
+  suggests a per-tag callback is registered with the extension host.
+- UNVERIFIED: whether the three dispatch functions are hooks or callbacks; none appears in
+  `_hook_sites.tsv`, and none has a `.pdata` neighbour named after a GD method.
+- `ERROR/HOME/LEGACY_SAVE_KEYBINDS` implies keybinds were once saved inside the main save;
+  the migration path was not read.
