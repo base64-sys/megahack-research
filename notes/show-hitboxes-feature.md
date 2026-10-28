@@ -557,3 +557,59 @@ not by name similarity.
 UNVERIFIED: whether the option rotates only the player box or every box that reaches this routine
 from the trail passes (the callers share it), and that `[obj+0x40]` is the object's rotated flag -
 closing that needs GD field semantics for the object.
+
+## Evidence - the hitbox cache slots, one writer and their readers (2026-10-28)
+
+**Question.** Which cached byte does each hitbox option own, and can the three unbound filter
+keys - `AXIS_ALIGNED_BOX`, `HIDE_USED`, `SECTION` (all default `True`) - be matched to the
+remaining tags 208 / 209 / 210 / 229 by the polarity of their consumers?
+
+**Method.** Capstone over the whole `.text` (slice `data[0x400:]` labelled from
+`0x180001000`), keeping only memory operands whose RIP-relative target lands in
+`0x1808195A0..0x1808195B0`; each write is then paired with the nearest preceding
+`mov edx, <imm32>` to name its tag. `notes/show-hitboxes-feature.md` already records the
+writer body; this adds the resolved addresses.
+
+**Evidence - one slot per tag.**
+
+| Tag | Slot | Writer site | Readers |
+| --- | --- | --- | --- |
+| 195 solids | `0x1808195A0` | `0x18020250E` | `0x180203182` |
+| 198 hazards | `0x1808195A1` | `0x180202521` | `0x18020315C` |
+| 201 specials | `0x1808195A2` | `0x180202534` | `0x18020316F` |
+| 204 passable | `0x1808195A3` | `0x180202547` | none found |
+| 207 rotation | `0x1808195A4` | `0x18020255A` | `0x180202D64` |
+| 208 | `0x1808195A5` | `0x18020256D` | `0x1802037B7` |
+| 210 | `0x1808195A6` | `0x180202580` | `0x180203ACB` |
+| 209 | `0x1808195A7` | `0x180202593` | `0x1802030E9` |
+| 211 fill | `0x1808195A8` | `0x1802025A6` | nine sites (`0x180202D89` ... `0x180203AF3`) |
+| 229 | `0x1808195B0` | `0x1802025D2` | `0x180202C01` (an `and r9b, [...]`, outside this scan's mnemonics) |
+
+Every store is a bare `mov [rip + disp], al`, so the cache holds the setting value, not its
+complement.
+
+**Evidence - the 210 branch direction** (`pe_disasm.py`, RVA = VA - `0x180000000`,
+file = RVA - `0xC00`):
+
+| Address | Bytes / effect |
+| --- | --- |
+| `0x180203AC6` | `test rax, rax` on `[obj + 0x2E0]`; `74 0d` `je 0x180203AD8` (no child -> draw) |
+| `0x180203ACB` | `cmp byte [0x1808195A6], 0`; `0f 84 ff 00 00 00` `je 0x180203BD7` (byte zero -> epilogue, no draw) |
+
+So for an object that has a child node, the ordinary box is drawn only when the cached tag
+210 byte is **non-zero**, and skipped when it is zero.
+
+**Conclusion.** Tag 210 cannot be `HIDE_USED` as a name-for-name match: that key ships
+defaulting to `True`, and a stored `True` produces a drawn box, so the name and the branch
+read in opposite directions. Either the key means "show the used object's own box", or 210
+belongs to a key this image cannot name. The same default-value argument cannot bind 208,
+209 or 229 either: 208 tests a player through vtable `+0x560`, 209 is gated on
+`[layer + 0x309C]` and `[[layer + 0x38A0] + 0x340]`, and 229 only masks a colour operand, so
+none of them evidences an alignment choice, a used-object filter or a section filter.
+
+UNVERIFIED: what `[obj + 0x2E0]`, `[obj + 0x475]`, `[layer + 0x309C]` and
+`[[layer + 0x38A0] + 0x340]` are in GD 2.2081 (the host image is not in `samples/`); whether
+the three filter keys were written by rows this build no longer ships; and why the passable
+slot `0x1808195A3` has no reader anywhere in `.text` (the passable filter may read tag 204
+directly rather than the cache). Closing any of these needs the host layout or a runtime
+capture of the cached bytes while each option is flipped.
