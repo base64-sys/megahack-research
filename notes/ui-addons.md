@@ -808,6 +808,27 @@ and sets bit `0x20` at `+0x16A`, then calls `FUN_18027D810(obj, 0, 0, 0, 0, 0, 0
 is consumed by an encoder/factory object together with a completion callback, not by a drawing
 call; "watermark" is therefore not supported by anything read so far.
 
+### The five screenshot changelog wordings (2026-10-28)
+
+The changelog names screenshots five times before the fix bullets: `Added Screenshotter`
+(v7.0), `Added Screenshot to clipboard setting` (v7.1, already `mapped` on the three-mode
+dispatcher), `Added Magic Screenshots` (v7.1.1), `Added Screenshots` (v8.0.0-alpha10b) and
+`Added Screenshotting` (v8.0.3-alpha1). Two angles say they are one feature:
+
+1. **Mechanism uniqueness.** The image contains exactly one screenshot path: action `0x361`
+   -> `FUN_180190C70` -> `FUN_18020DD60` (capture) with `FUN_18020DE40` (clipboard) and
+   `FUN_18020DF60` (PNG). There is exactly one screenshot settings key,
+   `SCREENSHOT/COMBO`, and the dispatcher reads exactly one config id. No second capture,
+   no second key, no resolution or UI-hiding variant exists in the file.
+2. **Changelog continuity.** No `Removed ...` bullet retires the feature, and later change
+   bullets keep using the newest wording (`Screenshotting performance improved`,
+   `Screenshots can now exclusively save to clipboard`), so the sequence is a rename chain of
+   a feature that is still shipped, not four separate additions.
+
+The four `cluster` rows therefore map to this mechanism. UNVERIFIED: whether "Magic" ever
+denoted a distinct behaviour (for example a capture with the interface hidden); if it did,
+that variant is not separable in v9.1.3, where one mode switch covers everything.
+
 ### The category table is an ordering, not a lookup
 
 `FUN_1800098F0` is called only from `FUN_1800090B0` and returns a bool: it compares two
