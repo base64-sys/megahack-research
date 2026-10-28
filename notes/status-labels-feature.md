@@ -230,3 +230,29 @@ type table has one `fps` record and the dispatch one `fps` branch).
   runtime reading of a label with each key toggled in turn.
 - UNVERIFIED: whether `FUN_180156880`'s first argument selects a player or a mode; only index
   `1` is used here.
+
+**Which tag is `MAX` (2026-10-28).** The two stored counts are distinguishable from the
+writer, not from the getters. `FUN_180156790` (the sampler, `.pdata` `0x180156790..0x18015687D`)
+ends by comparing the current sample against `[+0x30]` and storing it only when larger:
+
+```
+0x180156869  48 39 46 30      cmp  qword ptr [rsi + 0x30], rax
+0x18015686D  73 04            jae  0x180156873
+0x18015686F  48 89 46 30      mov  qword ptr [rsi + 0x30], rax
+```
+
+(`pe_disasm.py absolllute.hackmega_original.dll 0x180156840 --size 62`, file `0x155C40`; `rsi`
+is the record returned by `FUN_180156530`.) So `+0x30` is a running **maximum** of the sampled
+clicks-per-window value, and the getter `FUN_180156AF0` returns exactly that field
+(`return *(undefined8 *)(lVar1 + 0x30)`). The `cps` branch appends it under tag `0x2F9`
+(`0x18024E962` region), so:
+
+| Key | Tag | Field appended |
+| --- | --- | --- |
+| `STATUS/CPS/DROPDOWN/MAX` | `0x2F9` | `+0x30`, the running maximum written at `0x18015686F` |
+| `STATUS/CPS/DROPDOWN/TOTAL` | `0x2FA` | `+0x38`, by elimination (the remaining key and the remaining tag) |
+| `STATUS/CPS/DROPDOWN/UNITS` | `0x2F8` | the literal `" CPS"` (`.rdata` `0x1805B8D7D`) |
+
+UNVERIFIED: what writes `+0x38` and therefore whether `TOTAL` means all clicks or all clicks in
+the session window; no instruction in the image was found writing that field next to
+`FUN_180156530`, so it may be set at record creation.
