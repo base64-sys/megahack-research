@@ -58,8 +58,9 @@ The name-resolved rows sit in a table that also carries other known hook targets
 example `_ZN9LevelPage17updateDynamicPageEP11GJGameLevel`,
 `_ZN12CreatorLayer13onSecretVaultEPN7cocos2d8CCObjectE` and
 `_ZN17RewardUnlockLayer15showCloseButtonEv` — which is consistent with one hook-target
-name table rather than incidental strings. That is a lead, not proof that a hook is
-installed: this pass only establishes that the build can name the method.
+name table rather than incidental strings. Naming alone would be a lead, not proof; the
+registration sites traced below turn three of the six name-resolved rows into installed
+hooks.
 
 ## Findings
 
@@ -88,14 +89,52 @@ installed: this pass only establishes that the build can name the method.
    the two facts do not conflict.
 5. **Consequence for M5.** Thirteen of the fifteen input targets transfer by name, and six
    of those need no new static anchor. The remaining two are platform-appropriate gaps
-   rather than missing evidence. Re-application is mechanical once the Android hook
-   registration code is read; whether each hook is actually installed is **not** established
-   here.
+   rather than missing evidence. Three of the six name-resolved targets are now shown to be
+   installed hooks, not leftover labels; see below.
+
+## The name strings are hook targets, not labels
+
+**Method.** ARM64 disassembly with capstone, driven by the file offsets above:
+
+1. Locate `ADRP`+`ADD` pairs in `.text` (VA = file offset in this image, `.text` at
+   `0x431800`) whose sum lands on a target string.
+2. Resolve every `BL` through `.plt` (`.plt` at `0x921570`, 5,320 stubs) to the imported
+   symbol in `.rela.plt`.
+3. Follow the callee chain of the registration site until it reaches a Geode hook import.
+
+**Worked example — `SliderTouchLogic::ccTouchMoved` (`0x4C7F80`):**
+
+| Address | Instruction / effect |
+| --- | --- |
+| `0x4C7F80`+`0x4C7F84` | `ADRP`+`ADD` → `0x2080C8`, the mangled name; the copy writes 69 bytes and a NUL at `+0x45`, so the extent comes from the stores, not from guessing where the string ends |
+| `0x4C7FAC`+`0x4C7FB0` | `ADRP`+`ADD` → `0x1EDA3C`, `"libcocos2dcpp.so"` (16 bytes; built as a libc++ SSO string at `sp+8` with length byte `0x20`) |
+| `0x4C7FD0`–`0x4C7FDC` | `x0=mod`, `x1=name`, `x2=lib`; `BL 0x487CCC` — symbol resolver, returns the target in `x0` |
+| `0x4C7FE0`–`0x4C8000` | `x1=target`, `x2=0x4C8108` (`ADR`, the detour), `x3=0x213445` (`"SliderTouchLogic::ccTouchMoved"`), `w4=0xBD8`, `w5=1`; `BL 0x4C81D0` |
+| `0x4C8218` | `BL 0x921A50` → imported `geode::hook::createConvention(TulipConvention)` |
+| `0x4C8244` | `BL 0x4868FC` → `BL 0x48703C`; that helper calls imported `geode::Hook::create` at `0x4870C0` and `geode::Mod::claimHook` at `0x487124` |
+
+The same shape occurs twice more, with the same resolver and the same `0x4C81D0` helper:
+
+| Target | Registration site | Detour (`ADR`) | Display name | Resolver call |
+| --- | --- | --- | --- | --- |
+| `MenuGameLayer::ccTouchBegan` | `0x533730` | `0x5339D8` | `0x22665D` | `BL 0x487CCC` |
+| `LevelAreaLayer::onClickDoor` | `0x534460` | `0x534848` | `0x209FB1` | `BL 0x487CCC` |
+
+**Conclusion.** Three of the six name-only input targets are installed through the normal
+Geode path: the build resolves the mangled name from `libcocos2dcpp.so`, passes the demo
+detour and the demangled label to a helper that calls `createConvention`, `Hook::create` and
+`claimHook`. The name string is therefore the hook channel, not an unused label. The other
+three (`GJScaleControl::ccTouchMoved`, `EditorOptionsLayer::onButtonRows`,
+`EditorOptionsLayer::onButtonsPerRow`) have the same string shape but were not traced this
+pass. UNVERIFIED: their registration sites and detours.
 
 ## Open questions
 
-- UNVERIFIED: that each name string is consumed by an installed hook. Closing this needs
-  the Android-side registration code or a runtime trace, not another symbol scan.
+- UNVERIFIED: the three untraced name-resolved targets above; the next question is which
+  feature callback each detour implements, not whether the string is used.
+- The `0xBD8` argument at the SliderTouchLogic site is a handler-metadata value. Its meaning
+  (`priority`? `after`?) is not established; the Windows equivalent is the `-32` argument in
+  the `Hook` registration, but the units need not match.
 - UNVERIFIED: whether `SliderTouchLogic::ccTouchMoved` or `GJScaleControl::ccTouchMoved`
   carries Slider Bypass and Toolbox Button Bypass on Android; both names are present and
   the Windows split does not decide it.
