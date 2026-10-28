@@ -205,3 +205,10 @@ found in the interface code); which site populates dictionary groups 1-5; the se
 `[layer+0x3888]`, `[layer+0x3540]`; the identity of `0x18015A2F0` and `0x180158F50`; and
 whether the 17-entry shortcut table's duplicated `0x96` at index 10 is intentional or a
 typo in the shipped table.
+## The v6.2.0 wording is the same tag (2026-10-28)
+
+The changelog names Smart StartPos twice: v6.2.0 (Full) "Added Smart Start Pos" and
+v8.0.0-alpha5 "Added Smart StartPos". Tag 235 (`0x0EB`, `HACK_SMART_STARTPOS`) has
+exactly one `mov edx,0xeb` site in `.text`, the registration `0x1800B2DB4` inside
+`FUN_1800AFAE0`, whether the name is written with or without a space - so the two rows
+are spellings of one feature.

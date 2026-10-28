@@ -229,3 +229,10 @@ UNVERIFIED: the JSON keys that write tags 77/78/84/86; the exact meaning of
 of `[layer+0x3788]`; and the direction of the limit predicates — the code skips the tint block
 when the accumulated flag is 1, but "within limit" versus "limit exceeded" is not settled by
 the instructions alone.
+## The v6.2.0 wording is the same tag (2026-10-28)
+
+The changelog names Noclip Accuracy twice: v6.2.0 (Full) "Added NoClip Accuracy" and
+v8.0.0-alpha7 "Added Noclip Accuracy". Tag 497 (`0x1F1`) has exactly one
+`mov edx,0x1f1` site in `.text`, `0x180152046`, and the label text `Noclip Accuracy`
+appears once in the image; the difference is capitalisation only, so no second
+mechanism exists.

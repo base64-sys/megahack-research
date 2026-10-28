@@ -127,3 +127,10 @@ practice indicator they depend on is `PlayLayer+0x31F0`.
   read sites above exist, so the join rests on the double type plus the 35.0/100.0 defaults.
 - UNVERIFIED: whether `[layer+0x3188]` is the startpos object pointer rather than a flag; the
   test is `!= 0` on a qword.
+## The v6.3.0 wording is the same tag (2026-10-28)
+
+The changelog names Auto Deafen twice: v6.3.0 (Full) "Added Auto-Deafen" and
+v8.0.0-alpha9 "Added Auto Deafen". Tag 279 (`0x117`, `HACK_AUTO_DEAFEN`) has exactly
+one `mov edx,0x117` site in `.text` - the registration at `0x1800B1DC8` inside
+`FUN_1800AFAE0` (capstone scan of the whole section, `0x1000`-`0x533FE6`) - so a second
+Auto Deafen mechanism does not exist and the hyphen is a respelling, not a new feature.
