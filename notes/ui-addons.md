@@ -232,9 +232,10 @@ constructs a 0x240-byte dialog with the action's own vtable and callbacks, keepi
 at `+0x228`. The per-feature gating is done by the callback, which installs the detour only
 on the `*param_2 == 1` path — so there is one wrapper implementation and four settings.
 
-`HACK_CONFIRM_NORMAL` has no changelog row of its own, and `settings-contents.md` only
-records `LEVEL/HACK_CONFIRM_FULL_RESET` and `LEVEL/HACK_CONFIRM_NORMAL` among the user's
-202 keys, so `HACK_CONFIRM_PRACTICE`/`_RESET` keys are **UNVERIFIED**.
+`HACK_CONFIRM_NORMAL`'s changelog row is the v8.0.0-alpha5 "Added Confirm Exit" (see below),
+and `settings-contents.md` only records `LEVEL/HACK_CONFIRM_FULL_RESET` and
+`LEVEL/HACK_CONFIRM_NORMAL` among the user's 202 keys, so the
+`HACK_CONFIRM_PRACTICE`/`_RESET` keys are **UNVERIFIED**.
 
 ### Tag map
 
@@ -273,6 +274,33 @@ vtable slot: the qword before it is `0x180576920`, not a COL).
 
 UNVERIFIED: the dialog class behind `0x1801E7F50` and the descriptor at `0x180576388`;
 which JSON keys bind to three of the four confirm tags.
+
+### Which changelog row is the fourth wrapper (2026-10-28)
+
+Each wrapper owns exactly one dialog string, and the four strings name their own action, so the
+rows line up one-to-one:
+
+| Detour | Message VA | Dialog text | Changelog row | Tag |
+| --- | --- | --- | --- | --- |
+| `FUN_180177350` | `0x180576282` | "Are you sure you want to enter **practice mode**?" | v8.0.0-alpha12 Added Confirm Practice | 311 |
+| `FUN_180177060` | `0x18057620A` | "Are you sure you want to **exit practice mode** and reset the level?" | v8.0.0-alpha5 Added Confirm Exit | 312 |
+| `FUN_180177520` | `0x1805762DC` | "Are you sure you want to **reset** the level?" | v8.0.0-alpha12 Added Confirm Reset | 313 |
+| `FUN_1801776F0` | `0x18057632E` | "Are you sure you want to **fully reset** the level?" | v8.0.0-alpha12 Added Confirm Full-Reset | 314 |
+
+**Method.** `recovered/functions/_xrefs.tsv` was grepped for `Are you sure`. The five hits are
+these four dialogs plus the cheat-safety prompt at `0x18057AF5A` (`FUN_18019A5C0`), which is a
+different feature. Each string is owned by exactly one function, and that function is the detour
+installed by the corresponding tag's callback, so the dialog text and the hook are the same
+object seen from two angles.
+
+**Conclusion.** The v8.0.0-alpha5 "Added Confirm Exit" row is tag 312 (`HACK_CONFIRM_NORMAL`):
+it is the only wrapper whose dialog is about exiting, and with it the four wrappers map onto
+the four `Confirm …` changelog rows. The v9.0.0 row "Added Confirm Exit (shortcut for the
+in-game setting)" is a different mechanism - a shortcut for GD's own setting, not a dialog
+wrapper - and stays `cluster`: no second exit-confirmation path exists in the image.
+
+UNVERIFIED: that GD 2.2081 has an in-game confirm-exit setting and how the v9.0.0 shortcut
+drives it; the host image is not in `samples/`.
 
 ## Evidence — Text Length Bypass (2026-10-25)
 
