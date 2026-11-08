@@ -29,7 +29,6 @@ samples/
 
 # --- Runtime data and scratch databases --------------------------------------
 # best_runs.bin and friends are player data, not source.
-runtime-traces/
 *.bin
 *.tmp
 *.bak
@@ -77,24 +76,16 @@ venv/
 .mypy_cache/
 .ruff_cache/
 
-# --- Node ---------------------------------------------------------------------
-# Installed dependencies for the opencode plugin manifest. package.json and the
-# lockfile are tracked; the installed tree never is.
-node_modules/
-
-# --- Trace harness build tree --------------------------------------------------
-# Out-of-source build output for harness/CMakeLists.txt. Regenerate; never commit.
-/harness/build/
-/harness/observer/build/
-/reconstruction/geode/build/
-# Preset build tree for reconstruction/CMakePresets.json (`cmake --preset mingw`).
-/reconstruction/build/
-
 # --- Long-run wrapper scratch --------------------------------------------------
 .oc/
 .opencode/
-# Local emergency-stop helper for the agent loop; not part of the project.
-/LoopEmergencyStop.ps1
+
+# --- Node.js (npm packages, lockfiles, build output) --------------------------
+node_modules/
+package-lock.json
+
+# --- Local C++ build output ----------------------------------------------------
+reconstruction/build/
 
 # --- Watchdog runtime state ----------------------------------------------------
 # Generated worker, pid file and log. The script that writes them is tracked.

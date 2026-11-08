@@ -27,34 +27,47 @@ void vlogImpl(int severity, Mod* mod, const char** format, void* args);
 
 } // namespace geode
 
+// Forward declarations for CoreDirector and early-load path
+namespace hackpro {
+
+class CoreDirector {
+public:
+    static CoreDirector* instance();
+    void initialize();
+};
+
+namespace detail {
+
+// Function object vtable for early-load callback (PTR_FUN_180542488 at 0x180542488)
+struct EarlyLoadVTable {
+    void (*dtor)(void*);
+    void (*invoke)(void*, CoreDirector*);
+    void (*cleanup)(void*);
+};
+
+extern const EarlyLoadVTable g_earlyLoadVTable;
+
+// Function object for early-load callback (matches binary layout at 0x180801708)
+struct EarlyLoadCallback {
+    const EarlyLoadVTable* vtable;
+    CoreDirector* director;
+};
+
+extern EarlyLoadCallback g_earlyLoadCallback;
+
+// Initialize early-load callback (FUN_1800fdce0 at 0x1800FDCE0)
+void initializeEarlyLoadCallback(EarlyLoadCallback* callback);
+
+} // namespace detail
+
+} // namespace hackpro
+
 extern "C" {
+
 HACKPRO_API void geodeImplicitEntry();
+
 }
 
 namespace hackpro {
-
 HACKPRO_API geode::Mod* getMod();
-
-// Early-load path (see notes/entry-path.md). These are original-work
-// reconstructions of the named binary functions, not verbatim decompiler output.
-struct CoreDirector {
-    bool loaded = false;          // binary field +0x381
-    void* levelHandle = nullptr;  // binary field +0x390
-};
-
-HACKPRO_API CoreDirector& coreDirector();
-HACKPRO_API bool gameReady();
-HACKPRO_API void setGameReady(bool ready);
-
-HACKPRO_API void registerTabs();     // FUN_180002320
-HACKPRO_API void realiseLoad(CoreDirector& director); // FUN_180002620
-HACKPRO_API void loadOnce(CoreDirector& director);    // FUN_180006070
-HACKPRO_API void onReady(CoreDirector& director);     // FUN_180002240
-HACKPRO_API void setup();            // FUN_180072AA0 driver
-HACKPRO_API void flushPendingLoads();
-HACKPRO_API int tabRegistrationCount();
-HACKPRO_API bool asyncTaskRan();
-HACKPRO_API bool hasPendingLoad();
-HACKPRO_API void resetEarlyLoadState();
-
-} // namespace hackpro
+}
