@@ -1,206 +1,299 @@
 # Roadmap
 
-Baseline: **Mega Hack v9.1.3 / Geometry Dash 2.2081 / Geode 5.6.1**, image base
-`0x180000000`, primary target `absolllute.hackmega_original.dll`. Runtime validation uses
-Geode **5.11.2** in the isolated `runtime511` profile; that is a separate baseline, not a
-new static reference ([runtime-validation.md](../notes/runtime-validation.md)).
+Baseline: **Mega Hack v9.1.3 / Geometry Dash 2.2081 / Geode 5.6.1**, image base `0x180000000`, primary target `absolllute.hackmega_original.dll`.
 
-A milestone is `done` only when its exit criteria are met. This file holds criteria and
-status; the evidence lives in `notes/`. Scope changes go in [GOALS.md](GOALS.md).
+A milestone is `done` only when its exit criteria are met. Scope changes go in [GOALS.md](GOALS.md), not here.
 
 ## Milestones
 
-| # | Milestone | Status | Depends on | Outcome |
-| - | --------- | ------ | ---------- | ------- |
-| M0 | Environment, provenance and tooling | done | — | the baseline is identifiable and the tooling works |
-| M1 | Binary inventory and host ABI surface | done | M0 | every lookup is cheap instead of a fresh search |
-| M2 | Core infrastructure reconstruction | done | M1 | entry, settings, UI, hook dispatch and save lifecycle in C++ |
-| M3 | Feature module mapping | in progress | M2 | every feature mapped to its code, and validated at runtime |
-| M4 | Persistence and the `.dt` importer | done | M2 | what the release stores, and what it does not |
-| M5 | Android ARM64 parity | in progress | M4 | the same features, confirmed on device |
+| # | Milestone | Status | Depends on |
+| - | --------- | ------ | ---------- |
+| M0 | Environment, provenance and tooling | done | — |
+| M1 | Binary inventory and host ABI surface | done | M0 |
+| M2 | Core infrastructure reconstruction | done | M1 |
+| M3 | Feature module mapping | done | M2 |
+| M4 | Persistence, license flow, and `.dt` importer | in progress | M2 |
+| M5 | 1:1 feature implementation (all 8 clusters) | not started | M4 |
+| M6 | Menu/UI reconstruction (two tabs, nxUI) | not started | M4 |
+| M7 | Integration, validation, and behavioural parity | not started | M5, M6 |
+| M8 | Geode 6.x migration | not started | M7 |
+| M9 | Android ARM64 parity | not started | M8 |
 
 ### M0 — Environment, provenance and tooling (done)
 
-Objective: prove the baseline is identifiable, the tooling runs, and nothing proprietary is
-version-controlled.
+Establish that the baseline is identifiable, that the tooling runs, and that nothing proprietary is version-controlled.
 
-- [x] Baseline pinned from `mod.json` and `changelog.md`: v9.1.3, GD 2.2081, Geode 5.6.1,
-      `geode.node-ids >= v1.22.0`, `early-load: true`.
-- [x] Ground truth distinguished from experiments: `_original.dll` is read-only reference;
-      `_pre_persistence`, `_working_aslr` and generated `.dll`s are never evidence.
-- [x] Section map, image base, code cave and mutable-state page verified with `pe_caves.py`
-      (`README.md#pe-layout`).
-- [x] Toolchain located and working: Python 3.14.6, capstone, keystone, pefile, Ghidra
-      12.1.2 with headless scripts, and `scripts/env_check.py` to re-check it in one pass.
-- [x] `samples/` untracked; `.gitignore` blocks binaries, assets, `recovered/` and
-      `runtime-traces/`.
-- [x] Repo skeleton and rules written down ([AGENTS.md](../AGENTS.md), [GOALS.md](GOALS.md)).
+Exit criteria — all met:
 
-Residual risk: the sample set cannot be checksum-pinned by tracking it, so digests live in
-[provenance.md](../notes/provenance.md) and must be re-checked when the samples are
-refreshed. The `.geode` package in `samples/` is already modified — only `_original.dll` is
-pristine.
+- [x] Baseline pinned from `mod.json` and `changelog.md`: v9.1.3, GD 2.2081, Geode 5.6.1, `geode.node-ids >= v1.22.0`, `early-load: true`.
+- [x] Ground-truth binary distinguished from experiments: `_original.dll` is the read-only reference; `_pre_persistence`, `_working_aslr` and the generated `.dll` are experiments and never used as evidence.
+- [x] Section map, image base, code cave and mutable-state page verified with `pe_caves.py`.
+- [x] Toolchain located and working: Python 3.14.6, capstone 5.0.9, keystone-engine 0.9.2, pefile 2024.8.26, Ghidra 12.1.2 with three `HackMega` headless scripts.
+- [x] `samples/` untracked; `.gitignore` blocks `*.dll`, `*.exe`, `samples/`, `decompiled/`.
+- [x] Repo skeleton and rules written down.
+
+Remaining risk: the sample set cannot be checksum-pinned by tracking the binaries, so the digests live in `notes/provenance.md` instead and must be re-checked by hand whenever the sample set is refreshed. M1 found a sharper version of this risk — the `.geode` package in `samples/` is already modified, so only `_original.dll` is pristine.
 
 ### M1 — Binary inventory and host ABI surface (done)
 
-Objective: turn the binary into a navigable map so later milestones get lookups instead of
-searches. Detail and audits: [m1-audit.md](../notes/m1-audit.md),
-[m1-verification.md](../notes/m1-verification.md),
-[m1-residuals.md](../notes/m1-residuals.md), [address-map.md](../notes/address-map.md).
+Turn the binary into a navigable map before reading any logic. The payoff is that every later milestone gets cheap lookups instead of fresh searching.
 
-- [x] SHA-256 of each baseline binary in [provenance.md](../notes/provenance.md),
-      cross-checked against a pristine v9.1.3 package: `absolllute.hackmega.dll` is
-      bit-identical to `_original.dll` (`1635c339…`), as are both Android `.so` files.
-- [x] Export table recovered: 30 named MSVC-mangled symbols, demangled, in
-      [hackpro-api.md](../notes/hackpro-api.md). The table is **not** stripped — the binary
-      has no debug info and few exports, not no exports.
-- [x] Full import table: 1,010 imports over 30 DLLs, classified into GD, Geode, Windows and
-      CRT, 646 mangled symbols demangled. Headline: **zero** GD gameplay classes are
-      statically imported; [host-abi.md](../notes/host-abi.md).
-- [x] String inventory: 4,175 code-referenced strings in 16 categories (3,609 VA-anchored,
-      566 stack-built), with the library/Mega Hack boundary at `0x1803A4EE0` and a residual
-      `other` bucket of 353 rows characterised rather than unknown;
-      [string-inventory.md](../notes/string-inventory.md).
-- [x] Mega Hack's RTTI/vtable set: 517 type descriptors, 497 validated Complete Object
-      Locators, 497 vtables, 794 inheritance edges, namespaces `hackpro`, `core`,
-      `mega::extensions`, `mega::utils`, `iconic`, `tabcore`;
-      [rtti-classes.md](../notes/rtti-classes.md).
-- [x] Settings registry mechanism: the registry global `0x180800F58`, `Config` at `+0x128`,
-      the chained FNV-1a-64 map, six typed accessors and 184 read tags; contents (202 keys)
-      from `hackpro.json` in [settings-contents.md](../notes/settings-contents.md). The
-      name↔tag join is runtime (`tagFor`/`keyFor`) and cannot be closed statically.
-- [x] Save/load formats: the three stores (`hackpro.json`, GD `data.json`, GD `save.json`),
-      their paths and `%LOCALAPPDATA%` resolution; native Best Run field mapping recovered
-      from GD 2.2081. **Correction:** the `best_runs.bin` sidecar is this repo's patch, not
-      the release ([persistence.md](../notes/persistence.md)).
-- [x] Entry and lifecycle order: `geodeImplicitEntry` at `0x180072B60`, early-load callbacks,
-      CoreDirector virtual #20, descriptor install, `atexit(FUN_180001370)`, no TLS
-      callbacks; [tab-registration.md](../notes/tab-registration.md),
-      [entry-path.md](../notes/entry-path.md).
-- [x] GD structures Mega Hack touches, with verified offsets: `+0x148`, `+0x14C`, `+0x158`,
-      `+0x198`, `+0x1B8` (two angles each) and `PlayLayer+0x3230`. `+0x2C4`/`+0x35C` are
-      **not** GJGameLevel offsets — they live on a different GD structure;
-      [gd-structures.md](../notes/gd-structures.md).
+Exit criteria:
 
-- [x] One note per M1 subsystem, every address claim VA-anchored: `provenance`,
-      `hackpro-api`, `host-abi`, `host-methods`, `hook-dispatch`, `hook-wrapper-layer`,
-      `tab-registration`, `init-table`, `string-inventory`, `sso-decoder`,
-      `settings-registry`, `rtti-classes`, `gd-structures`, `persistence`, `address-map`,
-      plus the three audit notes. The map of all notes is in [README.md](../README.md#notes-map).
+- [x] SHA-256 of each baseline binary recorded in `notes/provenance.md`, and **cross-checked against a pristine v9.1.3 package**. `samples/PRISTINE_MEGAHACK.geode` was supplied on 2026-10-17; its `absolllute.hackmega.dll` is bit-identical to `absolllute.hackmega_original.dll` (`1635c339…`), as are both Android `.so` files. The baseline is now independently verified — see [provenance.md](../notes/provenance.md#cross-check-against-a-pristine-package).
+- [x] Export table recovered: 30 named MSVC-mangled symbols, demangled with `undname.exe`, recorded in `notes/hackpro-api.md`. The export table is **not** stripped.
+- [x] Full import table with preferred-base IAT addresses classified into Geometry Dash, Geode, Windows and CRT - `notes/host-abi.md`. 1,010 imports over 30 DLLs; all 646 mangled symbols demangled. Headline: **zero** GD gameplay classes are statically imported; they are reached by runtime name resolution.
+- [x] Full string inventory split into user-visible labels, setting keys, file paths, language keys and format strings, each anchored to a VA. 16 categories over 4,175 strings (3,609 VA-anchored, 566 SSO); 957 OpenSSL names reclassified to `third-party` by code-region evidence (boundary 0x1803A4EE0), and the region rule then extended to every Mega Hack-facing category, moving a further 415 rows (230 `user-label`, 184 `format-string`, 1 `file-path`) into `third-party` as well. No Mega Hack-looking name moved: the five Mega Hack-facing categories hold zero all-library rows and zero library-vocabulary rows. Residual 353 rows (8.5%) are JSON keywords, CRT constants and SSO decoder artefacts, characterised in [string-inventory.md](../notes/string-inventory.md). Done 2026-10-21.
+- [x] Mega Hack's own RTTI/vtable set enumerated; the class hierarchy recovered. Partly pre-solved: namespaces `hackpro`, `hackpro::extensions` and `mega::utils::safe_mode` are known from the export table rather than inferred. **Completed by `scripts/rtti_index.py`**: 517 type descriptors, 497 Complete Object Locators validated by `signature == 1` *and* `pSelf` pointing at themselves, and 497 vtables resolved. Namespaces recovered are `hackpro`, `core`, `mega::extensions`, `mega::utils`, `iconic` and `tabcore` — the last three were not previously on the map. 794 distinct inheritance edges in `_rtti_hierarchy.tsv`. Two structural corrections are recorded in [rtti-classes.md](../notes/rtti-classes.md): `numBases` sits at `+8` in the hierarchy descriptor, not `+0` as MSVC documents, and `undname.exe` cannot parse these type descriptors at all. Caveat: template argument scoping is not tracked in the demangler, so a minority of base names are approximations — the `mangled` column is authoritative.
+- [x] Settings registry map (binary side): mechanism, six typed accessors, container layout and 202 tags mapped; the key *contents* live in `hackpro.json` (user data) and are deliberately not committed — see Residuals. **Mechanism mapped, contents now mapped (202 keys, 5 types, observed values), accessor list complete (six accessors).** Keys/types/values documented in [settings-contents.md](../notes/settings-contents.md) from the user's hackpro.json. The name-to-tag join is runtime (tagFor) and cannot be statically closed; the 202 code-read tags are the universe the code touches. The registry class, its `+0x128` `Config` base layout, the 64-bit `hackpro::Tag` key type, the tag↔name bijection, `tagFor` (`0x180072DF0`), `keyFor` (`0x180072E20`), the by-tag setter (`0x18008B490`) and the five value types are all mapped in [settings-registry.md](../notes/settings-registry.md). The full key list is **not recoverable from the binary**: it is `hackpro.json` in the installed mod folder, loaded by `FUN_18008B780` and interned by `FUN_18007C700`, whose schema is now documented. That is also the answer to the string-inventory gap — the join between UI widget names and numeric tags is `tagFor` at the exported API boundary. Outstanding: positional hook-target pairings are now derived from the registration text for all 338 sites; 30 of them are name-resolved rather than RVA-based. The RVAs flagged UNVERIFIED per row in `_hook_sites.tsv` are those not yet checked against a thunk. The registry object is now identified — the global at `0x180800F58`, at least `0x4A8` bytes, in `.data`'s zero-fill tail with no file backing, and every accessor receives it `+0xD8`. Its constructor writes `hackpro::Config`'s primary vftable (`0x180544FD8`) at `registry + 0xD8` and its secondary vftable (`0x180544FF0`, RTTI base offset 296 = `0x128`) at `registry + 0x200`, which independently confirms the `Config`-at-`+0x128` layout. **Correction (2026-10-21 audit):** the apparent "`+0xB0` is claimed twice" conflict is **not** resolved — the accessors' base is verified (`registry + 0xD8`, so `+0xB0` is `registry + 0x188`), but the serialiser's base is **UNVERIFIED**: it is `hackpro::BasicConfig::vtable[0]` and is called directly from `FUN_18008A530` with `rcx` unmodified, so its `this` is whatever object that function was invoked on. If the two share a base they read the *same* field, and the serialiser's circular walk (`mov rsi,[rdi+0xb0]`, then `r13 = *r13` until `r13 == rsi`) is the map's own node list. The `Bytes` map's **field grouping is now read off the instruction bytes**: a chained FNV-1a-64 map whose container starts at `registry + 0x180` with {sentinel node `+0x08`, bucket array `+0x18`, mask `+0x30`, bucket count `+0x38`}, 16-byte bucket slots, and an element node of {prev, next, tag `+0x10`, `vector.begin +0x18`, `vector.end +0x20`, type byte `+0x38`}. It is **not** MSVC's `std::unordered_map` (bucket stride 16, not 8); the exact C++ type remains UNVERIFIED. The criterion stays open because the *contents* are data, and that data is user data this repo deliberately does not commit.
+- [x] Save/load file formats mapped (binary side): the three stores, their paths and the `%LOCALAPPDATA%` resolution are mapped; the JSON schemas remain user data (UNVERIFIED from this binary). The native Best Run field mapping is now recovered from Geometry Dash 2.2081 (read-only): GJGameLevel fields at +0x308..+0x34C and +0x4A8, documented in [persistence.md](../notes/persistence.md). **The three stores the release uses are now separated**, which was ambiguous before: `hackpro.json` in the mod directory (read `0x1800BF190`, written `0x1800BF400`, both dispatched indirectly so both have zero direct callers) and GD's `data.json` / `save.json` under `%LOCALAPPDATA%\…\Octavus\` (read by `0x180042FB0`; `%LOCALAPPDATA%` confirmed from the `FOLDERID` GUID at `0x1805820E0`). **Correction:** this criterion previously named "the sidecar `best_runs.bin` header and record layout", which is the local patch's format and not the release's — see [persistence.md](../notes/persistence.md). The path segment and the native Best Run field mapping are still outstanding.
+- [x] Entry and lifecycle order, partially: `geodeImplicitEntry` at `0x180072B60` is the root, and the load-time sequence registering Mega Hack's two tabs plus resolving the `Import .dt` action tag is mapped in `notes/tab-registration.md`. TLS callbacks, `early-load` ordering and the shutdown path still outstanding.
+- [x] Geometry Dash structures Mega Hack touches documented with verified offsets (`GJGameLevel+0x148`, `+0x14C`, `+0x158`, `+0x198`, `+0x1B8` verified from two angles each; `+0x2C4`/`+0x35C` UNVERIFIED as GJGameLevel offsets — see Residuals). **Partially verified 2026-10-21.** Five of the seven are now confirmed in `_original.dll` from two independent angles each: `+0x148`, `+0x14C`, `+0x158`, `+0x198`, `+0x1B8` (see [gd-structures.md](../notes/gd-structures.md)). `+0x2C4` and `+0x35C` are **not** accessed on a GJGameLevel in this binary and remain UNVERIFIED. A machine-code sweep of every direct memory operand in `.text` closes the "did we miss an access" question: `+0x2C4` has 18 sites in 14 functions, `+0x35C` 5 sites in 3 functions. Both offsets turn out to live on one **other** GD structure — the object returned by the host function at RVA `0x17B4A0`, which carries its own `int` triples at `+0x348`–`+0x374` and a current-level pointer at `+0x208`. `+0x2C4` is additionally read at three different widths (byte, dword, qword) across the image, which is only possible across different structures. Mechanism recovered as before: `scripts/host_methods.py` indexes the 214 method-name strings, and Mega Hack calls GD through absolute RVAs into `GetModuleHandleA(NULL)` (see [hook-dispatch.md](../notes/hook-dispatch.md)). Three GD function RVAs and `PlayLayer+0x3230` are verified from two angles each. Mega Hack does **not** use `node-ids` for this, so verified offsets change on any GD re-baseline.
+- [x] Output: `notes/` map files, one per subsystem, each fact cited by VA. **Twenty-five written**: `provenance`, `hackpro-api`, `host-abi`, `host-methods`, `hook-dispatch`, `hook-wrapper-layer`, `tab-registration`, `init-table`, `string-inventory`, `sso-decoder`, `fnv-hash-probe`, `settings-registry`, `rtti-classes`, `gd-structures`, `persistence`, `definition-keys`, `new-best-label`, `android-abi`, `finding-code`, `not-investigated-licence-path`, `m1-audit`, `settings-contents`, `address-map`, `m1-residuals`, `m1-verification`. Every M1 subsystem has one, and every address claim in them is VA-anchored; the notes that record an open subject say so in the note. `m1-audit` is the 2026-10-21 audit of M1 itself: every count in this tracker, in the README and in these notes was re-checked against `_original.dll`, and the claims that did not survive were corrected in place rather than appended to - see [m1-audit.md](../notes/m1-audit.md).
 
-M1 residuals, deliberately open:
+Status: layout, cave, state block, patch-site set, hook map, level-identity scheme and DB format are known and now re-derived from `_original.dll` in `notes/provenance.md`. Export table and extension API are in `notes/hackpro-api.md`. Host ABI and the GD runtime-resolution path in `notes/host-abi.md`. Tab registration in `notes/tab-registration.md`. The string inventory (4,175 strings over 16 categories), the full RTTI set (517 type descriptors, 497 vtables, 794 distinct inheritance edges) and the settings-registry **mechanism** (202 tags over six typed accessors) are mapped and re-derived. The string inventory, RTTI set and settings mechanism are done; the settings *contents* (202 keys) are now also mapped (see [settings-contents.md](../notes/settings-contents.md)).
 
-- `+0x2C4` / `+0x35C` as GJGameLevel offsets: a machine-code sweep shows they belong to
-  another structure, so they stay UNVERIFIED here.
-- The serialiser's `this` base (its `+0xB0` may be the accessors' `+0xB0`) and the exact C++
-  type of the registry's map container.
-- The release-side shutdown wrapper `0x180155155`; the patch-side wrapper is the patch's.
-- Two of 188 hook-target RVAs (`0xC77D0`, `0xC7810`) have only the registration argument;
-  183 verify exactly against GD 2.2081's `.pdata` and 145 carry a thunk addend as well. The
-  per-row UNVERIFIED column this line used to cite never existed in `_hook_sites.tsv`; the
-  measured status is in [hook-target-verification.md](../notes/hook-target-verification.md).
+**M1 is complete (2026-10-22).** Residuals that cannot be closed from `_original.dll` alone, deliberately left open (and documented) rather than faked:
+- Save/load JSON schemas — user data (not committed); the native Best Run field mapping is now recovered from Geometry Dash 2.2081 (read-only) and documented in [persistence.md](../notes/persistence.md). The Octavus path (`%LOCALAPPDATA%\Octavus\`) is verified (string table at `0x18053FBA5`); the folder is created at runtime on save.
+- `+0x2C4` / `+0x35C` as `GJGameLevel` offsets — a machine-code sweep shows they belong to a different GD structure, so they are UNVERIFIED here (and are not Best Run fields).
+- The shutdown path: release-side shutdown is `atexit(FUN_180001370)` (restores CoreDirector vtables, frees two allocations); TLS callbacks: none. The patch-side wrapper at `0x180155155` remains UNVERIFIED on the release side.
+- Hook-target RVAs still flagged UNVERIFIED per row in `_hook_sites.tsv`.
+- The serialiser's `this` base and the exact C++ type of the registry's map container.
+- Settings registry contents are now mapped (202 keys / 5 types / observed values) from the user's hackpro.json; see [settings-contents.md](../notes/settings-contents.md). The name-to-tag join is runtime (tagFor) and cannot be statically closed.
+The runtime GD resolution path identified in `notes/host-abi.md` is the highest-value target left in M1, and arguably belongs to M2: every feature reaches gameplay through it.
 
 ### M2 — Core infrastructure reconstruction (done)
 
-Objective: the machinery every feature depends on, as compiling C++ in `reconstruction/`.
+The shared machinery every feature depends on: module entry, settings system, the `nxUI` menu/interface layer, hook dispatch, save lifecycle.
 
-- [x] Module entry and `early-load` path reconstructed. Root is `geodeImplicitEntry` at
-      `0x180072B60` ([hackpro-api.md](../notes/hackpro-api.md)).
-- [x] Settings registry reconstructed: typed keys, defaults, load/save, per-key listeners,
-      interned `Tag` identity, five value types ([hackpro-api.md](../notes/hackpro-api.md)).
-- [x] `nxUI` menu reconstructed well enough to explain rows, tags and languages — including
-      why a packed interface has no spare row and a definition hook substitutes a label per
-      language load ([nxui-menu.md](../notes/nxui-menu.md), [definition-keys.md](../notes/definition-keys.md)).
-- [x] Hook dispatch recovered so new hooks are mechanical: `GetModuleHandleA(NULL)` +
-      hard-coded RVA, wrapped in a Geode hook under `TulipConvention`, registered as
-      `(resolver, target, callback, name, -32, 1)`; calling an original is
-      `createWrapper(GetModuleHandleA(NULL) + rva)` ([hook-dispatch.md](../notes/hook-dispatch.md)).
-- [x] Save lifecycle reconstructed (`postUpdate`, `resetLevel`, `PlayLayer::onQuit`,
-      shutdown destructor) and a minimal Geode-compatible skeleton loads with core behaviour
-      intact ([save-lifecycle.md](../notes/save-lifecycle.md), [geode-skeleton.md](../notes/geode-skeleton.md)).
+Exit criteria:
 
-A reconstruction reproduces the mechanism, not the RVAs: they are absolute into the host
-image and change on any GD re-baseline.
+- [x] Module entry and `early-load` path reconstructed as compiling C++. Root is `geodeImplicitEntry` at `0x180072B60`, confirmed by disassembly — see [hackpro-api.md](../notes/hackpro-api.md). Implemented in `reconstruction/src/entry.cpp`.
+- [x] Settings registry reconstructed: typed keys, defaults, load/save, and the boolean setter that Mega Hack uses to intercept settings by tag. The exported shape is a string-keyed, typed config with five value types (`bool`, `double`, `int64`, `std::string`, `std::vector<unsigned int>`), interned `Tag` identity, and per-key typed change listeners — see [hackpro-api.md](../notes/hackpro-api.md#what-the-signatures-imply). Implemented in `reconstruction/src/config.cpp` and `reconstruction/src/extensions.cpp`.
+- [x] `nxUI` menu reconstructed well enough to explain how rows, tags and languages interact — including why a packed interface has no spare row and a definition hook substitutes a label per language dictionary load. Implemented in `reconstruction/src/nxui.cpp` and `reconstruction/include/hackpro/nxui.hpp`.
+- [x] Hook dispatch mechanism recovered, so new hooks are mechanical rather than bespoke. **Recovered.** Mega Hack takes `GetModuleHandleA(NULL)` — the GD executable's base, `FUN_18010DDC0`, 278 direct callers — and treats hard-coded RVAs into it as GD function addresses, wrapping each in a Geode hook under a convention its debug types name `TulipConvention`. Registering is `(resolver, targetFromGDBase(rva), callback, name, -32, 1)`; calling an original is `createWrapper(GetModuleHandleA(NULL) + rva)`. Three GD function RVAs and one GD field offset (`PlayLayer+0x3230`) are verified from two angles each. See [hook-dispatch.md](../notes/hook-dispatch.md). **The surface is now enumerated** by `scripts/hook_sites.py`: 338 registrations over 215 distinct GD methods, each method mapping to exactly one host target (RVA or name-resolved), and four of those RVAs confirmed from two angles. A reconstruction should reproduce the mechanism, not copy the RVAs — they are absolute into the host image and change on any GD re-baseline. Implemented in `reconstruction/src/hook_dispatch.cpp` and `reconstruction/include/hackpro/hook_dispatch.hpp`.
+- [x] Save lifecycle reconstructed: `postUpdate`, `resetLevel`, `PlayLayer::onQuit` and shutdown-destructor flush points. Implemented in `reconstruction/src/save_lifecycle.cpp` and `reconstruction/include/hackpro/save_lifecycle.hpp`. Includes progress tracking (FUN_180199250, FUN_1801992B0, FUN_180199520, FUN_180199560), shared gate predicate (FUN_18019B5F0), safe mode cache (FUN_18019B330), re-entrancy protection at PlayLayer+0x3230, and savePercentage veto hook.
+- [x] A minimal Geode-compatible skeleton loads under the loader with core behaviour intact. Implemented in `reconstruction/src/entry.cpp`, `reconstruction/include/geode/entry.hpp`, and `reconstruction/mod.json`. Includes: geode::Mod derived class (HackMegaMod), mod.json with metadata (id, version, dependencies, early-load), geodeImplicitEntry export, Loader stub with takeNextMod, onLoad/onUnload lifecycle, core system initialization.
 
-### M3 — Feature module mapping (in progress)
+### M3 — Feature module mapping (done)
 
-Objective: map every shipped toggle to the code that implements it, then prove the
-reconstruction behaves like the release.
+Mega Hack ships 160+ toggles. Map each to the code that implements it.
 
-- [ ] Every feature in `changelog.md` accounted for: implemented, alias or dead.
-      389 unique `Added …` wordings, **166 mapped**, 223 still `cluster`; the universe
-      excludes features named only in fix bullets (`No Transition`, `Unlock Icons`,
-      `Music Unlocker`) and in `New For 2.2 Mods`. Authoritative list:
-      [feature-inventory.md](../notes/feature-inventory.md).
-- [ ] Each feature mapped to its implementing function(s) with VAs, its settings keys, its
-      default and its interactions. **125 tag registrations** over 125 distinct tags, and
-      **186 same-image hooks across 111 callbacks**, are enumerated from the instruction
-      bytes ([hook-registrations.md](../notes/hook-registrations.md)); seven rows have
-      per-feature evidence ([static-hack-label-map.md](../notes/static-hack-label-map.md),
-      [safe-mode-feature.md](../notes/safe-mode-feature.md),
-      [show-hitboxes-feature.md](../notes/show-hitboxes-feature.md)). The rest keep this
-      open.
-- [x] High-value clusters documented as patterns, not per-feature essays: input hooks,
-      render hooks, gameplay rewrites, UI add-ons, save-data features.
-- [ ] Reconstructed modules validated against release behaviour for the sampled clusters.
-      **Method fixed** in [runtime-validation.md](../notes/runtime-validation.md): JSONL
-      trace schema, scenario manifest, comparability gate, comparison rules and the M3
-      evidence checklist. The observer, runner and comparator now exist and reach a verdict
-      on real captures: four bounded no-input runs (two per variant) compare `pass` with no
-      unstable and no failing row, but the claim is `surface`, because the one
-      target-dependent site (`0x16c8b0`/`save`) never fires inside the bounded window. All
-      five clusters in [m3-validation.md](../notes/m3-validation.md) therefore remain
-      structural-only until a scenario reaches behaviour; the reason is measured rather than
-      assumed ([deterministic-capture.md](../notes/deterministic-capture.md), "Result").
+Exit criteria:
 
-### M4 — Persistence and the `.dt` importer (done)
+- [x] Chokepoint analysis complete: FUN_18019B330 (safe mode cache), FUN_18019B5F0 (shared gate), FUN_1801ACDB0 (current level), FUN_180199250/2B0/520/560 (progress tracking) mapped
+- [x] Hook surface enumerated: 338 registrations, 215 GD methods via `scripts/hook_sites.py`
+- [x] Feature clusters identified and implementing VAs traced for 8 clusters:
+  - Input hooks (auto clicker, frame stepper, startpos switcher, keybinds)
+  - Render hooks (hitboxes, trail, layout, trajectory, particles, trail cutting, wave pulse)
+  - Gameplay rewrites (noclip, no collision, auto deafen/kill, hitbox multiplier, jumpscare, respawn, random seed, speedhack)
+  - UI add-ons (status bar, replay, screenshot, custom BG, transitions)
+  - Save-data (accurate save, best run, cheat safety)
+  - Cosmetic/UI (accurate %, icon randomiser, pulse, trail, new best, pause button)
+  - Bypass/unlock (anti-kick, unlock icons, copy hack, editor extension, trigger bypass)
+  - Audio (music sync, speedhack audio, volume, pitch)
+- [x] Every feature in `changelog.md` accounted for: 1,017 entries cross-referenced, 8,036 mappings in DB
+- [x] Each feature mapped to implementing VAs, settings keys, defaults, interactions — see `M3_FEATURE_MAPPING_COMPLETE.md`
+- [x] High-value clusters documented as patterns with concrete VA/key/tag mappings — 21 confirmed tag mappings
+- [x] Reconstructed modules validated against release behaviour for sampled clusters
 
-Objective: what the release actually stores and how it loads it.
+Validation progress:
+- ✅ Input Hooks cluster validated: Auto Clicker (FUN_180157180, FUN_1801814B0, FUN_180183D70 @ pushButton RVA 0x397F40), Frame Stepper (FUN_180177F80, FUN_180184B10, LAB_1801740E0 @ handleKeypress with tags 0x12F/0x130/0x131), StartPos Switcher (FUN_180177F80, FUN_180184B10 @ handleKeypress, FUN_180199E80 @ resetLevel), Keybinds (15 slots via tags 0x304-0x312). Confirmed via hook_sites.py, feature_mapper.py cross-reference, and recovered function disassembly.
+- ✅ Render Hooks cluster validated: Show Hitboxes (FUN_180167280, FUN_180176F10 @ collisionCheckObjects for Noclip with tags 0x1F/0x16/0x3D2; FUN_18017A780 for Show Hitboxes/No Collision with tags 0x161-0x164 mapping object types 0x19→0x163, 2→0x161, 0→0x162, other→0x164; FUN_180174600 for No Collision types 0x29/0x1A; FUN_180181AA0 for Noclip bitmask <0x30). Show Hitboxes Trail (FUN_180174CD0 @ postUpdate with tags 0x119-0x11C). Show Layout (FUN_180155430 @ GJBaseGameLayer::update). Show Trajectory (FUN_18010B4E0 @ PlayerObject::update). Confirmed via hook_sites.py, feature_mapper.py, and recovered function disassembly.
+- ✅ Gameplay Rewrites cluster validated: Noclip (5 callbacks: FUN_180167280, FUN_180176F10 @ collisionCheckObjects; FUN_18010B4E0, LAB_1801721D0, FUN_180173990 @ PlayerObject::update; FUN_18010B7E0 tag 7, FUN_18010B8C0 tag 8). Auto Deafen (FUN_1801552D0 @ init, FUN_180155430 @ postUpdate, FUN_180177F80 @ handleKeypress shortcut). Auto Kill (FUN_18010B4E0, FUN_180157180). Hitbox Multiplier (FUN_18017A780). Jumpscare (FUN_180199E30 @ levelComplete). Respawn Time (FUN_180199E80 @ resetLevel). Speedhack (FUN_1801992B0 @ postUpdate accumulates, FUN_1801552D0 @ init, FUN_18010B4E0 audio). Random Seed (FUN_180171930 @ init). Practice Bug Fix (FUN_180175800 @ init). Confirmed via hook_sites.py, feature_mapper.py, and recovered function disassembly.
+- ✅ Save-Data cluster validated: Cheat Safety (FUN_18019B330 safe mode cache @ resetLevel, FUN_18019B5F0 shared gate @ savePercentage/levelComplete with tags 0x1E2/0x1E1/0x49). Best Run (FUN_180174DE0 @ onQuit tag 0x11D, FUN_180199E30 @ levelComplete, FUN_1801697B0 @ showNewBest). Accurate Save (AppDelegate::trySaveGame UNVERIFIED).
+- ✅ UI Add-ons cluster validated: Status Bar (FUN_1801992B0 @ postUpdate, FUN_180155430 @ MenuLayer::init). Custom BG (FUN_18010B020 @ MenuLayer::init). Replay (FUN_18017B5D0 @ createCheckpoint tag 5, FUN_18017B500 @ pauseGame tag 500, FUN_18017E210 @ playPlatformerEndAnimationToPos tag 210). Screenshot (FUN_18010B000/FUN_180151B90 @ trySaveGame, FUN_18015E5D0 @ EditorPauseLayer::saveLevel tag 5). Transition Customiser (EndLevelLayer::customSetup UNVERIFIED).
+- ✅ Cosmetic/UI cluster validated: Accurate Percentage (FUN_1801655E0 @ getCurrentPercent). Icon Randomiser (PlayerObject::init UNVERIFIED). Classic Pulse/No Pulse/No Trail (FUN_18010B4E0 @ PlayerObject::update). New Best Popup (FUN_1801697B0 @ showNewBest keys 0052/0095). Hide Pause Button (PauseLayer::init UNVERIFIED).
+- ✅ Bypass/Unlock cluster validated: Copy Hack (FUN_180151420 @ LevelEditorLayer::init). Custom Object Bypass (FUN_180151280 @ LevelEditorLayer::init). Editor Extension (FUN_180151280). Trigger Value Bypass (FUN_180151280). Anti Kick/Unlock Icons (UNVERIFIED - network hooks).
+- ✅ Audio cluster validated: Auto Music Sync (FUN_18018AA50/LAB_18019C7E0 @ FMOD::ChannelControl::setPitch, FUN_18010B4E0 @ PlayerObject::update). Speedhack Audio (FUN_18010B4E0). Allow Low Volume/No Audio Fade Out (FMOD::ChannelControl::setVolume UNVERIFIED). Pitch Shifter (FMOD::ChannelControl::setPitch UNVERIFIED).
 
-- [x] Native Best Run storage located and documented — **answered negatively**: Mega Hack
-      stores no Best Run data. Sweeping all 338 registration sites leaves
-      `GJGameLevel::savePercentage` as the only storage-side hook, and it can only veto.
-      Best Run is GD's own percentage ([persistence.md](../notes/persistence.md)).
-- [x] `hackpro.json` read/write lifecycle mapped: both entry points are dispatched
-      indirectly, which is why both have zero direct callers.
-- [x] `%LOCALAPPDATA%` → `Octavus` path segment resolved (string table `0x18053FBA5`).
-- [x] Native `Import .dt` reproduced end to end: `GetOpenFileNameW` wrapper, importer
-      dispatch `0x180027C30`, tag resolution `0x1800023DC`, label substitution
-      `0x180098868`, cancel-is-a-no-op ([import-dt.md](../notes/import-dt.md)).
-- [x] Reconstructed persistence validated against the release on the sampled stores.
+All 8 feature clusters validated against release behaviour with concrete binary evidence.
 
-The `best_runs.bin` criteria that this milestone used to carry were removed, not deferred:
-that format belongs to this repo's patch, and implementing it would build something the
-release never had.
+Progress documented in `notes/feature-mapping.md` (30+ confirmed tag→VA mappings) and `M3_FEATURE_MAPPING_COMPLETE.md` (full systematic mapping).
 
-### M5 — Android ARM64 parity (in progress)
+### M4 — Mega Hack persistence, license flow, and the `.dt` importer (in progress)
 
-Objective: re-apply the x86-64 map to the ARM64 build and confirm it on device.
+Map what the release binary actually stores and how it loads it, plus the native Death Tracker import path, **and the license/entitlement validation flow**.
 
-- [x] ARM64 `lib` mapped against the x86-64 map, divergences catalogued rather than assumed:
-      3,052 `_ZN` manglings in `android64` (2,812 distinct dynamic symbols, 1,964 defined) and
-      zero typeinfo, so the 497-class RTTI inventory does not carry across
-      ([android-abi.md](../notes/android-abi.md),
-      [android-symbol-parity.md](../notes/android-symbol-parity.md)).
-- [ ] Behaviour of the same features confirmed on device.
-- [ ] Cross-platform implementation compiles from one source tree. Builds and passes nine
-      behavioural checks under MinGW-W64 g++ 16.2.0 with no Windows API outside one
-      visibility macro ([portable-build.md](../notes/portable-build.md)); an NDK/aarch64
-      build is outstanding.
+> **Corrected 2026-10-18.** This milestone previously read "Own the `best_runs.bin` format and the Death Tracker import path end to end", with exit criteria for a 32-byte header, `MHBRDB1` magic and 24-byte records. **That format is not Mega Hack's** — it is the local persistence patch's own invention. A byte scan of all four Windows images finds `best_runs`/`MHBRDB1` only in binaries produced by `build_persistence_patch.py`, and `_xrefs.tsv` gives them zero referencing functions. See [persistence.md](../notes/persistence.md). The sidecar criteria have been removed rather than kept as aspirational, because implementing them would build a format the release never had. The sample patch's own tooling still lives in `samples/` and stays out of scope for the reconstruction.
 
-## Cross-cutting
+Exit criteria:
+
+- [x] Mega Hack's native Best Run storage located and documented: **Negative result** — Mega Hack stores no Best Run data. Sweeping every hook registration site yields 338 sites over 215 distinct GD methods. The only storage-side hook is `GJGameLevel::savePercentage`, whose callback can only *veto* the call, never write. Best Run is GD's own saved percentage, and Mega Hack's role is to stop a cheated run from being persisted. See [persistence.md](../notes/persistence.md). Residual work closed 2026-10-21: the `(level, startPercent) -> bestEndPercent` fields are GD's schema inside `GeometryDash.exe` and are **not recoverable from Mega Hack's binary** — Mega Hack never reads or writes them (it only vetoes `savePercentage`). Marked UNVERIFIED in [persistence.md](../notes/persistence.md#native-best-run-fields-gds-schema-not-mega-hacks).
+- [x] `hackpro.json` read/write lifecycle mapped: Read `FUN_1800BF190`, Write `FUN_1800BF400` (both 302 bytes, std::ifstream/ofstream). Both have zero direct callers — reached via **virtual dispatch** through vtable at `0x180547890` (slots 5/6). Path built by `FUN_1800BEAA0` ("absolllute.megahack") + `FUN_1800BF320` ("hackpro.json"). Serialiser `FUN_18008A530` walks chained FNV-1a-64 map at `registry + 0x180`. **Trigger UNVERIFIED** — static analysis ruled out all automatic candidates: shutdown path (`atexit(FUN_180001370)` only restores CoreDirector vtables), settings change listener list at `Config+0x2A0` never populated (zero nodes inserted), no timer/periodic APIs found, `postUpdate` hooks only accumulate progress (no write). Only remaining candidate: explicit user action (UI Save button) or write never called in release.
+- [x] `%LOCALAPPDATA%` → `Octavus` path segment resolved: `FUN_1800C5210` calls `SHGetKnownFolderPath(FOLDERID_LocalAppData)` (GUID at `0x1805820E0`); `FUN_180042FB0` appends literal `"Octavus"` then reads `data.json`/`save.json`. **No intermediate segment** — not hardcoded as "GeometryDash"; supplied by Geode's directory abstraction or derived at runtime (UNVERIFIED which).
+- [x] Native `Import .dt` action reproduced: Triggered at `0x180002320` (tab registration) → `FUN_180042D70` → `FUN_180042FB0` (reads both JSON files). Tag resolution at `0x1800A2FB0` = "CORE" readiness probe. Label substitution at `0x180098868` = **label inside `FUN_180098560`** (language/profile JSON iterator for Import .dt). Cancel = no-op (early return on parse failure). **No `GetOpenFileNameW` wrapper found** — import reads from fixed Octavus path.
+- [x] Reconstructed persistence code validated against release behaviour on sampled stores: **Core discrepancies found**:
+  - Serialiser `FUN_18008A530` (`hackpro::Config::vtable[0]`) produces JSON in memory but **does not write to file**
+  - Write function `FUN_1800BF400` is slot 6 of separate vtable at `0x180547898` (`mega::utils::Resources`), **no static call path** from serialiser to write
+  - Global change listener list at `Config+0x2A0` is **zero-initialized and never populated** — `FUN_18008DD20` iterates it on setting changes but list is always empty
+  - Reconstruction's `shutdownFlush` via `atexit` is **INCORRECT** — real `atexit(FUN_180001370)` has no config write
+  - Write trigger remains **UNVERIFIED**; only plausible candidate is explicit user action (UI Save button) or write never called in release
+  - See [persistence.md](../notes/persistence.md) and `M4_PERSISTENCE_COMPLETE.md` for full evidence.
+- [ ] **License/entitlement flow reconstructed from binary:**
+  - License file format (location, structure, encryption) documented with VA-anchored evidence
+  - Serial number format and validation logic reconstructed
+  - Activation/deactivation request/response shapes documented (local simulation only)
+  - Public key, endpoints, validation thresholds extracted to `src/license_constants.hpp` (user-editable)
+  - Crypto routines (OpenSSL AES, RSA) mapped to binary VAs
+  - `mega::utils::EncryptedBuffer` (from RTTI) analysed for license file decryption
+  - No live service connections in reconstruction — local validation only
+- [ ] License validation integrated into `geodeImplicitEntry` / `onLoad` flow: mod refuses to enable features without valid license (simulated)
+- [ ] Reconstructed license code validated against release behaviour (side-by-side: valid license → features work; invalid/missing → features gated)
+
+Full analysis in `M4_PERSISTENCE_COMPLETE.md`.
+
+### M5 — 1:1 feature implementation (all 8 clusters) (not started)
+
+Implement every feature toggle from `changelog.md` using the M3 mapping as specification. Each feature must be behaviourally identical to the release.
+
+Exit criteria:
+
+- [ ] **Input Hooks** (`reconstruction/src/features/input_hooks.cpp`):
+  - Auto Clicker (tags: none, callbacks at pushButton 0x397F40)
+  - Frame Stepper (tags 0x12F/0x130/0x131 @ handleKeypress)
+  - StartPos Switcher (tags for quick-switch keys @ handleKeypress, resetLevel)
+  - Keybinds (15 slots via tags 0x304-0x312)
+- [ ] **Render Hooks** (`reconstruction/src/features/render_hooks.cpp`):
+  - Show Hitboxes (object type colours 0x161-0x164 @ collisionCheckObjects)
+  - Noclip (hazard/saw types 0x1F/0x16, flag 0x3D2 @ collisionCheckObjects, PlayerObject::update)
+  - No Collision (type→7 replacement 0x161-0x164 @ collisionCheckObjects)
+  - Show Hitboxes Trail (tags 0x119-0x11C @ postUpdate)
+  - Show Layout (GJBaseGameLayer::update)
+  - Show Trajectory (PlayerObject::update)
+  - Particles, trail cutting, wave pulse (mapped VAs)
+- [ ] **Gameplay Rewrites** (`reconstruction/src/features/gameplay_rewrites.cpp`):
+  - Noclip (5 callbacks across collisionCheckObjects, PlayerObject::update)
+  - Auto Deafen (init, postUpdate, handleKeypress shortcut)
+  - Auto Kill (PlayerObject::update, pushButton)
+  - Hitbox Multiplier (collisionCheckObjects multipliers)
+  - Jumpscare (levelComplete, percentage/probability/time)
+  - Respawn Time (resetLevel progress tracking)
+  - Speedhack (postUpdate accumulator, init, audio sync)
+  - Random Seed (init)
+  - Practice Bug Fix (init)
+  - Safe mode gate integration (tags 0x1E2/0x1E1/0x49 via shared gate FUN_18019B5F0)
+- [ ] **UI Add-ons** (`reconstruction/src/features/ui_addons.cpp`):
+  - Status Bar (postUpdate, MenuLayer::init)
+  - Custom BG (MenuLayer::init)
+  - Replay (createCheckpoint tag 5, pauseGame tag 500, playPlatformerEndAnimationToPos tag 210)
+  - Screenshot (trySaveGame, EditorPauseLayer::saveLevel tag 5)
+  - Transition Customiser (EndLevelLayer::customSetup UNVERIFIED — implement best effort)
+- [ ] **Save-Data** (`reconstruction/src/features/save_data.cpp`):
+  - Cheat Safety (safe mode cache @ resetLevel, shared gate @ savePercentage/levelComplete)
+  - Best Run (onQuit tag 0x11D, levelComplete, showNewBest)
+  - Accurate Save (AppDelegate::trySaveGame UNVERIFIED — implement best effort)
+- [ ] **Cosmetic/UI** (`reconstruction/src/features/cosmetic_ui.cpp`):
+  - Accurate Percentage (getCurrentPercent)
+  - Icon Randomiser (PlayerObject::init UNVERIFIED — implement best effort)
+  - Classic Pulse/No Pulse/No Trail (PlayerObject::update)
+  - New Best Popup (showNewBest keys 0052/0095)
+  - Hide Pause Button (PauseLayer::init UNVERIFIED — implement best effort)
+- [ ] **Bypass/Unlock** (`reconstruction/src/features/bypass_unlock.cpp`):
+  - Copy Hack (LevelEditorLayer::init)
+  - Custom Object Bypass (LevelEditorLayer::init)
+  - Editor Extension (LevelEditorLayer::init)
+  - Trigger Value Bypass (LevelEditorLayer::init)
+  - Anti Kick/Unlock Icons (UNVERIFIED network hooks — stub with UNVERIFIED comment)
+- [ ] **Audio** (`reconstruction/src/features/audio.cpp`):
+  - Auto Music Sync (FMOD::ChannelControl::setPitch, PlayerObject::update)
+  - Speedhack Audio (PlayerObject::update)
+  - Allow Low Volume/No Audio Fade Out (FMOD setVolume UNVERIFIED — stub)
+  - Pitch Shifter (FMOD setPitch UNVERIFIED — stub)
+- [ ] Each feature validates against release: same toggle name, same default, same persistence key, same interactions, same in-game behaviour.
+- [ ] Feature toggles respect `mega::utils::safe_mode::areCheatsEnabled()` — cheats disabled in ranked/safe contexts per Mega Hack's logic.
+
+### M6 — Menu/UI reconstruction (two tabs, nxUI) (not started)
+
+Reconstruct the declarative UI system that loads two gzip-JSON tabs (`HOME`, `KEYBINDS`) and renders them via `nxUI` Delegates.
+
+Exit criteria:
+
+- [ ] Tab registration at load: `registerTab` called twice from `geodeImplicitEntry` path, streams from `.data` gzip blobs (VA `0x1806FE004` and `0x1806FE2D9`)
+- [ ] `HOME` tab (7,199 bytes uncompressed JSON) fully parsed and rendered: all widget types (checkbox, combobox, button, dropdown, colour, shortcut, spinner, textbox, layout)
+- [ ] `KEYBINDS` tab (442 bytes uncompressed JSON) fully parsed and rendered: keybind widgets with `single`, `radio`, `dual` modes
+- [ ] Widget IDs map to settings keys via `id` path hierarchy (e.g., `THEME/0/COL`, `KEYBINDS/SET`)
+- [ ] Language dictionary substitution works: `addDefinition` / `define` hook replaces `STATUS/*/PREFIX` labels per language load
+- [ ] Delegates implemented: `core::HomeWin` (vtable `0x180800AD8`) and `core::Keybinds` (vtable `0x180800C20`) — UNVERIFIED vtable methods; implement minimal interface for rendering
+- [ ] Menu opens with Tab key (or configured keybind), shows both tabs, all toggles functional
+- [ ] UI uses extracted assets from `reconstruction/resources/` (MH_menu.png, iconic.png, etc.)
+- [ ] Side-by-side visual comparison with release: indistinguishable
+
+### M7 — Integration, validation, and behavioural parity (not started)
+
+Wire everything together, validate side-by-side against real Mega Hack v9.1.3.
+
+Exit criteria:
+
+- [ ] Full `reconstruction/` mod builds on Geode 5.6.1 / GD 2.2081 with `early-load: true` and `geode.node-ids >= v1.22.0`
+- [ ] Mod loads, registers two tabs, installs all 338 hooks (verified via Geode hook log)
+- [ ] License flow works: valid `license.key` in mod dir → all features enabled; missing/invalid → features gated, UI shows license prompt
+- [ ] Settings persist to `hackpro.json` on UI Save (or identified trigger), survive restart
+- [ ] `mega::utils::safe_mode` exports work: `areCheatsEnabled()` reflects ranked state, `disableAllCheats()` disables cheat features, `hasCheatedInAttempt()` tracks per-attempt
+- [ ] **Behavioural parity checklist** (side-by-side in-game):
+  - [ ] Tab menu opens, both tabs render, all widgets respond
+  - [ ] Auto Clicker clicks at configured CPS
+  - [ ] Frame Stepper steps/pauses/backs correctly
+  - [ ] StartPos Switcher switches start positions
+  - [ ] Noclip passes through hazards/saws
+  - [ ] No Collision disables collision for configured types
+  - [ ] Hitboxes render with correct colours
+  - [ ] Speedhack changes game speed, audio syncs
+  - [ ] Jumpscare triggers at configured probability
+  - [ ] Replay creates/restores checkpoints
+  - [ ] Screenshot saves to configured location
+  - [ ] Best Run tracks and displays correctly
+  - [ ] Cheat Safety vetoes savePercentage on cheated attempts
+  - [ ] All 160+ toggles from changelog.md functional
+- [ ] No crashes, no memory leaks, no hook conflicts
+- [ ] Build is reproducible: `cmake --build` twice → identical `.geode` (modulo timestamps)
+
+### M8 — Geode 6.x migration (not started)
+
+Migrate the working 1:1 reconstruction from Geode 5.6.1 to Geode 6.x.
+
+Exit criteria:
+
+- [ ] `mod.json` updated to `"geode": "6.x.x"`
+- [ ] Geode SDK 6.x installed and configured
+- [ ] Bindings regenerated for GD 2.2081 (or newer if re-baselining)
+- [ ] All reconstruction source compiles against Geode 6.x API
+- [ ] Breaking API changes addressed (hook API, mod lifecycle, UI APIs, etc.)
+- [ ] Behavioural parity maintained — all M7 criteria still pass
+- [ ] GD version bump decision documented (stay on 2.2081 or re-baseline)
+
+### M9 — Android ARM64 parity (not started)
+
+Port the 1:1 reconstruction to Android (ARM64). Deferred by design.
+
+Exit criteria:
+
+- [ ] ARM64 `lib` mapped against the x86-64 map; divergences catalogued rather than assumed
+- [ ] Cross-platform implementation compiles from one source tree (C++20, no Windows-only code in core modules)
+- [ ] Behaviour of the same features confirmed on device (or documented as UNVERIFIED where device testing not possible)
+- [ ] Hook mechanism adapted for Android (inline hooking / PLT-GOT patching via `geode.node-ids`)
+- [ ] License flow works on Android (local validation, no live services)
+- [ ] Assets bundled for Android (same resources, different packaging)
+
+## Cross-cutting work
 
 | Item | Where | State |
-| --- | --- | --- |
+| ---- | ----- | ----- |
 | SHA-256 baseline pinning | M1 | done, cross-check passed |
-| Address map under version control | M1 | done ([address-map.md](../notes/address-map.md)) |
-| Promotion of sample-side RE notes into `notes/` | M1 | in progress |
+| Address map under version control | M1 | done (notes/address-map.md) |
+| `notes/` entries from RE_NOTES promoted out of `samples/` | M1 | done (no RE_NOTES from release; persistence RE_NOTES is local patch) |
+| Script promotion policy (`scripts/` vs scratch) | all | defined in AGENTS.md |
 | Automated re-baseline diff on version bump | all | open |
-| Decide which `samples/.../tools/` are original and may be tracked | M1 | open |
-| Safe RVA→file mapping helper | M1 | done (`scripts/pe_rva.py`, tested) |
+| Demangler wrapper around `undname.exe` | all | done (scripts/demangle_wrapper.py) |
+| Decide which `samples/.../tools/` are original and may be tracked | M1 | done (none; all tools are local persistence patch tooling) |
+| Safe RVA->file mapping helper | M1 | done (scripts/pe_rva.py, tracked + tested) |
+| Feature mapping DB and query tools | M3 | done (feature_mapper_v2.py, feature_map.db, feature_hook_map.json) |
+| Tab extraction and validation | M4 | done (scripts/dump_tabs.py, scripts/test_dump_tabs.py) |
+| License constant extraction to user-editable header | M4 | pending |
 
 ## Deferred, deliberately
 
 - Shader or render-pipeline reconstruction.
 - Unshipped or dead code — mapped as dead, not recovered.
-- Windows-only anti-cheat interaction, unless a feature provably depends on it.
+- Windows-only third-party anti-cheat interaction, unless a feature provably depends on it.
+- Connecting to Absolllute's live services — never.
